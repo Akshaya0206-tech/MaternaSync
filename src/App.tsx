@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react';
 import { mockPatients } from './data/mockPatients';
-import type { PatientEpisode, PatientRecord, PendingWorkflowItem, WorkflowStatus } from './types/patient';
+import type { 
+  PatientEpisode, 
+  PatientRecord, 
+  PendingWorkflowItem, 
+  WorkflowStatus, 
+  VerificationStatus,
+  ActivityLogEntry,
+  PhaseStage
+} from './types/patient';
 import { Header } from './components/Header';
 import { SafetyBanner } from './components/SafetyBanner';
-import { PatientHeader } from './components/PatientHeader';
+import { PatientHeader, type ActiveTabType } from './components/PatientHeader';
 import { TimelineView } from './components/TimelineView';
 import { RecordsGridView } from './components/RecordsGridView';
+import { RecordCompletenessSection } from './components/RecordCompletenessSection';
 import { WorkflowItemsPanel } from './components/WorkflowItemsPanel';
+import { ActivityLogPanel } from './components/ActivityLogPanel';
+import { TodaysBriefView } from './components/TodaysBriefView';
+import { ConsultationActiveView } from './components/ConsultationActiveView';
 import { RecordDetailModal } from './components/RecordDetailModal';
 import { AddRecordModal } from './components/AddRecordModal';
 import { AddWorkflowItemModal } from './components/AddWorkflowItemModal';
@@ -17,7 +29,8 @@ import { CheckCircle2 } from 'lucide-react';
 export function App() {
   const [episodes, setEpisodes] = useState<PatientEpisode[]>(mockPatients);
   const [activeEpisodeId, setActiveEpisodeId] = useState<string>('EP-2026-8891');
-  const [activeTab, setActiveTab] = useState<'timeline' | 'grid' | 'workflow'>('timeline');
+  const [currentPhase, setCurrentPhase] = useState<PhaseStage>('phase2');
+  const [activeTab, setActiveTab] = useState<ActiveTabType>('timeline');
   const [selectedRecord, setSelectedRecord] = useState<PatientRecord | null>(null);
   
   const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
@@ -43,22 +56,25 @@ export function App() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  const handleUpdateWorkflowStatus = (itemId: string, newStatus: WorkflowStatus) => {
+  // Helper to add activity log entry
+  const appendActivityLog = (episodeId: string, log: Omit<ActivityLogEntry, 'id' | 'episodeId' | 'timestamp'>) => {
+    const newLog: ActivityLogEntry = {
+      ...log,
+      id: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      episodeId,
+      timestamp: new Date().toISOString()
+    };
+
     setEpisodes(prev => prev.map(ep => {
-      if (ep.id !== activeEpisode.id) return ep;
+      if (ep.id !== episodeId) return ep;
       return {
         ...ep,
-        workflowItems: ep.workflowItems.map(item => {
-          if (item.id === itemId) {
-            return { ...item, status: newStatus };
-          }
-          return item;
-        })
+        activityLogs: [newLog, ...(ep.activityLogs || [])]
       };
     }));
-    showToast(`Workflow item status updated to ${newStatus}.`);
   };
 
+  // 1. Add Record
   const handleAddRecord = (newRecord: PatientRecord) => {
     setEpisodes(prev => prev.map(ep => {
       if (ep.id !== activeEpisode.id) return ep;
@@ -67,9 +83,115 @@ export function App() {
         records: [newRecord, ...ep.records]
       };
     }));
-    showToast(`Record "${newRecord.title}" successfully added to patient timeline.`);
+
+    appendActivityLog(activeEpisode.id, {
+      action: 'record_added',
+      title: `Record "${newRecord.title}" imported`,
+      details: `Source: ${newRecord.facility} (${newRecord.sourceId}). Initial status: RAW.`,
+      user: newRecord.author,
+      role: newRecord.authorRole,
+      recordId: newRecord.id
+    });
+
+    showToast(`Record "${newRecord.title}" added to patient timeline.`);
   };
 
+  // 2. Replace Record (Duplicate Resolution)
+  const handleReplaceRecord = (oldRecordId: string, newRecord: PatientRecord) => {
+    setEpisodes(prev => prev.map(ep => {
+      if (ep.id !== activeEpisode.id) return ep;
+      return {
+        ...ep,
+        records: ep.records.map(r => r.id === oldRecordId ? newRecord : r)
+      };
+    }));
+
+    appendActivityLog(activeEpisode.id, {
+      action: 'record_replaced',
+      title: `Record ${oldRecordId} replaced with updated version`,
+      details: `Replaced by care team user after duplicate review: "${newRecord.title}".`,
+      user: 'Dr. Eleanor Vance, MD',
+      role: 'Attending Obstetrician',
+      recordId: newRecord.id
+    });
+
+    showToast(`Existing record replaced with updated version "${newRecord.title}".`);
+  };
+
+  // 3. Verification Workflow
+  const handleUpdateRecordVerification = (recordId: string, newStatus: VerificationStatus, verifier: string) => {
+    setEpisodes(prev => prev.map(ep => {
+      if (ep.id !== activeEpisode.id) return ep;
+      return {
+        ...ep,
+        records: ep.records.map(r => {
+          if (r.id === recordId) {
+            return {
+              ...r,
+              verificationStatus: newStatus,
+              verifiedBy: verifier,
+              verifiedAt: new Date().toISOString()
+            };
+          }
+          return r;
+        })
+      };
+    }));
+
+    // Also update selectedRecord if modal is currently open
+    setSelectedRecord(prev => {
+      if (prev && prev.id === recordId) {
+        return {
+          ...prev,
+          verificationStatus: newStatus,
+          verifiedBy: verifier,
+          verifiedAt: new Date().toISOString()
+        };
+      }
+      return prev;
+    });
+
+    appendActivityLog(activeEpisode.id, {
+      action: 'record_verified',
+      title: `Record verification status changed to ${newStatus.toUpperCase()}`,
+      details: `Verified by human care team reviewer: ${verifier}.`,
+      user: verifier.split('(')[0].trim(),
+      role: verifier.includes('(') ? verifier.split('(')[1].replace(')', '').trim() : 'Clinician Reviewer',
+      recordId
+    });
+
+    const statusLabel = newStatus === 'ready_for_context' ? 'Ready for Context' : newStatus === 'verified' ? 'Verified' : 'Raw';
+    showToast(`Record status updated to "${statusLabel}".`);
+  };
+
+  // 4. Workflow Item Status Update
+  const handleUpdateWorkflowStatus = (itemId: string, newStatus: WorkflowStatus) => {
+    const item = activeEpisode.workflowItems.find(i => i.id === itemId);
+    setEpisodes(prev => prev.map(ep => {
+      if (ep.id !== activeEpisode.id) return ep;
+      return {
+        ...ep,
+        workflowItems: ep.workflowItems.map(w => {
+          if (w.id === itemId) {
+            return { ...w, status: newStatus };
+          }
+          return w;
+        })
+      };
+    }));
+
+    appendActivityLog(activeEpisode.id, {
+      action: 'workflow_updated',
+      title: `Workflow item "${item?.title || itemId}" marked ${newStatus.toUpperCase()}`,
+      details: `Status transitioned to ${newStatus}. Priority remains strictly as clinically documented.`,
+      user: 'Dr. Eleanor Vance, MD',
+      role: 'Attending Obstetrician'
+    });
+
+    showToast(`Workflow item status updated to "${newStatus}".`);
+  };
+
+  // 5. Add Workflow Item
   const handleAddWorkflowItem = (newItem: PendingWorkflowItem) => {
     setEpisodes(prev => prev.map(ep => {
       if (ep.id !== activeEpisode.id) return ep;
@@ -78,9 +200,60 @@ export function App() {
         workflowItems: [newItem, ...ep.workflowItems]
       };
     }));
-    showToast(`Documented workflow item "${newItem.title}" added to active queue.`);
+
+    appendActivityLog(activeEpisode.id, {
+      action: 'workflow_created',
+      title: `Workflow item "${newItem.title}" catalogued`,
+      details: `Type: ${newItem.type}. Assigned role: ${newItem.assignee || 'Unassigned'}.`,
+      user: 'Nurse Brenda Miller, RN',
+      role: 'Obstetric Triage Nurse'
+    });
+
+    showToast(`Workflow item "${newItem.title}" added to active queue.`);
   };
 
+  // 6. Admin Document Completeness updates
+  const handleUpdateAdminDocStatus = (docId: string, newStatus: 'complete' | 'missing' | 'pending_verification') => {
+    setEpisodes(prev => prev.map(ep => {
+      if (ep.id !== activeEpisode.id) return ep;
+      return {
+        ...ep,
+        administrativeDocs: (ep.administrativeDocs || []).map(doc => {
+          if (doc.id === docId) {
+            return {
+              ...doc,
+              status: newStatus,
+              lastUpdated: new Date().toISOString()
+            };
+          }
+          return doc;
+        })
+      };
+    }));
+    showToast(`Administrative checklist status updated.`);
+  };
+
+  const handleAddAdminDoc = (title: string, category: 'intake' | 'consent' | 'identification' | 'preferences' | 'postpartum_plan') => {
+    const newDoc = {
+      id: `ADM-${Date.now()}`,
+      title,
+      category,
+      status: 'pending_verification' as const,
+      requiredByStage: 'Episode Management',
+      lastUpdated: new Date().toISOString()
+    };
+
+    setEpisodes(prev => prev.map(ep => {
+      if (ep.id !== activeEpisode.id) return ep;
+      return {
+        ...ep,
+        administrativeDocs: [...(ep.administrativeDocs || []), newDoc]
+      };
+    }));
+    showToast(`Checklist requirement "${title}" added.`);
+  };
+
+  // 7. Phase 1 Handoff Confirmation
   const handleConfirmHandoff = () => {
     setEpisodes(prev => prev.map(ep => {
       if (ep.id !== activeEpisode.id) return ep;
@@ -90,7 +263,18 @@ export function App() {
         handoffTimestamp: new Date().toISOString()
       };
     }));
-    showToast(`Phase 1 Dataset Locked & Ready for "Today's Brief"!`);
+
+    appendActivityLog(activeEpisode.id, {
+      action: 'phase1_handoff',
+      title: `Phase 1 Context Package Locked & Handed Off`,
+      details: `All quality gates passed. Context prepared for "Today's Brief" under supervision of ${activeEpisode.primaryClinician}.`,
+      user: activeEpisode.primaryClinician,
+      role: 'Attending Obstetrician'
+    });
+
+    setIsHandoffModalOpen(false);
+    setCurrentPhase('phase2');
+    showToast(`Phase 1 Dataset Locked & "Today's Brief" (Phase 2) Active!`);
   };
 
   return (
@@ -99,6 +283,8 @@ export function App() {
       <Header
         episodes={episodes}
         activeEpisode={activeEpisode}
+        currentPhase={currentPhase}
+        onSelectPhase={(phase) => setCurrentPhase(phase)}
         onSelectEpisode={(id) => setActiveEpisodeId(id)}
         onOpenHandoffModal={() => setIsHandoffModalOpen(true)}
         onOpenAddRecordModal={() => setIsAddRecordModalOpen(true)}
@@ -110,37 +296,80 @@ export function App() {
       {/* Mandatory Safety & Boundary Rules Banner */}
       <SafetyBanner onOpenRulesModal={() => setIsSafetyModalOpen(true)} />
 
-      {/* Patient Episode Demographic & Quick Nav Header */}
-      <PatientHeader
-        episode={activeEpisode}
-        activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab)}
-      />
-
-      {/* Main Workspace Body */}
-      <main style={{ padding: '24px', flex: 1, maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
-        {activeTab === 'timeline' && (
-          <TimelineView
-            records={activeEpisode.records}
+      {/* Conditional Phase Stage Rendering */}
+      {currentPhase === 'phase2' ? (
+        <main style={{ padding: '24px', flex: 1, maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
+          <TodaysBriefView
+            episode={activeEpisode}
+            onNavigateToPhase1={(targetTab) => {
+              setCurrentPhase('phase1');
+              if (targetTab) setActiveTab(targetTab);
+            }}
+            onStartConsultation={() => setCurrentPhase('consultation')}
             onSelectRecord={(rec) => setSelectedRecord(rec)}
+            onUpdateWorkflowStatus={handleUpdateWorkflowStatus}
           />
-        )}
+        </main>
+      ) : currentPhase === 'consultation' ? (
+        <main style={{ padding: '24px', flex: 1, maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
+          <ConsultationActiveView
+            episode={activeEpisode}
+            onReturnToTodaysBrief={() => setCurrentPhase('phase2')}
+            onNavigateToPhase1={() => setCurrentPhase('phase1')}
+          />
+        </main>
+      ) : (
+        <>
+          {/* Patient Episode Demographic & Nav Header */}
+          <PatientHeader
+            episode={activeEpisode}
+            activeTab={activeTab}
+            onTabChange={(tab) => setActiveTab(tab)}
+          />
 
-        {activeTab === 'grid' && (
-          <RecordsGridView
-            records={activeEpisode.records}
-            onSelectRecord={(rec) => setSelectedRecord(rec)}
-          />
-        )}
+          {/* Main Workspace Body for Phase 1 */}
+          <main style={{ padding: '24px', flex: 1, maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
+            {activeTab === 'timeline' && (
+              <TimelineView
+                records={activeEpisode.records}
+                onSelectRecord={(rec) => setSelectedRecord(rec)}
+                onUpdateVerification={handleUpdateRecordVerification}
+              />
+            )}
 
-        {activeTab === 'workflow' && (
-          <WorkflowItemsPanel
-            workflowItems={activeEpisode.workflowItems}
-            onUpdateStatus={handleUpdateWorkflowStatus}
-            onAddNewItem={() => setIsAddWorkflowModalOpen(true)}
-          />
-        )}
-      </main>
+            {activeTab === 'grid' && (
+              <RecordsGridView
+                records={activeEpisode.records}
+                onSelectRecord={(rec) => setSelectedRecord(rec)}
+              />
+            )}
+
+            {activeTab === 'completeness' && (
+              <RecordCompletenessSection
+                episode={activeEpisode}
+                onUpdateAdminDocStatus={handleUpdateAdminDocStatus}
+                onAddAdminDoc={handleAddAdminDoc}
+              />
+            )}
+
+            {activeTab === 'workflow' && (
+              <WorkflowItemsPanel
+                workflowItems={activeEpisode.workflowItems}
+                onUpdateStatus={handleUpdateWorkflowStatus}
+                onAddNewItem={() => setIsAddWorkflowModalOpen(true)}
+              />
+            )}
+
+            {activeTab === 'activity' && (
+              <ActivityLogPanel
+                activityLogs={activeEpisode.activityLogs || []}
+                patientName={activeEpisode.patientName}
+                mrn={activeEpisode.mrn}
+              />
+            )}
+          </main>
+        </>
+      )}
 
       {/* Toast Notification Popup */}
       {toastMessage && (
@@ -172,6 +401,7 @@ export function App() {
       <RecordDetailModal
         record={selectedRecord}
         onClose={() => setSelectedRecord(null)}
+        onUpdateVerification={handleUpdateRecordVerification}
       />
 
       {isAddRecordModalOpen && (
@@ -179,8 +409,10 @@ export function App() {
           patientId={activeEpisode.id}
           gestationalAgeWeeks={activeEpisode.gestationalAgeWeeks}
           gestationalAgeDays={activeEpisode.gestationalAgeDays}
+          existingRecords={activeEpisode.records}
           onClose={() => setIsAddRecordModalOpen(false)}
           onAddRecord={handleAddRecord}
+          onReplaceRecord={handleReplaceRecord}
         />
       )}
 

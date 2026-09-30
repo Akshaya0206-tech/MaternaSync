@@ -7,13 +7,18 @@ import {
   FileText, 
   ListTodo, 
   CheckCircle,
-  Tag
+  Tag,
+  CheckCircle2,
+  History,
+  FileCheck2
 } from 'lucide-react';
+
+export type ActiveTabType = 'timeline' | 'grid' | 'completeness' | 'workflow' | 'activity';
 
 interface PatientHeaderProps {
   episode: PatientEpisode;
-  activeTab: 'timeline' | 'grid' | 'workflow';
-  onTabChange: (tab: 'timeline' | 'grid' | 'workflow') => void;
+  activeTab: ActiveTabType;
+  onTabChange: (tab: ActiveTabType) => void;
 }
 
 export const PatientHeader: React.FC<PatientHeaderProps> = ({
@@ -24,12 +29,18 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
   const pendingCount = episode.workflowItems.filter(i => i.status !== 'completed').length;
   const totalRecords = episode.records.length;
 
+  const adminDocs = episode.administrativeDocs || [];
+  const missingAdminCount = adminDocs.filter(d => d.status === 'missing').length;
+  const pendingAdminCount = adminDocs.filter(d => d.status === 'pending_verification').length;
+
+  const verifiedRecordsCount = episode.records.filter(r => r.verificationStatus === 'verified' || r.verificationStatus === 'ready_for_context').length;
+
   const getRiskBadge = () => {
     switch (episode.riskCategory) {
       case 'high_risk':
         return (
           <span className="badge-urgent" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
-            <AlertTriangle size={13} /> HIGH-RISK EPISODE
+            <AlertTriangle size={13} /> HIGH-RISK EPISODE (CLINICAL DOCUMENTED)
           </span>
         );
       case 'moderate':
@@ -89,7 +100,7 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
           </div>
 
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', margin: 0, fontWeight: 700 }}>
                 {episode.patientName}
               </h2>
@@ -202,7 +213,7 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
         </div>
       </div>
 
-      {/* Risk Notes Summary Banner */}
+      {/* Episode Context Summary Banner */}
       {episode.riskNotes && (
         <div 
           style={{
@@ -229,20 +240,22 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           borderTop: '1px solid var(--border-color)',
-          paddingTop: '12px'
+          paddingTop: '12px',
+          flexWrap: 'wrap',
+          gap: '12px'
         }}
       >
         {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             onClick={() => onTabChange('timeline')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '8px 16px',
+              padding: '8px 14px',
               borderRadius: 'var(--radius-md)',
-              fontSize: '0.85rem',
+              fontSize: '0.825rem',
               fontWeight: 600,
               background: activeTab === 'timeline' ? 'var(--bg-tertiary)' : 'transparent',
               color: activeTab === 'timeline' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
@@ -251,8 +264,8 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
               transition: 'all 0.2s ease'
             }}
           >
-            <Clock size={16} />
-            <span>Chronological Journey / Timeline</span>
+            <Clock size={15} />
+            <span>Chronological Journey</span>
             <span 
               style={{
                 background: 'rgba(6, 182, 212, 0.15)',
@@ -272,9 +285,9 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '8px 16px',
+              padding: '8px 14px',
               borderRadius: 'var(--radius-md)',
-              fontSize: '0.85rem',
+              fontSize: '0.825rem',
               fontWeight: 600,
               background: activeTab === 'grid' ? 'var(--bg-tertiary)' : 'transparent',
               color: activeTab === 'grid' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
@@ -283,8 +296,72 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
               transition: 'all 0.2s ease'
             }}
           >
-            <FileText size={16} />
-            <span>Collected Records Catalog</span>
+            <FileText size={15} />
+            <span>Records Catalog</span>
+          </button>
+
+          <button
+            onClick={() => onTabChange('completeness')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 14px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.825rem',
+              fontWeight: 600,
+              background: activeTab === 'completeness' ? 'var(--bg-tertiary)' : 'transparent',
+              color: activeTab === 'completeness' ? 'var(--accent-teal)' : 'var(--text-secondary)',
+              border: activeTab === 'completeness' ? '1px solid rgba(20, 184, 166, 0.4)' : '1px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <FileCheck2 size={15} />
+            <span>Record Completeness Check</span>
+            {missingAdminCount > 0 ? (
+              <span 
+                style={{
+                  background: 'var(--rose-urgent-bg)',
+                  color: 'var(--rose-urgent)',
+                  border: '1px solid rgba(244, 63, 94, 0.3)',
+                  fontSize: '0.68rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  fontWeight: 700
+                }}
+              >
+                {missingAdminCount} Missing
+              </span>
+            ) : pendingAdminCount > 0 ? (
+              <span 
+                style={{
+                  background: 'var(--amber-pending-bg)',
+                  color: 'var(--amber-pending)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  fontSize: '0.68rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  fontWeight: 700
+                }}
+              >
+                {pendingAdminCount} Pending
+              </span>
+            ) : (
+              <span 
+                style={{
+                  background: 'var(--emerald-raw-bg)',
+                  color: 'var(--emerald-raw)',
+                  border: '1px solid var(--emerald-raw-border)',
+                  fontSize: '0.68rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  fontWeight: 700
+                }}
+              >
+                Complete
+              </span>
+            )}
           </button>
 
           <button
@@ -293,9 +370,9 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '8px 16px',
+              padding: '8px 14px',
               borderRadius: 'var(--radius-md)',
-              fontSize: '0.85rem',
+              fontSize: '0.825rem',
               fontWeight: 600,
               background: activeTab === 'workflow' ? 'var(--bg-tertiary)' : 'transparent',
               color: activeTab === 'workflow' ? 'var(--amber-pending)' : 'var(--text-secondary)',
@@ -304,7 +381,7 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
               transition: 'all 0.2s ease'
             }}
           >
-            <ListTodo size={16} />
+            <ListTodo size={15} />
             <span>Documented Workflow Items</span>
             {pendingCount > 0 && (
               <span 
@@ -312,7 +389,7 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
                   background: 'var(--amber-pending-bg)',
                   color: 'var(--amber-pending)',
                   border: '1px solid rgba(245, 158, 11, 0.3)',
-                  fontSize: '0.7rem',
+                  fontSize: '0.68rem',
                   padding: '1px 6px',
                   borderRadius: '10px',
                   fontWeight: 700
@@ -322,12 +399,44 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => onTabChange('activity')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 14px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.825rem',
+              fontWeight: 600,
+              background: activeTab === 'activity' ? 'var(--bg-tertiary)' : 'transparent',
+              color: activeTab === 'activity' ? '#c084fc' : 'var(--text-secondary)',
+              border: activeTab === 'activity' ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <History size={15} />
+            <span>Activity / Audit Log</span>
+            <span 
+              style={{
+                background: 'rgba(168, 85, 247, 0.15)',
+                color: '#c084fc',
+                fontSize: '0.68rem',
+                padding: '1px 6px',
+                borderRadius: '10px'
+              }}
+            >
+              {(episode.activityLogs || []).length}
+            </span>
+          </button>
         </div>
 
         {/* Real-time Context Provenance Status Indicator */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="badge-raw">
-            <CheckCircle size={12} /> Approved Raw Context (100%)
+          <span className="badge-raw" style={{ fontSize: '0.725rem' }}>
+            <CheckCircle2 size={12} /> Verified Context: {verifiedRecordsCount} / {totalRecords} Records
           </span>
         </div>
       </div>

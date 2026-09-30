@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { PatientRecord, RecordCategory } from '../types/patient';
+import type { PatientRecord, RecordCategory, VerificationStatus } from '../types/patient';
 import { 
   FileText, 
   Share2, 
@@ -9,7 +9,9 @@ import {
   Activity, 
   Eye, 
   ShieldCheck, 
-  Search
+  Search,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 
 interface RecordsGridViewProps {
@@ -41,11 +43,77 @@ export const RecordsGridView: React.FC<RecordsGridViewProps> = ({
         rec.title.toLowerCase().includes(q) ||
         rec.summaryText.toLowerCase().includes(q) ||
         rec.author.toLowerCase().includes(q) ||
+        rec.facility.toLowerCase().includes(q) ||
+        rec.sourceId.toLowerCase().includes(q) ||
         rec.tags.some(t => t.toLowerCase().includes(q))
       );
     }
     return true;
   });
+
+  const getVerificationBadge = (status?: VerificationStatus) => {
+    const s = status || 'raw';
+    switch (s) {
+      case 'ready_for_context':
+        return (
+          <span 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))',
+              color: '#34d399',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.68rem',
+              fontWeight: 800
+            }}
+          >
+            <ShieldCheck size={11} /> READY FOR CONTEXT
+          </span>
+        );
+      case 'verified':
+        return (
+          <span 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'var(--emerald-raw-bg)',
+              color: 'var(--emerald-raw)',
+              border: '1px solid var(--emerald-raw-border)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.68rem',
+              fontWeight: 800
+            }}
+          >
+            <CheckCircle2 size={11} /> VERIFIED
+          </span>
+        );
+      case 'raw':
+      default:
+        return (
+          <span 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'var(--amber-pending-bg)',
+              color: 'var(--amber-pending)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.68rem',
+              fontWeight: 800
+            }}
+          >
+            <Clock size={11} /> RAW
+          </span>
+        );
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -74,7 +142,7 @@ export const RecordsGridView: React.FC<RecordsGridViewProps> = ({
           />
           <input
             type="text"
-            placeholder="Search collected records..."
+            placeholder="Search collected records, facilities, authors..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -146,9 +214,6 @@ export const RecordsGridView: React.FC<RecordsGridViewProps> = ({
         }}
       >
         {filteredRecords.map((record) => {
-          const catObj = categories.find(c => c.id === record.category);
-          const IconComponent = catObj ? catObj.icon : FileText;
-
           return (
             <div
               key={record.id}
@@ -165,9 +230,7 @@ export const RecordsGridView: React.FC<RecordsGridViewProps> = ({
               <div>
                 {/* Header Meta */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span className="badge-raw" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <IconComponent size={12} /> <ShieldCheck size={12} /> APPROVED RAW
-                  </span>
+                  {getVerificationBadge(record.verificationStatus)}
 
                   <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
                     Wk {record.gestationalAgeWeeks}d{record.gestationalAgeDays}
@@ -175,13 +238,25 @@ export const RecordsGridView: React.FC<RecordsGridViewProps> = ({
                 </div>
 
                 {/* Title */}
-                <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: '0 0 6px 0', fontWeight: 700 }}>
+                <h4 
+                  onClick={() => onSelectRecord(record)}
+                  style={{ 
+                    fontSize: '1.02rem', 
+                    color: 'var(--text-primary)', 
+                    margin: '0 0 6px 0', 
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-cyan)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                >
                   {record.title}
                 </h4>
 
-                {/* Date and Author */}
+                {/* Date, Author, Facility */}
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                  {new Date(record.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {record.author}
+                  {new Date(record.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • {record.author} • {record.facility}
                 </div>
 
                 {/* Summary */}
@@ -207,8 +282,9 @@ export const RecordsGridView: React.FC<RecordsGridViewProps> = ({
                 <button
                   onClick={() => onSelectRecord(record)}
                   className="btn-outline-emerald"
+                  style={{ fontSize: '0.75rem', padding: '4px 10px' }}
                 >
-                  <Eye size={14} /> View Original Source
+                  <Eye size={13} /> View Source & Provenance
                 </button>
               </div>
             </div>

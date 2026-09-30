@@ -1,4 +1,4 @@
-import type { PatientEpisode } from '../types/patient';
+import type { PatientEpisode, PhaseStage } from '../types/patient';
 import { 
   Activity, 
   ChevronDown, 
@@ -7,12 +7,17 @@ import {
   Send, 
   CheckCircle2, 
   Shield, 
-  PlusCircle
+  PlusCircle,
+  FileSpreadsheet,
+  FileCheck2,
+  Stethoscope
 } from 'lucide-react';
 
 interface HeaderProps {
   episodes: PatientEpisode[];
   activeEpisode: PatientEpisode;
+  currentPhase: PhaseStage;
+  onSelectPhase: (phase: PhaseStage) => void;
   onSelectEpisode: (episodeId: string) => void;
   onOpenHandoffModal: () => void;
   onOpenAddRecordModal: () => void;
@@ -24,6 +29,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   episodes,
   activeEpisode,
+  currentPhase,
+  onSelectPhase,
   onSelectEpisode,
   onOpenHandoffModal,
   onOpenAddRecordModal,
@@ -46,7 +53,9 @@ export const Header: React.FC<HeaderProps> = ({
         position: 'sticky',
         top: 0,
         zIndex: 40,
-        boxShadow: 'var(--shadow-sm)'
+        boxShadow: 'var(--shadow-sm)',
+        gap: '16px',
+        flexWrap: 'wrap'
       }}
     >
       {/* Left Branding */}
@@ -74,9 +83,23 @@ export const Header: React.FC<HeaderProps> = ({
               </h1>
               <span 
                 style={{
-                  background: 'rgba(6, 182, 212, 0.12)',
-                  color: 'var(--accent-cyan)',
-                  border: '1px solid rgba(6, 182, 212, 0.3)',
+                  background: currentPhase === 'phase2' 
+                    ? 'rgba(16, 185, 129, 0.15)' 
+                    : currentPhase === 'consultation'
+                    ? 'rgba(139, 92, 246, 0.15)'
+                    : 'rgba(6, 182, 212, 0.15)',
+                  color: currentPhase === 'phase2'
+                    ? 'var(--emerald-raw)'
+                    : currentPhase === 'consultation'
+                    ? '#a78bfa'
+                    : 'var(--accent-cyan)',
+                  border: `1px solid ${
+                    currentPhase === 'phase2' 
+                      ? 'rgba(16, 185, 129, 0.3)' 
+                      : currentPhase === 'consultation'
+                      ? 'rgba(139, 92, 246, 0.3)'
+                      : 'rgba(6, 182, 212, 0.3)'
+                  }`,
                   fontSize: '0.68rem',
                   padding: '2px 8px',
                   borderRadius: '12px',
@@ -84,13 +107,109 @@ export const Header: React.FC<HeaderProps> = ({
                   letterSpacing: '0.04em'
                 }}
               >
-                PHASE 1
+                {currentPhase === 'phase2' ? 'PHASE 2 ACTIVE' : currentPhase === 'consultation' ? 'CONSULTATION ACTIVE' : 'PHASE 1 ACTIVE'}
               </span>
             </div>
             <p style={{ fontSize: '0.725rem', color: 'var(--text-secondary)', margin: 0 }}>
               Clinician Context Aggregator & Patient Journey Engine
             </p>
           </div>
+        </div>
+
+        {/* Separator */}
+        <div style={{ width: '1px', height: '28px', background: 'var(--border-color)' }} />
+
+        {/* Phase Navigation Pills */}
+        <div 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'var(--bg-tertiary)',
+            padding: '3px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-color)',
+            gap: '2px'
+          }}
+        >
+          <button
+            onClick={() => onSelectPhase('phase1')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              border: 'none',
+              cursor: 'pointer',
+              background: currentPhase === 'phase1' ? 'var(--bg-primary)' : 'transparent',
+              color: currentPhase === 'phase1' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+              boxShadow: currentPhase === 'phase1' ? 'var(--shadow-sm)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+            title="Phase 1: Data & Context Collection"
+          >
+            <FileSpreadsheet size={14} />
+            <span>Phase 1: Context</span>
+          </button>
+
+          <button
+            onClick={() => onSelectPhase('phase2')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              background: currentPhase === 'phase2' ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(16, 185, 129, 0.15))' : 'transparent',
+              color: currentPhase === 'phase2' ? 'var(--emerald-raw)' : 'var(--text-secondary)',
+              boxShadow: currentPhase === 'phase2' ? '0 0 10px rgba(16, 185, 129, 0.2)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+            title="Phase 2: Today's Brief — Clinician Pre-Visit Summary"
+          >
+            <FileCheck2 size={14} />
+            <span>Phase 2: Today's Brief</span>
+            {isReady && (
+              <span 
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: 'var(--emerald-raw)',
+                  display: 'inline-block'
+                }} 
+              />
+            )}
+          </button>
+
+          <button
+            onClick={() => onSelectPhase('consultation')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              border: 'none',
+              cursor: 'pointer',
+              background: currentPhase === 'consultation' ? 'var(--bg-primary)' : 'transparent',
+              color: currentPhase === 'consultation' ? '#a78bfa' : 'var(--text-secondary)',
+              boxShadow: currentPhase === 'consultation' ? 'var(--shadow-sm)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+            title="Active Patient Consultation Workspace"
+          >
+            <Stethoscope size={14} />
+            <span>Consultation</span>
+          </button>
         </div>
 
         {/* Separator */}

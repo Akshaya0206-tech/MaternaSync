@@ -1,19 +1,32 @@
-import type { PatientRecord } from '../types/patient';
+import { useState } from 'react';
+import type { PatientRecord, VerificationStatus } from '../types/patient';
 import { 
   X, 
   ShieldCheck, 
-  CheckCircle2
+  CheckCircle2, 
+  Clock, 
+  FileCode, 
+  UserCheck, 
+  ExternalLink, 
+  Lock,
+  ArrowRight,
+  ShieldAlert
 } from 'lucide-react';
 
 interface RecordDetailModalProps {
   record: PatientRecord | null;
   onClose: () => void;
+  onUpdateVerification?: (recordId: string, newStatus: VerificationStatus, verifier: string) => void;
 }
 
 export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
   record,
-  onClose
+  onClose,
+  onUpdateVerification
 }) => {
+  const [showRawSourceModal, setShowRawSourceModal] = useState(false);
+  const [selectedVerifier, setSelectedVerifier] = useState('Dr. Eleanor Vance, MD (Attending Obstetrician)');
+
   if (!record) return null;
 
   const formattedDate = new Date(record.timestamp).toLocaleString('en-US', {
@@ -21,12 +34,80 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
     timeStyle: 'short'
   });
 
+  const currentStatus = record.verificationStatus || 'raw';
+
+  const getStatusBadge = (status: VerificationStatus) => {
+    switch (status) {
+      case 'ready_for_context':
+        return (
+          <span 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))',
+              color: '#34d399',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              letterSpacing: '0.03em'
+            }}
+          >
+            <ShieldCheck size={14} /> READY FOR CONTEXT
+          </span>
+        );
+      case 'verified':
+        return (
+          <span 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'var(--emerald-raw-bg)',
+              color: 'var(--emerald-raw)',
+              border: '1px solid var(--emerald-raw-border)',
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              letterSpacing: '0.03em'
+            }}
+          >
+            <CheckCircle2 size={14} /> VERIFIED BY CARE TEAM
+          </span>
+        );
+      case 'raw':
+      default:
+        return (
+          <span 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'var(--amber-pending-bg)',
+              color: 'var(--amber-pending)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              letterSpacing: '0.03em'
+            }}
+          >
+            <Clock size={14} /> RAW (UNVERIFIED)
+          </span>
+        );
+    }
+  };
+
   return (
     <div 
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.75)',
+        background: 'rgba(0, 0, 0, 0.8)',
         backdropFilter: 'blur(6px)',
         zIndex: 100,
         display: 'flex',
@@ -40,8 +121,8 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
         className="glass-panel animate-fade-in"
         style={{
           width: '100%',
-          maxWidth: '780px',
-          maxHeight: '90vh',
+          maxWidth: '820px',
+          maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -53,7 +134,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
         {/* Modal Header */}
         <div 
           style={{
-            padding: '20px 24px',
+            padding: '18px 24px',
             borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             alignItems: 'center',
@@ -61,12 +142,10 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
             background: 'var(--bg-tertiary)'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span className="badge-raw">
-              <ShieldCheck size={14} /> APPROVED RAW MEDICAL RECORD
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {getStatusBadge(currentStatus)}
             <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-              Wk {record.gestationalAgeWeeks} + {record.gestationalAgeDays}d
+              Wk {record.gestationalAgeWeeks} + {record.gestationalAgeDays}d (Trimester {record.trimester})
             </span>
           </div>
 
@@ -87,51 +166,280 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
 
         {/* Modal Scrollable Body */}
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Title & Metadata Grid */}
+          {/* Title & Category Header */}
           <div>
-            <h2 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', margin: '0 0 12px 0', fontWeight: 700 }}>
+            <h2 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', margin: '0 0 6px 0', fontWeight: 700 }}>
               {record.title}
             </h2>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Recorded on {formattedDate}
+            </span>
+          </div>
 
+          {/* SECTION 3: SOURCE PROVENANCE PANEL */}
+          <div 
+            style={{
+              background: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-highlight)',
+              borderRadius: 'var(--radius-md)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Lock size={16} style={{ color: 'var(--accent-cyan)' }} />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Source & Provenance Audit Trail
+                </span>
+              </div>
+
+              <button
+                onClick={() => setShowRawSourceModal(!showRawSourceModal)}
+                className="btn-secondary"
+                style={{ fontSize: '0.75rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <FileCode size={14} />
+                <span>{showRawSourceModal ? 'Hide Original Payload' : 'View Original Source'}</span>
+                <ExternalLink size={12} />
+              </button>
+            </div>
+
+            {/* Provenance Fields Grid */}
             <div 
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: '12px',
-                background: 'var(--bg-tertiary)',
-                padding: '14px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)',
-                fontSize: '0.825rem'
+                fontSize: '0.8rem'
               }}
             >
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>FACILITY & SOURCE</span>
-                <strong style={{ color: 'var(--text-primary)' }}>{record.facility}</strong>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>SOURCE TYPE</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{record.sourceType || record.modality}</strong>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>SOURCE ID</span>
+                <strong style={{ color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>{record.sourceId}</strong>
               </div>
 
               <div>
                 <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>AUTHOR / PROVIDER</span>
-                <strong style={{ color: 'var(--text-primary)' }}>{record.author}</strong> ({record.authorRole})
+                <strong style={{ color: 'var(--text-primary)' }}>{record.author}</strong>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>{record.authorRole}</span>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>FACILITY / SYSTEM</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{record.facility}</strong>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>DATE / TIME</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, {new Date(record.timestamp).toLocaleDateString()}</strong>
               </div>
 
               <div>
                 <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>INTEGRATION MODALITY</span>
-                <strong style={{ color: 'var(--accent-cyan)' }}>{record.modality}</strong>
+                <strong style={{ color: 'var(--accent-teal)' }}>{record.modality}</strong>
               </div>
 
               <div>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>RECORD TIMESTAMP</span>
-                <strong style={{ color: 'var(--text-primary)' }}>{formattedDate}</strong>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>VERIFICATION STATUS</span>
+                <span style={{ marginTop: '2px', display: 'inline-block' }}>{getStatusBadge(currentStatus)}</span>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>VERIFICATION ATTRIBUTION</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {record.verifiedBy ? (
+                    <>Verified by <strong>{record.verifiedBy}</strong> on {new Date(record.verifiedAt || record.timestamp).toLocaleDateString()}</>
+                  ) : (
+                    'Pending human care-team sign-off'
+                  )}
+                </span>
               </div>
             </div>
+
+            {/* Expandable Raw Source Payload & Integrity Hash */}
+            {showRawSourceModal && (
+              <div 
+                className="animate-fade-in"
+                style={{
+                  marginTop: '8px',
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.725rem', color: 'var(--text-muted)' }}>
+                  <span>ORIGINAL RAW PROTOCOL INGRESS (HL7 / FHIR / DICOM)</span>
+                  <span style={{ fontFamily: 'var(--font-mono)' }}>SHA256: 8f9b...a12c (Verified Valid)</span>
+                </div>
+                <pre
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '0.75rem',
+                    color: 'var(--accent-cyan)',
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    maxHeight: '140px',
+                    overflowY: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    margin: 0
+                  }}
+                >
+                  {record.rawPayloadSnippet || `// Raw Ingress Record Stream\nSource: ${record.facility} (${record.modality})\nID: ${record.sourceId}\nTimestamp: ${record.timestamp}\nAuthor: ${record.author} [${record.authorRole}]\nContent: "${record.summaryText}"\nIntegrity: Cryptographic transmission checksum verified.`}
+                </pre>
+              </div>
+            )}
           </div>
 
-          {/* Raw Record Content Box */}
+          {/* SECTION 4: RECORD VERIFICATION STATUS WORKFLOW */}
+          <div 
+            style={{
+              background: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <UserCheck size={16} style={{ color: 'var(--emerald-raw)' }} />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Record Verification Workflow
+                </span>
+              </div>
+
+              {/* Guardrail Callout */}
+              <span style={{ fontSize: '0.725rem', color: 'var(--rose-urgent)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <ShieldAlert size={13} /> AI cannot verify clinical information — Clinician verification required
+              </span>
+            </div>
+
+            {/* Workflow Pipeline Display */}
+            <div 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--bg-primary)',
+                padding: '10px 16px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-color)',
+                fontSize: '0.75rem',
+                fontWeight: 700
+              }}
+            >
+              <span style={{ color: currentStatus === 'raw' ? 'var(--amber-pending)' : 'var(--text-muted)' }}>
+                1. RAW (Ingested)
+              </span>
+              <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
+              <span style={{ color: currentStatus === 'verified' ? 'var(--emerald-raw)' : 'var(--text-muted)' }}>
+                2. VERIFIED (Human Reviewed)
+              </span>
+              <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
+              <span style={{ color: currentStatus === 'ready_for_context' ? '#34d399' : 'var(--text-muted)' }}>
+                3. READY FOR CONTEXT (Handoff Approved)
+              </span>
+            </div>
+
+            {/* Verifier Role Selector & Action Buttons */}
+            {onUpdateVerification && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sign-off Role:</span>
+                  <select
+                    value={selectedVerifier}
+                    onChange={(e) => setSelectedVerifier(e.target.value)}
+                    style={{
+                      background: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '4px 10px',
+                      fontSize: '0.75rem'
+                    }}
+                  >
+                    <option value="Dr. Eleanor Vance, MD (Attending Obstetrician)">Dr. Eleanor Vance, MD (Attending Obstetrician)</option>
+                    <option value="Nurse Brenda Miller, RN (Obstetric Triage Nurse)">Nurse Brenda Miller, RN (Obstetric Triage Nurse)</option>
+                    <option value="Midwife Sarah Jenkins, CNM (Certified Nurse Midwife)">Midwife Sarah Jenkins, CNM (Certified Nurse Midwife)</option>
+                    <option value="Rachel Lin, RD, CDE (Diabetes Educator)">Rachel Lin, RD, CDE (Diabetes Educator)</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {currentStatus === 'raw' && (
+                    <button
+                      onClick={() => onUpdateVerification(record.id, 'verified', selectedVerifier)}
+                      className="btn-outline-emerald"
+                      style={{ fontSize: '0.775rem', padding: '6px 12px' }}
+                    >
+                      <CheckCircle2 size={14} /> Mark as Verified
+                    </button>
+                  )}
+
+                  {currentStatus === 'verified' && (
+                    <>
+                      <button
+                        onClick={() => onUpdateVerification(record.id, 'ready_for_context', selectedVerifier)}
+                        className="btn-primary"
+                        style={{ fontSize: '0.775rem', padding: '6px 12px' }}
+                      >
+                        <ShieldCheck size={14} /> Promote to Ready for Context
+                      </button>
+                      <button
+                        onClick={() => onUpdateVerification(record.id, 'raw', selectedVerifier)}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border-color)',
+                          color: 'var(--text-muted)',
+                          padding: '6px 10px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Revert to Raw
+                      </button>
+                    </>
+                  )}
+
+                  {currentStatus === 'ready_for_context' && (
+                    <button
+                      onClick={() => onUpdateVerification(record.id, 'verified', selectedVerifier)}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-muted)',
+                        padding: '6px 10px',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Revert to Verified
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Raw Clinical Content Box */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                Full Original Record Text (Uninterpreted)
+                Original Clinical Content (Non-Interpretive)
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.725rem', color: 'var(--text-muted)' }}>
                 System Source ID: {record.sourceId}
@@ -149,7 +457,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
                 color: 'var(--text-primary)',
                 whiteSpace: 'pre-wrap',
                 lineHeight: 1.6,
-                maxHeight: '320px',
+                maxHeight: '260px',
                 overflowY: 'auto'
               }}
             >
@@ -223,7 +531,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.775rem', color: 'var(--emerald-raw)' }}>
-            <CheckCircle2 size={16} /> Non-interpretive context verified & audit ready.
+            <CheckCircle2 size={16} /> Non-interpretive context preserved & provenance verified.
           </div>
 
           <button onClick={onClose} className="btn-secondary">
