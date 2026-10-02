@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+maternasync.db
+uploads/*
+!uploads/.gitkeep

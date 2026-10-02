@@ -1,50 +1,58 @@
 import { useState } from 'react';
-import type { PendingWorkflowItem, WorkflowItemType, WorkflowPriority } from '../types/patient';
-import { X, PlusCircle } from 'lucide-react';
+import type { WorkflowItemType, WorkflowPriority } from '../types/patient';
+import { createWorkflowItem } from '../api/patients';
+import { X, PlusCircle, AlertCircle } from 'lucide-react';
 
 interface AddWorkflowItemModalProps {
+  patientId: string;
   onClose: () => void;
-  onAddWorkflowItem: (newItem: PendingWorkflowItem) => void;
+  onCreated: () => void;
 }
 
 export const AddWorkflowItemModal: React.FC<AddWorkflowItemModalProps> = ({
+  patientId,
   onClose,
-  onAddWorkflowItem
+  onCreated
 }) => {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<WorkflowItemType>('pending_referral');
   const [priority, setPriority] = useState<WorkflowPriority>('important');
   const [description, setDescription] = useState('');
   const [sourceContext, setSourceContext] = useState('Clinician Observation during Context Review');
-  const assignee = 'Duty Nurse / Referral Coordinator';
+  const [assignee, setAssignee] = useState('Duty Nurse / Referral Coordinator');
+  const [dueDate, setDueDate] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
 
-    const newItem: PendingWorkflowItem = {
-      id: `WF-${Date.now()}`,
-      type,
-      title,
-      description,
-      priority,
-      status: 'pending',
-      assignee,
-      sourceContext,
-      dateCreated: new Date().toISOString()
-    };
-
-    onAddWorkflowItem(newItem);
-    onClose();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await createWorkflowItem(patientId, {
+        type,
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        assignee: assignee.trim() || 'Unassigned',
+        sourceContext,
+        dueDate: dueDate || undefined,
+      });
+      onCreated();
+    } catch {
+      setError('Could not save this workflow item. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div 
+    <div
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(6px)',
+        background: 'rgba(0, 0, 0, 0.5)',
         zIndex: 100,
         display: 'flex',
         alignItems: 'center',
@@ -53,23 +61,22 @@ export const AddWorkflowItemModal: React.FC<AddWorkflowItemModalProps> = ({
       }}
       onClick={onClose}
     >
-      <div 
+      <div
         className="glass-panel animate-fade-in"
         style={{
           width: '100%',
           maxWidth: '620px',
-          background: 'var(--bg-secondary)'
+          background: 'var(--bg-card)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div 
+        <div
           style={{
             padding: '18px 24px',
             borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--bg-tertiary)'
+            justifyContent: 'space-between'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -84,6 +91,12 @@ export const AddWorkflowItemModal: React.FC<AddWorkflowItemModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {error && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--rose-urgent-bg)', color: 'var(--rose-urgent)', borderRadius: 'var(--radius-md)', padding: '9px 12px', fontSize: '0.8rem' }}>
+              <AlertCircle size={15} style={{ flexShrink: 0 }} /> {error}
+            </div>
+          )}
+
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
               WORKFLOW ITEM TITLE *
@@ -198,9 +211,54 @@ export const AddWorkflowItemModal: React.FC<AddWorkflowItemModalProps> = ({
             />
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                ASSIGN OWNER
+              </label>
+              <input
+                type="text"
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+                placeholder="e.g. Referral Coordinator"
+                style={{
+                  width: '100%',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '8px 12px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.85rem'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                DUE DATE (OPTIONAL)
+              </label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '8px 12px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.85rem'
+                }}
+              />
+            </div>
+          </div>
+
           <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', display: 'flex', justifyContent: 'flex-end', gap: '12px', margin: '10px -24px -24px -24px' }}>
             <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-            <button type="submit" className="btn-primary">Add Workflow Item</button>
+            <button type="submit" disabled={isSubmitting} className="btn-primary">
+              {isSubmitting ? 'Saving…' : 'Add Workflow Item'}
+            </button>
           </div>
         </form>
       </div>

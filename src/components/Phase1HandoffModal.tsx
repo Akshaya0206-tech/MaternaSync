@@ -38,6 +38,7 @@ export const Phase1HandoffModal: React.FC<Phase1HandoffModalProps> = ({
   const rawCount = episode.records.filter(r => (r.verificationStatus || 'raw') === 'raw').length;
   const verifiedCount = episode.records.filter(r => r.verificationStatus === 'verified').length;
   const readyCount = episode.records.filter(r => r.verificationStatus === 'ready_for_context').length;
+  const rejectedCount = episode.records.filter(r => r.verificationStatus === 'rejected').length;
 
   const adminDocs = episode.administrativeDocs || [];
   const adminComplete = adminDocs.filter(d => d.status === 'complete').length;
@@ -83,7 +84,8 @@ export const Phase1HandoffModal: React.FC<Phase1HandoffModalProps> = ({
     verificationBreakdown: {
       raw: rawCount,
       verified: verifiedCount,
-      ready_for_context: readyCount
+      ready_for_context: readyCount,
+      rejected: rejectedCount
     },
     chronologicalTimeline: episode.records.map(r => ({
       id: r.id,
@@ -210,7 +212,7 @@ export const Phase1HandoffModal: React.FC<Phase1HandoffModalProps> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: 'var(--emerald-raw)',
-                  boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)'
+                  boxShadow: 'var(--shadow-sm)'
                 }}
               >
                 <CheckCircle2 size={36} />
@@ -300,7 +302,7 @@ export const Phase1HandoffModal: React.FC<Phase1HandoffModalProps> = ({
 
                   <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#c084fc' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--purple-ai)' }}>
                     <ShieldCheck size={15} />
                     <span>Source & Provenance</span>
                   </div>

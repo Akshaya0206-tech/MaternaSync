@@ -13,9 +13,9 @@ export type WorkflowItemType =
   | 'unanswered_question';
 
 export type WorkflowPriority = 'urgent' | 'important' | 'routine';
-export type WorkflowStatus = 'pending' | 'in_progress' | 'verified' | 'completed';
+export type WorkflowStatus = 'pending' | 'in_progress' | 'scheduled' | 'verified' | 'completed';
 
-export type VerificationStatus = 'raw' | 'verified' | 'ready_for_context';
+export type VerificationStatus = 'raw' | 'verified' | 'ready_for_context' | 'rejected';
 
 export interface PendingWorkflowItem {
   id: string;
@@ -30,6 +30,7 @@ export interface PendingWorkflowItem {
   assignedRole?: string;
   sourceContext: string;
   dateCreated: string;
+  lastUpdatedAt?: string;
   verificationStatus?: 'Pending Care-Team Review' | 'Verified by Clinician' | 'Patient Self-Report';
 }
 
@@ -77,14 +78,20 @@ export interface AdministrativeDocCheck {
   notes?: string;
 }
 
-export type ActivityLogAction = 
+export type ActivityLogAction =
   | 'record_added'
   | 'record_replaced'
   | 'record_verified'
   | 'workflow_created'
   | 'workflow_updated'
   | 'phase1_handoff'
-  | 'duplicate_reviewed';
+  | 'duplicate_reviewed'
+  | 'consultation_approved'
+  | 'handover_updated'
+  | 'workflow_reviewed'
+  | 'communication_draft_approved'
+  | 'next_visit_prepared'
+  | 'transition_pack_created';
 
 export interface ActivityLogEntry {
   id: string;
@@ -122,6 +129,7 @@ export interface PatientEpisode {
   isReadyForTodayBrief: boolean;
   handoffTimestamp?: string;
   handoffNotes?: string;
+  nextVisitPreparedAt?: string;
 }
 
 export interface HandoffPayload {
@@ -162,7 +170,7 @@ export interface HandoffPayload {
   careTeamSignOffBy: string;
 }
 
-export type PhaseStage = 'phase1' | 'phase2' | 'consultation';
+export type PhaseStage = 'phase1' | 'phase2' | 'consultation' | 'workflow' | 'continuity';
 
 export interface DraftSectionState {
   isApproved: boolean;

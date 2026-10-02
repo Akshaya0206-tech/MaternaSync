@@ -45,9 +45,9 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
+              background: 'var(--emerald-raw-bg)',
+              color: 'var(--teal-primary)',
+              border: '1px solid rgba(22, 124, 114, 0.4)',
               padding: '4px 12px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.75rem',
@@ -88,7 +88,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
               gap: '6px',
               background: 'var(--amber-pending-bg)',
               color: 'var(--amber-pending)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
+              border: '1px solid rgba(154, 91, 46, 0.3)',
               padding: '4px 12px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.75rem',
@@ -348,7 +348,7 @@ export const RecordDetailModal: React.FC<RecordDetailModalProps> = ({
                 2. VERIFIED (Human Reviewed)
               </span>
               <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
-              <span style={{ color: currentStatus === 'ready_for_context' ? '#34d399' : 'var(--text-muted)' }}>
+              <span style={{ color: currentStatus === 'ready_for_context' ? 'var(--teal-primary)' : 'var(--text-muted)' }}>
                 3. READY FOR CONTEXT (Handoff Approved)
               </span>
             </div>

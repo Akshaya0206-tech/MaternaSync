@@ -101,7 +101,7 @@ export const RecordCompletenessSection: React.FC<RecordCompletenessSectionProps>
               gap: '4px',
               background: 'var(--rose-urgent-bg)',
               color: 'var(--rose-urgent)',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
+              border: '1px solid rgba(156, 58, 34, 0.3)',
               padding: '3px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.725rem',
@@ -120,7 +120,7 @@ export const RecordCompletenessSection: React.FC<RecordCompletenessSectionProps>
               gap: '4px',
               background: 'var(--amber-pending-bg)',
               color: 'var(--amber-pending)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
+              border: '1px solid rgba(154, 91, 46, 0.3)',
               padding: '3px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.725rem',
@@ -254,12 +254,12 @@ export const RecordCompletenessSection: React.FC<RecordCompletenessSectionProps>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
           {[
-            { label: 'Consultation Notes', count: categoryCounts.consultation_note, icon: <FileText size={16} />, color: '#06b6d4', desc: 'Progress & Intake notes' },
-            { label: 'Care Docs & Labs', count: categoryCounts.care_document, icon: <FileCheck size={16} />, color: '#38bdf8', desc: 'Labs, Imaging, Surveys' },
-            { label: 'Referral Orders', count: categoryCounts.referral, icon: <Share2 size={16} />, color: '#a855f7', desc: 'Specialty consultations' },
-            { label: 'Patient Messages', count: categoryCounts.patient_message, icon: <MessageSquare size={16} />, color: '#ec4899', desc: 'Portal inquiries & alerts' },
-            { label: 'Follow-up Records', count: categoryCounts.follow_up, icon: <Calendar size={16} />, color: '#f59e0b', desc: 'Logs, monitoring sheets' },
-            { label: 'Workflow Events', count: categoryCounts.workflow_event, icon: <Activity size={16} />, color: '#10b981', desc: 'NST tracings, flowsheets' }
+            { label: 'Consultation Notes', count: categoryCounts.consultation_note, icon: <FileText size={16} />, color: 'var(--teal-primary)', desc: 'Progress & Intake notes' },
+            { label: 'Care Docs & Labs', count: categoryCounts.care_document, icon: <FileCheck size={16} />, color: 'var(--navy-deep)', desc: 'Labs, Imaging, Surveys' },
+            { label: 'Referral Orders', count: categoryCounts.referral, icon: <Share2 size={16} />, color: 'var(--purple-ai)', desc: 'Specialty consultations' },
+            { label: 'Patient Messages', count: categoryCounts.patient_message, icon: <MessageSquare size={16} />, color: 'var(--purple-ai)', desc: 'Portal inquiries & alerts' },
+            { label: 'Follow-up Records', count: categoryCounts.follow_up, icon: <Calendar size={16} />, color: 'var(--amber-pending)', desc: 'Logs, monitoring sheets' },
+            { label: 'Workflow Events', count: categoryCounts.workflow_event, icon: <Activity size={16} />, color: 'var(--teal-primary)', desc: 'NST tracings, flowsheets' }
           ].map((cat, idx) => (
             <div 
               key={idx}
@@ -279,7 +279,7 @@ export const RecordCompletenessSection: React.FC<RecordCompletenessSectionProps>
                 </span>
                 <span 
                   style={{
-                    background: cat.count > 0 ? 'rgba(6, 182, 212, 0.15)' : 'var(--bg-primary)',
+                    background: cat.count > 0 ? 'rgba(22, 124, 114, 0.15)' : 'var(--bg-primary)',
                     color: cat.count > 0 ? 'var(--accent-cyan)' : 'var(--text-muted)',
                     fontSize: '0.85rem',
                     fontWeight: 800,

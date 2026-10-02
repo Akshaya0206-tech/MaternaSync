@@ -110,12 +110,12 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'consultation_note': return <FileText size={15} style={{ color: '#06b6d4' }} />;
-      case 'referral': return <Share2 size={15} style={{ color: '#a855f7' }} />;
-      case 'patient_message': return <MessageSquare size={15} style={{ color: '#ec4899' }} />;
-      case 'follow_up': return <Calendar size={15} style={{ color: '#f59e0b' }} />;
-      case 'workflow_event': return <Activity size={15} style={{ color: '#10b981' }} />;
-      default: return <FileText size={15} style={{ color: '#38bdf8' }} />;
+      case 'consultation_note': return <FileText size={15} style={{ color: 'var(--teal-primary)' }} />;
+      case 'referral': return <Share2 size={15} style={{ color: 'var(--purple-ai)' }} />;
+      case 'patient_message': return <MessageSquare size={15} style={{ color: 'var(--purple-ai)' }} />;
+      case 'follow_up': return <Calendar size={15} style={{ color: 'var(--amber-pending)' }} />;
+      case 'workflow_event': return <Activity size={15} style={{ color: 'var(--teal-primary)' }} />;
+      default: return <FileText size={15} style={{ color: 'var(--navy-deep)' }} />;
     }
   };
 
@@ -126,7 +126,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
         className="glass-panel animate-fade-in"
         style={{
           borderLeft: '4px solid var(--amber-pending)',
-          background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.15) 0%, rgba(6, 182, 212, 0.08) 100%)',
+          background: 'var(--amber-pending-bg)',
           padding: '12px 20px',
           display: 'flex',
           alignItems: 'center',
@@ -144,9 +144,9 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
               </strong>
               <span 
                 style={{
-                  background: contextApproved ? 'var(--emerald-raw-bg)' : 'rgba(245, 158, 11, 0.2)',
+                  background: contextApproved ? 'var(--emerald-raw-bg)' : 'rgba(154, 91, 46, 0.2)',
                   color: contextApproved ? 'var(--emerald-raw)' : 'var(--amber-pending)',
-                  border: contextApproved ? '1px solid var(--emerald-raw-border)' : '1px solid rgba(245, 158, 11, 0.4)',
+                  border: contextApproved ? '1px solid var(--emerald-raw-border)' : '1px solid rgba(154, 91, 46, 0.4)',
                   fontSize: '0.68rem',
                   fontWeight: 800,
                   padding: '2px 8px',
@@ -216,9 +216,9 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span 
+            <span
               style={{
-                background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                background: 'var(--btn-primary-bg)',
                 color: '#fff',
                 fontWeight: 800,
                 fontSize: '0.75rem',
@@ -271,6 +271,30 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* HANDOVER NOTE FROM LAST CONSULTATION (Phase 3 output feeding into Phase 2) */}
+      {episode.handoffNotes && (
+        <div
+          className="glass-panel"
+          style={{
+            padding: '14px 20px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px',
+            borderLeft: '4px solid var(--accent-teal)'
+          }}
+        >
+          <Share2 size={18} style={{ color: 'var(--accent-teal)', flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <strong style={{ fontSize: '0.825rem', color: 'var(--text-primary)', display: 'block', marginBottom: '2px' }}>
+              Handover Note from Last Consultation
+            </strong>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              {episode.handoffNotes}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* SECTION 5: QUICK CONTEXT SUMMARY (Organized into 4 factual quadrants) */}
       <div className="glass-panel" style={{ padding: '20px' }}>
@@ -382,7 +406,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
           <div 
             style={{
               background: 'var(--bg-tertiary)',
-              border: '1px solid rgba(236, 72, 153, 0.3)',
+              border: '1px solid rgba(109, 79, 166, 0.3)',
               borderRadius: 'var(--radius-md)',
               padding: '14px',
               display: 'flex',
@@ -390,7 +414,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
               gap: '6px'
             }}
           >
-            <span style={{ fontSize: '0.725rem', color: '#f472b6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.725rem', color: 'var(--purple-ai)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               3. QUESTIONS TO DISCUSS (PATIENT PORTAL)
             </span>
             {isEditingContext ? (
@@ -408,7 +432,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'auto' }}>
               <button 
                 onClick={() => handleViewSourceById('REC-007')}
-                style={{ background: 'none', border: 'none', color: '#f472b6', fontSize: '0.725rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{ background: 'none', border: 'none', color: 'var(--purple-ai)', fontSize: '0.725rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
                 <Eye size={12} /> Source: MSG-9921
               </button>
@@ -465,22 +489,21 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
             className="glass-panel"
             style={{
               padding: '20px',
-              borderLeft: '4px solid #ec4899',
-              background: 'linear-gradient(180deg, rgba(236, 72, 153, 0.08) 0%, rgba(17, 24, 39, 0.75) 100%)'
+              borderLeft: '4px solid var(--purple-ai)'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MessageSquare size={18} style={{ color: '#ec4899' }} />
+                <MessageSquare size={18} style={{ color: 'var(--purple-ai)' }} />
                 <h3 style={{ fontSize: '1rem', color: 'var(--text-primary)', margin: 0, fontWeight: 700 }}>
                   Section 3 — Unanswered Patient Questions
                 </h3>
               </div>
               <span 
                 style={{
-                  background: 'rgba(236, 72, 153, 0.15)',
-                  color: '#ec4899',
-                  border: '1px solid rgba(236, 72, 153, 0.4)',
+                  background: 'rgba(109, 79, 166, 0.15)',
+                  color: 'var(--purple-ai)',
+                  border: '1px solid rgba(109, 79, 166, 0.4)',
                   fontSize: '0.7rem',
                   padding: '2px 8px',
                   borderRadius: '10px',
@@ -495,7 +518,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
             <div 
               style={{
                 background: 'var(--bg-primary)',
-                border: '1px solid rgba(236, 72, 153, 0.25)',
+                border: '1px solid rgba(109, 79, 166, 0.25)',
                 borderRadius: 'var(--radius-sm)',
                 padding: '8px 12px',
                 fontSize: '0.725rem',
@@ -506,7 +529,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
                 gap: '8px'
               }}
             >
-              <AlertTriangle size={14} style={{ color: '#ec4899', flexShrink: 0 }} />
+              <AlertTriangle size={14} style={{ color: 'var(--purple-ai)', flexShrink: 0 }} />
               <span>
                 <strong>Care-Team Gate:</strong> Do NOT answer the medical question automatically. Presented strictly for clinician/care-team consultation discussion.
               </span>
@@ -533,7 +556,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#f472b6' }}>
+                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--purple-ai)' }}>
                         PORTAL INBOUND MESSAGE
                       </span>
                       <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
@@ -549,7 +572,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
                     <div 
                       style={{
                         background: 'var(--bg-primary)',
-                        borderLeft: '3px solid #ec4899',
+                        borderLeft: '3px solid var(--purple-ai)',
                         padding: '10px 12px',
                         borderRadius: '0 6px 6px 0',
                         fontStyle: 'italic',
@@ -682,7 +705,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
                 style={{
                   background: 'var(--amber-pending-bg)',
                   color: 'var(--amber-pending)',
-                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  border: '1px solid rgba(154, 91, 46, 0.4)',
                   fontSize: '0.7rem',
                   padding: '2px 8px',
                   borderRadius: '10px',
@@ -700,7 +723,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
                   style={{
                     background: 'var(--bg-tertiary)',
                     border: '1px solid var(--border-color)',
-                    borderLeft: action.priority === 'urgent' ? '3px solid #f43f5e' : '3px solid #f59e0b',
+                    borderLeft: action.priority === 'urgent' ? '3px solid var(--rose-urgent)' : '3px solid var(--amber-pending)',
                     borderRadius: 'var(--radius-md)',
                     padding: '12px 14px',
                     display: 'flex',
@@ -737,6 +760,7 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
                       >
                         <option value="pending">Pending</option>
                         <option value="in_progress">In Progress</option>
+                        <option value="scheduled">Scheduled</option>
                         <option value="verified">Verified</option>
                         <option value="completed">Completed</option>
                       </select>
@@ -949,17 +973,17 @@ export const TodaysBriefView: React.FC<TodaysBriefViewProps> = ({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '10px',
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            background: 'var(--btn-primary-bg)',
             color: '#ffffff',
-            fontWeight: 800,
-            fontSize: '0.95rem',
-            padding: '10px 24px',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            padding: '10px 22px',
             borderRadius: 'var(--radius-md)',
             border: 'none',
             cursor: 'pointer',
-            boxShadow: '0 0 20px rgba(16, 185, 129, 0.45)',
-            letterSpacing: '0.02em',
-            transition: 'all 0.2s ease'
+            boxShadow: 'var(--shadow-sm)',
+            letterSpacing: '0.01em',
+            transition: 'background 0.15s ease'
           }}
         >
           <Play size={16} />

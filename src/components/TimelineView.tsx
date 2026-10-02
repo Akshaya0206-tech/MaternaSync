@@ -119,9 +119,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
+              background: 'var(--emerald-raw-bg)',
+              color: 'var(--teal-primary)',
+              border: '1px solid rgba(22, 124, 114, 0.4)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.7rem',
@@ -160,7 +160,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
               gap: '4px',
               background: 'var(--amber-pending-bg)',
               color: 'var(--amber-pending)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
+              border: '1px solid rgba(154, 91, 46, 0.3)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.7rem',
@@ -364,7 +364,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             top: '10px',
             bottom: '10px',
             width: '2px',
-            background: 'linear-gradient(180deg, var(--accent-cyan) 0%, rgba(6, 182, 212, 0.2) 100%)',
+            background: 'linear-gradient(180deg, var(--accent-cyan) 0%, rgba(22, 124, 114, 0.18) 100%)',
             borderRadius: '2px'
           }}
         />
@@ -425,7 +425,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'var(--accent-cyan)',
-                    boxShadow: '0 0 10px rgba(6, 182, 212, 0.4)',
+                    boxShadow: 'var(--shadow-sm)',
                     zIndex: 2
                   }}
                 >

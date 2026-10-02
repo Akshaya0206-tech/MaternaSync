@@ -1,13 +1,19 @@
 import { useState, useMemo } from 'react';
 import type { ActivityLogEntry, ActivityLogAction } from '../types/patient';
-import { 
-  History, 
-  Search, 
-  PlusCircle, 
-  CheckCircle2, 
-  Send, 
-  Copy, 
-  Filter
+import {
+  History,
+  Search,
+  PlusCircle,
+  CheckCircle2,
+  Send,
+  Copy,
+  Filter,
+  Stethoscope,
+  Share2,
+  ClipboardCheck,
+  MessageCircle,
+  CalendarCheck,
+  PackageCheck
 } from 'lucide-react';
 
 interface ActivityLogPanelProps {
@@ -50,9 +56,9 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
-              background: 'rgba(6, 182, 212, 0.15)',
+              background: 'rgba(22, 124, 114, 0.15)',
               color: 'var(--accent-cyan)',
-              border: '1px solid rgba(6, 182, 212, 0.3)',
+              border: '1px solid rgba(22, 124, 114, 0.3)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.725rem',
@@ -90,7 +96,7 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
               gap: '4px',
               background: 'var(--amber-pending-bg)',
               color: 'var(--amber-pending)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
+              border: '1px solid rgba(154, 91, 46, 0.3)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.725rem',
@@ -107,9 +113,9 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
-              background: 'rgba(168, 85, 247, 0.15)',
-              color: '#c084fc',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
+              background: 'rgba(109, 79, 166, 0.15)',
+              color: 'var(--purple-ai)',
+              border: '1px solid rgba(109, 79, 166, 0.3)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.725rem',
@@ -126,9 +132,9 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
-              background: 'rgba(59, 130, 246, 0.15)',
-              color: '#60a5fa',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
+              background: 'rgba(23, 50, 77, 0.15)',
+              color: 'var(--navy-deep)',
+              border: '1px solid rgba(23, 50, 77, 0.3)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.725rem',
@@ -145,9 +151,9 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
-              background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(16, 185, 129, 0.2))',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
+              background: 'var(--emerald-raw-bg)',
+              color: 'var(--teal-primary)',
+              border: '1px solid rgba(22, 124, 114, 0.4)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.725rem',
@@ -157,9 +163,123 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
             <Send size={12} /> Phase 1 Handoff
           </span>
         );
+      case 'consultation_approved':
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'rgba(109, 79, 166, 0.15)',
+              color: 'var(--purple-ai)',
+              border: '1px solid rgba(109, 79, 166, 0.3)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.725rem',
+              fontWeight: 700
+            }}
+          >
+            <Stethoscope size={12} /> Consultation Approved
+          </span>
+        );
+      case 'handover_updated':
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'var(--amber-pending-bg)',
+              color: 'var(--amber-pending)',
+              border: '1px solid rgba(154, 91, 46, 0.3)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.725rem',
+              fontWeight: 700
+            }}
+          >
+            <Share2 size={12} /> Handover Updated
+          </span>
+        );
+      case 'workflow_reviewed':
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'rgba(23, 50, 77, 0.15)',
+              color: 'var(--navy-deep)',
+              border: '1px solid rgba(23, 50, 77, 0.3)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.725rem',
+              fontWeight: 700
+            }}
+          >
+            <ClipboardCheck size={12} /> Workflow Reviewed
+          </span>
+        );
+      case 'communication_draft_approved':
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'var(--emerald-raw-bg)',
+              color: 'var(--emerald-raw)',
+              border: '1px solid var(--emerald-raw-border)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.725rem',
+              fontWeight: 700
+            }}
+          >
+            <MessageCircle size={12} /> Communication Draft Approved
+          </span>
+        );
+      case 'next_visit_prepared':
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'rgba(20, 184, 166, 0.15)',
+              color: 'var(--accent-teal)',
+              border: '1px solid rgba(20, 184, 166, 0.3)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.725rem',
+              fontWeight: 700
+            }}
+          >
+            <CalendarCheck size={12} /> Next Visit Prepared
+          </span>
+        );
+      case 'transition_pack_created':
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'rgba(23, 50, 77, 0.15)',
+              color: 'var(--accent-blue)',
+              border: '1px solid rgba(23, 50, 77, 0.3)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.725rem',
+              fontWeight: 700
+            }}
+          >
+            <PackageCheck size={12} /> Transition Pack Created
+          </span>
+        );
       default:
         return (
-          <span 
+          <span
             style={{
               background: 'var(--bg-tertiary)',
               color: 'var(--text-secondary)',
@@ -281,6 +401,12 @@ export const ActivityLogPanel: React.FC<ActivityLogPanelProps> = ({
             <option value="workflow_created">Workflow Created</option>
             <option value="workflow_updated">Workflow Updated</option>
             <option value="phase1_handoff">Phase 1 Handoff</option>
+            <option value="consultation_approved">Consultation Approved</option>
+            <option value="handover_updated">Handover Updated</option>
+            <option value="workflow_reviewed">Workflow Reviewed</option>
+            <option value="communication_draft_approved">Communication Draft Approved</option>
+            <option value="next_visit_prepared">Next Visit Prepared</option>
+            <option value="transition_pack_created">Transition Pack Created</option>
           </select>
         </div>
       </div>

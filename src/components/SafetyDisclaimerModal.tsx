@@ -26,7 +26,7 @@ export const SafetyDisclaimerModal: React.FC<SafetyDisclaimerModalProps> = ({ on
           width: '100%',
           maxWidth: '680px',
           background: 'var(--bg-secondary)',
-          border: '1px solid rgba(16, 185, 129, 0.4)'
+          border: '1px solid rgba(22, 124, 114, 0.4)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -47,8 +47,8 @@ export const SafetyDisclaimerModal: React.FC<SafetyDisclaimerModalProps> = ({ on
                 width: '32px',
                 height: '32px',
                 borderRadius: '8px',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                background: 'rgba(22, 124, 114, 0.15)',
+                color: 'var(--teal-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -70,11 +70,11 @@ export const SafetyDisclaimerModal: React.FC<SafetyDisclaimerModalProps> = ({ on
         <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
           <div 
             style={{
-              background: 'rgba(244, 63, 94, 0.1)',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
+              background: 'rgba(156, 58, 34, 0.1)',
+              border: '1px solid rgba(156, 58, 34, 0.3)',
               borderRadius: 'var(--radius-md)',
               padding: '14px',
-              color: '#f43f5e',
+              color: 'var(--rose-urgent)',
               display: 'flex',
               gap: '12px',
               alignItems: 'flex-start'

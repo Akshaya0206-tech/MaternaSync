@@ -37,10 +37,10 @@ export const WorkflowItemsPanel: React.FC<WorkflowItemsPanelProps> = ({
 
   const getTypeIcon = (type: WorkflowItemType) => {
     switch (type) {
-      case 'pending_referral': return <Share2 size={16} style={{ color: '#a855f7' }} />;
-      case 'required_document': return <FileCheck size={16} style={{ color: '#38bdf8' }} />;
-      case 'follow_up_needed': return <Calendar size={16} style={{ color: '#f59e0b' }} />;
-      case 'unanswered_question': return <HelpCircle size={16} style={{ color: '#ec4899' }} />;
+      case 'pending_referral': return <Share2 size={16} style={{ color: 'var(--purple-ai)' }} />;
+      case 'required_document': return <FileCheck size={16} style={{ color: 'var(--navy-deep)' }} />;
+      case 'follow_up_needed': return <Calendar size={16} style={{ color: 'var(--amber-pending)' }} />;
+      case 'unanswered_question': return <HelpCircle size={16} style={{ color: 'var(--purple-ai)' }} />;
     }
   };
 
@@ -63,9 +63,9 @@ export const WorkflowItemsPanel: React.FC<WorkflowItemsPanelProps> = ({
         return (
           <span 
             style={{
-              background: 'rgba(59, 130, 246, 0.12)',
-              color: '#3b82f6',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
+              background: 'rgba(23, 50, 77, 0.12)',
+              color: 'var(--navy-deep)',
+              border: '1px solid rgba(23, 50, 77, 0.3)',
               fontSize: '0.7rem',
               padding: '2px 8px',
               borderRadius: '999px',
@@ -99,19 +99,36 @@ export const WorkflowItemsPanel: React.FC<WorkflowItemsPanelProps> = ({
         );
       case 'verified':
         return (
-          <span 
+          <span
             style={{
               fontSize: '0.7rem',
               fontWeight: 700,
               textTransform: 'uppercase',
               padding: '3px 8px',
               borderRadius: '4px',
-              background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(16, 185, 129, 0.2))',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.4)'
+              background: 'var(--emerald-raw-bg)',
+              color: 'var(--teal-primary)',
+              border: '1px solid rgba(22, 124, 114, 0.4)'
             }}
           >
             Verified
+          </span>
+        );
+      case 'scheduled':
+        return (
+          <span
+            style={{
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              background: 'rgba(109, 79, 166, 0.15)',
+              color: 'var(--purple-ai)',
+              border: '1px solid rgba(109, 79, 166, 0.3)'
+            }}
+          >
+            Scheduled
           </span>
         );
       case 'in_progress':
@@ -123,9 +140,9 @@ export const WorkflowItemsPanel: React.FC<WorkflowItemsPanelProps> = ({
               textTransform: 'uppercase',
               padding: '3px 8px',
               borderRadius: '4px',
-              background: 'rgba(6, 182, 212, 0.15)',
+              background: 'rgba(22, 124, 114, 0.15)',
               color: 'var(--accent-cyan)',
-              border: '1px solid rgba(6, 182, 212, 0.3)'
+              border: '1px solid rgba(22, 124, 114, 0.3)'
             }}
           >
             In Progress
@@ -143,7 +160,7 @@ export const WorkflowItemsPanel: React.FC<WorkflowItemsPanelProps> = ({
               borderRadius: '4px',
               background: 'var(--amber-pending-bg)',
               color: 'var(--amber-pending)',
-              border: '1px solid rgba(245, 158, 11, 0.3)'
+              border: '1px solid rgba(154, 91, 46, 0.3)'
             }}
           >
             Pending
@@ -252,6 +269,7 @@ export const WorkflowItemsPanel: React.FC<WorkflowItemsPanelProps> = ({
             <option value="all">All Statuses</option>
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
+            <option value="scheduled">Scheduled</option>
             <option value="verified">Verified</option>
             <option value="completed">Completed</option>
           </select>
@@ -291,7 +309,7 @@ export const WorkflowItemsPanel: React.FC<WorkflowItemsPanelProps> = ({
                   justifyContent: 'space-between',
                   gap: '16px',
                   opacity: isDone ? 0.7 : 1,
-                  borderLeft: isDone ? '4px solid #10b981' : item.status === 'verified' ? '4px solid #06b6d4' : item.priority === 'urgent' ? '4px solid #f43f5e' : '4px solid #f59e0b',
+                  borderLeft: isDone ? '4px solid var(--teal-primary)' : item.status === 'verified' ? '4px solid var(--teal-primary)' : item.priority === 'urgent' ? '4px solid var(--rose-urgent)' : '4px solid var(--amber-pending)',
                   flexWrap: 'wrap'
                 }}
               >
@@ -407,6 +425,7 @@ export const WorkflowItemsPanel: React.FC<WorkflowItemsPanelProps> = ({
                     >
                       <option value="pending">Status: Pending</option>
                       <option value="in_progress">Status: In Progress</option>
+                      <option value="scheduled">Status: Scheduled</option>
                       <option value="verified">Status: Verified</option>
                       <option value="completed">Status: Completed</option>
                     </select>
