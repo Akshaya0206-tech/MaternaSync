@@ -4,6 +4,7 @@ split into models/legacy.py vs the rest — the two systems are independently
 evolving during the migration."""
 
 from datetime import datetime
+from typing import Literal
 
 from .schemas import CamelModel, UserOut  # reused: User is genuinely shared infrastructure
 
@@ -313,13 +314,17 @@ class TaskOut(CamelModel):
     created_at: datetime
 
 
+TaskStatus = Literal["OPEN", "IN_PROGRESS", "WAITING", "COMPLETED", "CANCELLED"]
+TaskPriority = Literal["routine", "high", "urgent"]
+
+
 class TaskCreateIn(CamelModel):
     episode_id: str
     title: str
     description: str | None = None
     owner_user_id: str | None = None
     due_date: str | None = None
-    priority: str = "routine"
+    priority: TaskPriority = "routine"
 
 
 class TaskUpdateIn(CamelModel):
@@ -327,8 +332,8 @@ class TaskUpdateIn(CamelModel):
     description: str | None = None
     owner_user_id: str | None = None
     due_date: str | None = None
-    priority: str | None = None
-    status: str | None = None
+    priority: TaskPriority | None = None
+    status: TaskStatus | None = None
 
 
 # ---------- Referrals ----------

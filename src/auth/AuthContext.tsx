@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { getToken, setToken } from '../api/client';
+import { ApiError, getToken, setToken } from '../api/client';
 import { fetchCurrentUser } from '../api/auth';
 import type { CurrentUser } from '../api/auth';
 
@@ -25,7 +25,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     fetchCurrentUser()
       .then(setUser)
-      .catch(() => setToken(null))
+      .catch((err) => {
+        // Only a 401 means the token is invalid. A 5xx or dropped connection is
+        // transient — keep the token so a reload recovers instead of logging out.
+        if (err instanceof ApiError && err.status === 401) setToken(null);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 

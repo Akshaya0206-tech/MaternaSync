@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
 
 
 def to_camel(snake: str) -> str:
@@ -9,8 +9,19 @@ def to_camel(snake: str) -> str:
     return parts[0] + "".join(p.title() for p in parts[1:])
 
 
+def as_utc(value: datetime) -> datetime:
+    """Every stored timestamp is UTC, but SQLite drops tzinfo on read-back.
+    Without an explicit offset the browser parses the ISO string as *local*
+    time, shifting every displayed time by the viewer's UTC offset."""
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
 class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
+    @field_serializer("*", mode="wrap")
+    def _serialize_datetimes_as_utc(self, value: Any, handler):
+        return handler(as_utc(value) if isinstance(value, datetime) else value)
 
 
 # ---------- Auth ----------

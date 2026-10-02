@@ -27,7 +27,8 @@ interface StatusBadgeProps {
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, tone, icon, size = 'sm' }) => {
-  const style = TONE_STYLES[tone];
+  // An unrecognised tone must degrade to neutral, never crash the page.
+  const style = TONE_STYLES[tone] ?? TONE_STYLES.neutral;
   return (
     <span
       style={{
@@ -52,6 +53,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, tone, icon, siz
 };
 
 export const WorkflowStatusBadge: React.FC<{ status: WorkflowStatus; size?: 'sm' | 'md' }> = ({ status, size }) => {
-  const meta = WORKFLOW_STATUS_META[status];
+  const meta = WORKFLOW_STATUS_META[status] ?? { label: status, tone: 'neutral' as BadgeTone };
   return <StatusBadge label={meta.label} tone={meta.tone} size={size} />;
 };

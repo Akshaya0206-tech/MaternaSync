@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas_v2, transcription
 from ..config import UPLOAD_DIR
 from ..database import get_db
+from ..schemas import as_utc
 from ..deps import get_current_user, require_episode_access, require_role
 from ..referral_communication import ReferralCommunicationService, ReferralTransitionError
 
@@ -281,7 +282,7 @@ def _compute_brief_content(db: Session, episode: models.PregnancyEpisode) -> dic
         "pendingItems": [_to_task_out(db, t).model_dump(by_alias=True, mode="json") for t in pending_tasks],
         "patientQuestions": [_to_question_out(db, q).model_dump(by_alias=True, mode="json") for q in open_questions],
         "nextAppointment": (
-            {"id": next_appt.id, "scheduledAt": next_appt.scheduled_at.isoformat(), "appointmentType": next_appt.appointment_type,
+            {"id": next_appt.id, "scheduledAt": as_utc(next_appt.scheduled_at).isoformat(), "appointmentType": next_appt.appointment_type,
              "location": next_appt.location, "status": next_appt.status, "doctorName": None}
             if next_appt else None
         ),
