@@ -32,6 +32,15 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _next_reference_code(db: Session) -> str:
+    """Same numbering scheme as ReferralCommunicationService — every
+    referral gets one, seeded or created at runtime, so none are missing
+    the id the External Hospital Simulator and UI key off of."""
+    year = _now().year
+    count = db.query(models.Referral).filter(models.Referral.reference_code.isnot(None)).count()
+    return f"REF-{year}-{count + 1:05d}"
+
+
 def _parse_dt(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -132,8 +141,10 @@ def _build_episode(db: Session, ep_json: dict, patient_user: models.User, doctor
             ))
         elif wtype == "pending_referral":
             db.add(models.Referral(
-                episode_id=episode.id, title=w["title"], description=w["description"],
-                referred_to=w.get("assignee"), status="SENT",
+                episode_id=episode.id, reference_code=_next_reference_code(db),
+                title=w["title"], description=w["description"],
+                referred_to=w.get("assignee"), destination=w.get("assignee") or "External Specialist",
+                status="SENT", sent_at=created_at, sent_by_user_id=care_team_user.id,
                 owner_user_id=care_team_user.id, created_by_user_id=doctor_user.id,
                 due_date=w.get("dueDate"), created_at=created_at,
             ))

@@ -26,6 +26,7 @@ import { DocumentReviewPage } from '../roles/careteam/DocumentReviewPage';
 import { QuestionsPage as CareTeamQuestionsPage } from '../roles/careteam/QuestionsPage';
 import { TasksPage } from '../roles/careteam/TasksPage';
 import { ReferralsPage } from '../roles/careteam/ReferralsPage';
+import { ReferralDetailPage as CareTeamReferralDetailPage } from '../roles/careteam/ReferralDetailPage';
 import { HandoverPage } from '../roles/careteam/HandoverPage';
 import { UpdatesPage as CareTeamUpdatesPage } from '../roles/careteam/UpdatesPage';
 import { ProfilePage as CareTeamProfilePage } from '../roles/careteam/ProfilePage';
@@ -38,9 +39,11 @@ import { ConsultationsPage } from '../roles/doctor/ConsultationsPage';
 import { DocumentationHistoryPage } from '../roles/doctor/DocumentationHistoryPage';
 import { QuestionsPage as DoctorQuestionsPage } from '../roles/doctor/QuestionsPage';
 import { FollowUpsPage } from '../roles/doctor/FollowUpsPage';
+import { ReferralDetailPage as DoctorReferralDetailPage } from '../roles/doctor/ReferralDetailPage';
 import { HandoverPage as DoctorHandoverPage } from '../roles/doctor/HandoverPage';
 import { UpdatesPage as DoctorUpdatesPage } from '../roles/doctor/UpdatesPage';
 import { ProfilePage as DoctorProfilePage } from '../roles/doctor/ProfilePage';
+import { ExternalSimulatorPage } from '../pages/ExternalSimulatorPage';
 
 function RootRoute() {
   const { user, isLoading } = useAuth();
@@ -56,6 +59,7 @@ export function AppRoutes() {
       <Route path="/signin" element={<SignInPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/legacy" element={<RequireAuth><LegacyAppPage /></RequireAuth>} />
+      <Route path="/external-simulator" element={<ExternalSimulatorPage />} />
 
       <Route path="/patient" element={<RequireRole role="patient"><PatientShell /></RequireRole>}>
         <Route index element={<Navigate to="dashboard" replace />} />
@@ -78,6 +82,7 @@ export function AppRoutes() {
         <Route path="questions" element={<CareTeamQuestionsPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="referrals" element={<ReferralsPage />} />
+        <Route path="referrals/:referralId" element={<CareTeamReferralDetailPage />} />
         <Route path="handover" element={<HandoverPage />} />
         <Route path="updates" element={<CareTeamUpdatesPage />} />
         <Route path="profile" element={<CareTeamProfilePage />} />
@@ -93,6 +98,7 @@ export function AppRoutes() {
         <Route path="questions" element={<DoctorQuestionsPage />} />
         <Route path="documentation" element={<DocumentationHistoryPage />} />
         <Route path="follow-ups" element={<FollowUpsPage />} />
+        <Route path="referrals/:referralId" element={<DoctorReferralDetailPage />} />
         <Route path="handover" element={<DoctorHandoverPage />} />
         <Route path="updates" element={<DoctorUpdatesPage />} />
         <Route path="profile" element={<DoctorProfilePage />} />

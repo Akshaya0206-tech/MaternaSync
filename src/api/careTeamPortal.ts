@@ -112,6 +112,9 @@ export interface Task {
   priority: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'COMPLETED' | 'CANCELLED';
   sourceType: string | null;
+  sourceId: string | null;
+  waitingFor: string | null;
+  waitingSince: string | null;
   createdAt: string;
 }
 
@@ -133,16 +136,29 @@ export interface TaskUpdatePayload {
   status?: string;
 }
 
+export type ReferralStatus = 'DRAFT' | 'SENT' | 'ACKNOWLEDGED' | 'APPOINTMENT_SCHEDULED' | 'RESPONSE_RECEIVED' | 'CLOSED';
+
 export interface Referral {
   id: string;
+  referenceCode: string | null;
   episodeId: string;
   patientName: string;
   title: string;
   description: string;
   referredTo: string | null;
-  status: 'DRAFT' | 'SENT' | 'ACKNOWLEDGED' | 'APPOINTMENT_SCHEDULED' | 'RESPONSE_RECEIVED' | 'CLOSED';
+  destination: string | null;
+  status: ReferralStatus;
   ownerName: string | null;
   dueDate: string | null;
+  waitingFor: string | null;
+  waitingSince: string | null;
+  sentAt: string | null;
+  acknowledgedAt: string | null;
+  appointmentDate: string | null;
+  appointmentTime: string | null;
+  externalProvider: string | null;
+  responseReceivedAt: string | null;
+  doctorReviewedAt: string | null;
   createdAt: string;
 }
 
@@ -150,8 +166,8 @@ export interface ReferralCreatePayload {
   episodeId: string;
   title: string;
   description?: string;
+  destination?: string;
   referredTo?: string;
-  ownerUserId?: string;
   dueDate?: string;
 }
 
@@ -161,8 +177,49 @@ export interface ReferralUpdatePayload {
   referredTo?: string;
   ownerUserId?: string;
   dueDate?: string;
-  status?: string;
-  note?: string;
+}
+
+export interface ReferralEvent {
+  id: string;
+  fromStatus: string | null;
+  toStatus: string;
+  note: string | null;
+  actorName: string | null;
+  actorSource: string;
+  createdAt: string;
+}
+
+export interface CommunicationEvent {
+  id: string;
+  type: string;
+  direction: 'INBOUND' | 'OUTBOUND';
+  senderLabel: string | null;
+  recipientLabel: string | null;
+  subject: string | null;
+  content: string;
+  status: string;
+  source: string;
+  externalReference: string | null;
+  createdAt: string;
+  receivedAt: string | null;
+}
+
+export interface ReferralDetail {
+  referral: Referral;
+  events: ReferralEvent[];
+  communications: CommunicationEvent[];
+  relatedTask: Task | null;
+  documents: PatientDocument[];
+}
+
+export interface PatientDocument {
+  id: string;
+  filename: string;
+  status: string;
+  statusLabel: string;
+  documentDate: string | null;
+  description: string | null;
+  uploadedAt: string;
 }
 
 export interface Handover {
@@ -337,6 +394,9 @@ export function updateTask(taskId: string, payload: TaskUpdatePayload): Promise<
 }
 
 // ---------- Referrals ----------
+// Referrals are created by the Doctor (see doctorPortal.ts createReferral)
+// — Care Team coordinates an existing referral through its lifecycle via
+// the dedicated action endpoints below, never a generic status PATCH.
 export function fetchReferrals(params: { episodeId?: string; status?: string } = {}): Promise<Referral[]> {
   const q = new URLSearchParams();
   if (params.episodeId) q.set('episode_id', params.episodeId);
@@ -345,12 +405,35 @@ export function fetchReferrals(params: { episodeId?: string; status?: string } =
   return api.get<Referral[]>(`/api/v2/care-team/referrals${qs ? `?${qs}` : ''}`);
 }
 
-export function createReferral(payload: ReferralCreatePayload): Promise<Referral> {
-  return api.post<Referral>('/api/v2/care-team/referrals', payload);
+export function fetchReferralDetail(referralId: string): Promise<ReferralDetail> {
+  return api.get<ReferralDetail>(`/api/v2/care-team/referrals/${referralId}`);
 }
 
 export function updateReferral(referralId: string, payload: ReferralUpdatePayload): Promise<Referral> {
   return api.patch<Referral>(`/api/v2/care-team/referrals/${referralId}`, payload);
+}
+
+export function sendReferral(referralId: string): Promise<Referral> {
+  return api.post<Referral>(`/api/v2/care-team/referrals/${referralId}/send`);
+}
+
+export function acknowledgeReferral(referralId: string, note?: string, externalReference?: string): Promise<Referral> {
+  return api.post<Referral>(`/api/v2/care-team/referrals/${referralId}/acknowledge`, { note, externalReference });
+}
+
+export function recordReferralAppointment(referralId: string, appointmentDate: string, appointmentTime?: string, externalProvider?: string): Promise<Referral> {
+  return api.post<Referral>(`/api/v2/care-team/referrals/${referralId}/appointment`, { appointmentDate, appointmentTime, externalProvider });
+}
+
+export function recordReferralResponse(referralId: string, responseText: string): Promise<Referral> {
+  return api.post<Referral>(`/api/v2/care-team/referrals/${referralId}/response`, { responseText });
+}
+
+export function uploadReferralDocument(referralId: string, file: File, description: string): Promise<CareTeamDocument> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (description.trim()) formData.append('description', description.trim());
+  return api.upload<CareTeamDocument>(`/api/v2/care-team/referrals/${referralId}/documents`, formData);
 }
 
 // ---------- Handover ----------

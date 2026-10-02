@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { fetchTasks, updateTask } from '../../api/careTeamPortal';
 import type { Task } from '../../api/careTeamPortal';
@@ -9,6 +10,7 @@ import { AddTaskModal } from './AddTaskModal';
 const STATUS_OPTIONS: Task['status'][] = ['OPEN', 'IN_PROGRESS', 'WAITING', 'COMPLETED', 'CANCELLED'];
 
 export function TasksPage() {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,17 +57,22 @@ export function TasksPage() {
                 <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>{t.title}</div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                   Owner: {t.ownerName ?? 'Unassigned'}{t.dueDate && <> · Due {formatFriendlyDate(t.dueDate)}</>} · Priority: {t.priority}
+                  {t.waitingFor && <> · Waiting for: {t.waitingFor}</>}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <StatusBadge label={friendlyTaskStatus(t.status)} tone={TASK_STATUS_TONE[t.status]} />
-                <select
-                  value={t.status}
-                  onChange={(e) => handleStatusChange(t.id, e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.78rem', cursor: 'pointer' }}
-                >
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{friendlyTaskStatus(s)}</option>)}
-                </select>
+                {t.sourceType === 'referral' && t.sourceId ? (
+                  <button onClick={() => navigate(`/care-team/referrals/${t.sourceId}`)} className="btn-outline-emerald">Open Referral</button>
+                ) : (
+                  <select
+                    value={t.status}
+                    onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                    style={{ padding: '6px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.78rem', cursor: 'pointer' }}
+                  >
+                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{friendlyTaskStatus(s)}</option>)}
+                  </select>
+                )}
               </div>
             </div>
           ))}

@@ -16,6 +16,7 @@ class MedicalDocument(Base):
     episode_id = Column(String, ForeignKey("pregnancy_episodes.id"), nullable=False)
     uploaded_by_user_id = Column(String, ForeignKey("users.id"), nullable=False)
     uploaded_by_role = Column(String, nullable=False)
+    referral_id = Column(String, ForeignKey("referrals.id"), nullable=True)  # set when this is a referral response document
 
     filename = Column(String, nullable=False)
     file_path = Column(String, nullable=False)

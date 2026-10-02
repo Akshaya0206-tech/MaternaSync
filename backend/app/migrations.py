@@ -14,6 +14,43 @@ ADDITIVE_COLUMNS = {
     "users": [
         ("title", "VARCHAR"),
     ],
+    "referrals": [
+        ("reference_code", "VARCHAR"),
+        ("destination", "VARCHAR"),
+        ("sent_at", "DATETIME"),
+        ("sent_by_user_id", "VARCHAR"),
+        ("acknowledged_at", "DATETIME"),
+        ("acknowledged_source", "VARCHAR"),
+        ("appointment_date", "VARCHAR"),
+        ("appointment_time", "VARCHAR"),
+        ("external_provider", "VARCHAR"),
+        ("appointment_recorded_source", "VARCHAR"),
+        ("response_text", "TEXT"),
+        ("response_received_at", "DATETIME"),
+        ("response_source", "VARCHAR"),
+        ("doctor_reviewed_at", "DATETIME"),
+        ("doctor_reviewed_by_user_id", "VARCHAR"),
+    ],
+    "referral_events": [
+        ("actor_source", "VARCHAR"),
+    ],
+    "tasks": [
+        ("waiting_for", "VARCHAR"),
+        ("waiting_since", "DATETIME"),
+    ],
+    "medical_documents": [
+        ("referral_id", "VARCHAR"),
+    ],
+    "communications": [
+        ("related_referral_id", "VARCHAR"),
+        ("type", "VARCHAR"),
+        ("sender_label", "VARCHAR"),
+        ("recipient_label", "VARCHAR"),
+        ("subject", "VARCHAR"),
+        ("source", "VARCHAR"),
+        ("external_reference", "VARCHAR"),
+        ("received_at", "DATETIME"),
+    ],
 }
 
 

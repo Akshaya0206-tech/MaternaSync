@@ -19,6 +19,8 @@ __all__ = [
     "CareTeamQuestionOut", "QuestionRespondIn",
     "TaskOut", "TaskCreateIn", "TaskUpdateIn",
     "ReferralOut", "ReferralCreateIn", "ReferralUpdateIn",
+    "SendReferralIn", "AcknowledgeReferralIn", "RecordAppointmentIn", "RecordResponseIn",
+    "ReferralEventOut", "CommunicationEventOut", "ReferralDetailOut",
     "HandoverOut", "HandoverUpdateIn",
     "CareTeamProfileOut", "CareTeamProfileUpdateIn",
     # doctor
@@ -28,6 +30,8 @@ __all__ = [
     "ConsultationDraftOut", "DraftUpdateIn", "ApprovedConsultationOut", "DocumentationItemOut",
     "DraftResponseIn",
     "DoctorProfileOut", "DoctorProfileUpdateIn",
+    # external simulator
+    "SimulatorReferralOut", "SimulatorAppointmentIn", "SimulatorResponseIn", "SimulatorAcknowledgeIn",
 ]
 
 
@@ -303,6 +307,9 @@ class TaskOut(CamelModel):
     priority: str
     status: str
     source_type: str | None
+    source_id: str | None
+    waiting_for: str | None
+    waiting_since: datetime | None
     created_at: datetime
 
 
@@ -328,14 +335,25 @@ class TaskUpdateIn(CamelModel):
 
 class ReferralOut(CamelModel):
     id: str
+    reference_code: str | None
     episode_id: str
     patient_name: str
     title: str
     description: str
     referred_to: str | None
+    destination: str | None
     status: str
     owner_name: str | None
     due_date: str | None
+    waiting_for: str | None
+    waiting_since: datetime | None
+    sent_at: datetime | None
+    acknowledged_at: datetime | None
+    appointment_date: str | None
+    appointment_time: str | None
+    external_provider: str | None
+    response_received_at: datetime | None
+    doctor_reviewed_at: datetime | None
     created_at: datetime
 
 
@@ -343,19 +361,72 @@ class ReferralCreateIn(CamelModel):
     episode_id: str
     title: str
     description: str | None = None
+    destination: str | None = None
     referred_to: str | None = None
-    owner_user_id: str | None = None
     due_date: str | None = None
 
 
 class ReferralUpdateIn(CamelModel):
+    """Edits referral metadata only. Status transitions never go through
+    this — each one is its own dedicated, auditable action endpoint (see
+    Step 7 item 3: no arbitrary status changes)."""
     title: str | None = None
     description: str | None = None
     referred_to: str | None = None
     owner_user_id: str | None = None
     due_date: str | None = None
-    status: str | None = None
+
+
+class SendReferralIn(CamelModel):
+    pass
+
+
+class AcknowledgeReferralIn(CamelModel):
     note: str | None = None
+    external_reference: str | None = None
+
+
+class RecordAppointmentIn(CamelModel):
+    appointment_date: str
+    appointment_time: str | None = None
+    external_provider: str | None = None
+
+
+class RecordResponseIn(CamelModel):
+    response_text: str
+
+
+class ReferralEventOut(CamelModel):
+    id: str
+    from_status: str | None
+    to_status: str
+    note: str | None
+    actor_name: str | None
+    actor_source: str
+    created_at: datetime
+
+
+class CommunicationEventOut(CamelModel):
+    id: str
+    type: str
+    direction: str
+    sender_label: str | None
+    recipient_label: str | None
+    subject: str | None
+    content: str
+    status: str
+    source: str
+    external_reference: str | None
+    created_at: datetime
+    received_at: datetime | None
+
+
+class ReferralDetailOut(CamelModel):
+    referral: ReferralOut
+    events: list[ReferralEventOut]
+    communications: list[CommunicationEventOut]
+    related_task: TaskOut | None
+    documents: list[PatientDocumentOut]
 
 
 # ---------- Handover ----------
@@ -542,3 +613,33 @@ class DoctorProfileUpdateIn(CamelModel):
     full_name: str | None = None
     specialty: str | None = None
     facility: str | None = None
+
+
+# ================== External Hospital Simulator (prototype-only, no auth) ==================
+# Deliberately minimal — never exposes chart data, DOB, MRN, or anything
+# beyond what a real referral message would actually carry.
+
+class SimulatorReferralOut(CamelModel):
+    reference_code: str
+    patient_name: str
+    referral_type: str
+    destination: str | None
+    status: str
+    created_date: str
+    doctor_name: str
+    care_coordinator_name: str | None
+    message: str
+
+
+class SimulatorAcknowledgeIn(CamelModel):
+    external_reference: str | None = None
+
+
+class SimulatorAppointmentIn(CamelModel):
+    appointment_date: str
+    appointment_time: str | None = None
+    external_provider: str | None = None
+
+
+class SimulatorResponseIn(CamelModel):
+    response_text: str

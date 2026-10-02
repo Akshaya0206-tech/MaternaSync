@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchFollowUps, updateFollowUp } from '../../api/doctorPortal';
 import type { Task } from '../../api/doctorPortal';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -7,6 +8,7 @@ import { TASK_STATUS_TONE, friendlyTaskStatus, formatFriendlyDate } from './form
 const STATUS_OPTIONS: Task['status'][] = ['OPEN', 'IN_PROGRESS', 'WAITING', 'COMPLETED', 'CANCELLED'];
 
 export function FollowUpsPage() {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,17 +53,22 @@ export function FollowUpsPage() {
                 {t.description && <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{t.description}</div>}
                 <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                   {t.dueDate && <>Due {formatFriendlyDate(t.dueDate)} · </>}Priority: {t.priority}
+                  {t.waitingFor && <> · Waiting for: {t.waitingFor}</>}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <StatusBadge label={friendlyTaskStatus(t.status)} tone={TASK_STATUS_TONE[t.status]} />
-                <select
-                  value={t.status}
-                  onChange={(e) => handleStatusChange(t.id, e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.78rem', cursor: 'pointer' }}
-                >
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{friendlyTaskStatus(s)}</option>)}
-                </select>
+                {t.sourceType === 'referral' && t.sourceId ? (
+                  <button onClick={() => navigate(`/doctor/referrals/${t.sourceId}`)} className="btn-outline-emerald">Review Referral</button>
+                ) : (
+                  <select
+                    value={t.status}
+                    onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                    style={{ padding: '6px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.78rem', cursor: 'pointer' }}
+                  >
+                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{friendlyTaskStatus(s)}</option>)}
+                  </select>
+                )}
               </div>
             </div>
           ))}

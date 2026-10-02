@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import models
 from .database import Base, SessionLocal, engine
 from .migrations import run_additive_migrations
-from .routers import auth, care_team_portal, doctor_portal, episodes, patient_portal, patients, records, workflow
+from .routers import auth, care_team_portal, doctor_portal, episodes, external_simulator, patient_portal, patients, records, workflow
 from .seed_data import run_seed
 from .seed_role_data import ensure_patient_portal_demo_data, run_seed_role_data
 
@@ -29,6 +29,7 @@ app.include_router(episodes.router)
 app.include_router(patient_portal.router)
 app.include_router(care_team_portal.router)
 app.include_router(doctor_portal.router)
+app.include_router(external_simulator.router)
 
 
 @app.on_event("startup")

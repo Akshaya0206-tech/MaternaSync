@@ -29,6 +29,7 @@ from .. import models, schemas_v2, transcription
 from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..deps import get_current_user, require_episode_access, require_role
+from ..referral_communication import ReferralCommunicationService, ReferralTransitionError
 
 router = APIRouter(prefix="/api/v2/doctor", tags=["doctor-portal"])
 
@@ -99,7 +100,8 @@ def _to_task_out(db: Session, t: models.Task) -> schemas_v2.TaskOut:
         id=t.id, episode_id=t.episode_id, patient_name=_episode_name(db, t.episode_id),
         title=t.title, description=t.description or "", owner_name=_user_name(db, t.owner_user_id),
         created_by_name=_user_name(db, t.created_by_user_id) or "Unknown",
-        due_date=t.due_date, priority=t.priority, status=t.status, source_type=t.source_type, created_at=t.created_at,
+        due_date=t.due_date, priority=t.priority, status=t.status, source_type=t.source_type, source_id=t.source_id,
+        waiting_for=t.waiting_for, waiting_since=t.waiting_since, created_at=t.created_at,
     )
 
 
@@ -792,6 +794,115 @@ def approve_question_response(question_id: str, current_user: models.User = Depe
     db.commit()
     db.refresh(question)
     return _to_question_out(db, question)
+
+
+# ---------- referrals ----------
+# The Doctor originates a referral (see Step 7 item 4); everything after
+# that — sending it, recording the external lifecycle — is Care Team's
+# job (routers/care_team_portal.py). The Doctor comes back in only to
+# review a received response and close the loop.
+
+def _referral_out(db: Session, r: models.Referral) -> schemas_v2.ReferralOut:
+    task = db.query(models.Task).filter(models.Task.source_type == "referral", models.Task.source_id == r.id).first()
+    return schemas_v2.ReferralOut(
+        id=r.id, reference_code=r.reference_code, episode_id=r.episode_id, patient_name=_episode_name(db, r.episode_id),
+        title=r.title, description=r.description or "", referred_to=r.referred_to, destination=r.destination,
+        status=r.status, owner_name=_user_name(db, r.owner_user_id), due_date=r.due_date,
+        waiting_for=task.waiting_for if task else None, waiting_since=task.waiting_since if task else None,
+        sent_at=r.sent_at, acknowledged_at=r.acknowledged_at, appointment_date=r.appointment_date,
+        appointment_time=r.appointment_time, external_provider=r.external_provider,
+        response_received_at=r.response_received_at, doctor_reviewed_at=r.doctor_reviewed_at, created_at=r.created_at,
+    )
+
+
+def _referral_detail_out(db: Session, r: models.Referral) -> schemas_v2.ReferralDetailOut:
+    task = db.query(models.Task).filter(models.Task.source_type == "referral", models.Task.source_id == r.id).first()
+    events = db.query(models.ReferralEvent).filter(models.ReferralEvent.referral_id == r.id).order_by(models.ReferralEvent.created_at.asc()).all()
+    comms = db.query(models.Communication).filter(models.Communication.related_referral_id == r.id).order_by(models.Communication.created_at.asc()).all()
+    documents = db.query(models.MedicalDocument).filter(models.MedicalDocument.referral_id == r.id).order_by(models.MedicalDocument.uploaded_at.desc()).all()
+    return schemas_v2.ReferralDetailOut(
+        referral=_referral_out(db, r),
+        events=[
+            schemas_v2.ReferralEventOut(id=e.id, from_status=e.from_status, to_status=e.to_status, note=e.note,
+                                         actor_name=_user_name(db, e.actor_user_id), actor_source=e.actor_source or "MANUAL_ENTRY",
+                                         created_at=e.created_at)
+            for e in events
+        ],
+        communications=[
+            schemas_v2.CommunicationEventOut(id=c.id, type=c.type, direction=c.direction, sender_label=c.sender_label,
+                                              recipient_label=c.recipient_label, subject=c.subject, content=c.content,
+                                              status=c.status, source=c.source, external_reference=c.external_reference,
+                                              created_at=c.created_at, received_at=c.received_at)
+            for c in comms
+        ],
+        related_task=_to_task_out(db, task) if task else None,
+        documents=[
+            schemas_v2.PatientDocumentOut(id=d.id, filename=d.filename, status=d.status,
+                                           status_label=schemas_v2.DOCUMENT_STATUS_LABELS.get(d.status, d.status),
+                                           document_date=d.document_date, description=d.description, uploaded_at=d.uploaded_at)
+            for d in documents
+        ],
+    )
+
+
+def _get_assigned_referral(db: Session, current_user: models.User, referral_id: str) -> models.Referral:
+    referral = db.query(models.Referral).filter(models.Referral.id == referral_id).first()
+    if referral is None:
+        raise HTTPException(status_code=404, detail="Referral not found.")
+    if referral.episode_id not in _assigned_episode_ids(db, current_user):
+        raise HTTPException(status_code=403, detail="You are not assigned to this patient.")
+    return referral
+
+
+@router.get("/referrals", response_model=list[schemas_v2.ReferralOut])
+def list_referrals(episode_id: str | None = Query(None), current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
+    assigned_ids = _assigned_episode_ids(db, current_user)
+    if episode_id:
+        if episode_id not in assigned_ids:
+            raise HTTPException(status_code=403, detail="You are not assigned to this patient.")
+        assigned_ids = [episode_id]
+    if not assigned_ids:
+        return []
+    referrals = db.query(models.Referral).filter(models.Referral.episode_id.in_(assigned_ids)).order_by(models.Referral.created_at.desc()).all()
+    return [_referral_out(db, r) for r in referrals]
+
+
+@router.get("/referrals/{referral_id}", response_model=schemas_v2.ReferralDetailOut)
+def get_referral(referral_id: str, current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
+    referral = _get_assigned_referral(db, current_user, referral_id)
+    return _referral_detail_out(db, referral)
+
+
+@router.post("/episodes/{episode_id}/referrals", response_model=schemas_v2.ReferralOut)
+def create_referral(
+    payload: schemas_v2.ReferralCreateIn, episode: models.PregnancyEpisode = Depends(require_episode_access),
+    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    if current_user.role != "doctor":
+        raise HTTPException(status_code=403, detail="Only the assigned doctor can create a referral.")
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Please give the referral a title.")
+
+    referral = ReferralCommunicationService(db).create_referral(
+        episode, current_user, title, payload.description or "", payload.destination or "",
+        payload.referred_to, payload.due_date,
+    )
+    db.commit()
+    db.refresh(referral)
+    return _referral_out(db, referral)
+
+
+@router.post("/referrals/{referral_id}/close", response_model=schemas_v2.ReferralOut)
+def doctor_close_referral(referral_id: str, current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
+    referral = _get_assigned_referral(db, current_user, referral_id)
+    try:
+        ReferralCommunicationService(db).doctor_review_and_close(referral, current_user)
+    except ReferralTransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    db.commit()
+    db.refresh(referral)
+    return _referral_out(db, referral)
 
 
 # ---------- follow-ups ----------

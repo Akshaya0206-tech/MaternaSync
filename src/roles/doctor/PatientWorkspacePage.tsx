@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Stethoscope, Eye, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Stethoscope, Eye, CheckCircle2, XCircle, Plus } from 'lucide-react';
 import {
-  fetchEpisode, fetchEpisodeJourney, fetchDocuments, fetchQuestions, fetchFollowUps, fetchHandover,
+  fetchEpisode, fetchEpisodeJourney, fetchDocuments, fetchQuestions, fetchFollowUps, fetchHandover, fetchReferrals,
   verifyDocument, rejectDocument, documentFileUrl, markBriefReviewed,
 } from '../../api/doctorPortal';
 import type { EpisodeDetail } from '../../api/careTeamPortal';
-import type { JourneyEvent, CareTeamDocument, CareTeamQuestion, Task, Handover } from '../../api/doctorPortal';
+import type { JourneyEvent, CareTeamDocument, CareTeamQuestion, Task, Handover, Referral } from '../../api/doctorPortal';
 import { fetchBlobWithAuth, ApiError } from '../../api/client';
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatFriendlyDate } from './format';
 import { DOCUMENT_STATUS_TONE, QUESTION_STATUS_TONE, TASK_STATUS_TONE, friendlyQuestionStatus, friendlyTaskStatus } from './format';
 import { TodaysBriefPanel } from './TodaysBriefPanel';
+import { CreateReferralModal } from './CreateReferralModal';
 
-type Tab = 'brief' | 'journey' | 'documents' | 'consultations' | 'questions' | 'followups' | 'handover';
+type Tab = 'brief' | 'journey' | 'documents' | 'consultations' | 'questions' | 'followups' | 'handover' | 'referrals';
 
 export function PatientWorkspacePage() {
   const { episodeId } = useParams<{ episodeId: string }>();
@@ -25,9 +26,11 @@ export function PatientWorkspacePage() {
   const [questions, setQuestions] = useState<CareTeamQuestion[]>([]);
   const [followUps, setFollowUps] = useState<Task[]>([]);
   const [handover, setHandover] = useState<Handover | null>(null);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [isCreateReferralOpen, setIsCreateReferralOpen] = useState(false);
 
   const loadAll = (id: string) => {
     setIsLoading(true);
@@ -35,10 +38,10 @@ export function PatientWorkspacePage() {
       fetchEpisode(id), fetchEpisodeJourney(id), fetchDocuments({ episodeId: id }),
       fetchQuestions().then((qs) => qs.filter((q) => q.episodeId === id)),
       fetchFollowUps().then((ts) => ts.filter((t) => t.episodeId === id)),
-      fetchHandover(id),
+      fetchHandover(id), fetchReferrals(id),
     ])
-      .then(([ep, j, d, q, t, h]) => {
-        setEpisode(ep); setJourney(j); setDocuments(d); setQuestions(q); setFollowUps(t); setHandover(h);
+      .then(([ep, j, d, q, t, h, r]) => {
+        setEpisode(ep); setJourney(j); setDocuments(d); setQuestions(q); setFollowUps(t); setHandover(h); setReferrals(r);
       })
       .catch(() => setError("We couldn't load this patient. You may not be assigned to them."))
       .finally(() => setIsLoading(false));
@@ -80,6 +83,7 @@ export function PatientWorkspacePage() {
     { key: 'consultations', label: 'Consultations' },
     { key: 'questions', label: 'Questions' },
     { key: 'followups', label: 'Follow-ups' },
+    { key: 'referrals', label: 'Referrals' },
     { key: 'handover', label: 'Handover' },
   ];
 
@@ -222,6 +226,33 @@ export function PatientWorkspacePage() {
             )
           )}
 
+          {tab === 'referrals' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <button onClick={() => setIsCreateReferralOpen(true)} className="btn-primary"><Plus size={15} /> Create Referral</button>
+              </div>
+              {referrals.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No referrals for this patient yet.</div>
+              ) : (
+                referrals.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => navigate(`/doctor/referrals/${r.id}`)}
+                    className="glass-panel"
+                    style={{ padding: '14px 18px', textAlign: 'left', cursor: 'pointer', font: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>{r.referenceCode}</div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{r.title}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{r.destination ?? 'Destination not specified'}</div>
+                    </div>
+                    <StatusBadge label={r.status.replace(/_/g, ' ')} tone="amber" />
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+
           {tab === 'handover' && (
             handover ? (
               <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -241,6 +272,10 @@ export function PatientWorkspacePage() {
             )
           )}
         </>
+      )}
+
+      {isCreateReferralOpen && (
+        <CreateReferralModal episodeId={episodeId} onClose={() => setIsCreateReferralOpen(false)} onCreated={() => { setIsCreateReferralOpen(false); refresh(); }} />
       )}
     </main>
   );

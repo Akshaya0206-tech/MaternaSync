@@ -1,7 +1,7 @@
 import { api } from './client';
-import type { JourneyEvent, CareTeamAppointment, CareTeamQuestion, Task, Handover, CareTeamNotification, CareTeamDocument } from './careTeamPortal';
+import type { JourneyEvent, CareTeamAppointment, CareTeamQuestion, Task, Handover, CareTeamNotification, CareTeamDocument, Referral, ReferralDetail } from './careTeamPortal';
 
-export type { JourneyEvent, CareTeamAppointment, CareTeamQuestion, Task, Handover, CareTeamNotification, CareTeamDocument };
+export type { JourneyEvent, CareTeamAppointment, CareTeamQuestion, Task, Handover, CareTeamNotification, CareTeamDocument, Referral, ReferralDetail };
 
 export interface TodayPatientRow {
   episodeId: string;
@@ -251,6 +251,27 @@ export function fetchFollowUps(status?: string): Promise<Task[]> {
 
 export function updateFollowUp(taskId: string, payload: { status?: string; dueDate?: string }): Promise<Task> {
   return api.patch<Task>(`/api/v2/doctor/follow-ups/${taskId}`, payload);
+}
+
+// ---------- Referrals ----------
+// The Doctor originates a referral; Care Team coordinates it after that
+// (see careTeamPortal.ts). The Doctor comes back only to review a
+// received response and close the loop.
+export function fetchReferrals(episodeId?: string): Promise<Referral[]> {
+  const qs = episodeId ? `?episode_id=${episodeId}` : '';
+  return api.get<Referral[]>(`/api/v2/doctor/referrals${qs}`);
+}
+
+export function fetchReferralDetail(referralId: string): Promise<ReferralDetail> {
+  return api.get<ReferralDetail>(`/api/v2/doctor/referrals/${referralId}`);
+}
+
+export function createReferral(episodeId: string, payload: { title: string; description?: string; destination?: string; referredTo?: string; dueDate?: string }): Promise<Referral> {
+  return api.post<Referral>(`/api/v2/doctor/episodes/${episodeId}/referrals`, { episodeId, ...payload });
+}
+
+export function closeReferral(referralId: string): Promise<Referral> {
+  return api.post<Referral>(`/api/v2/doctor/referrals/${referralId}/close`);
 }
 
 // ---------- Handover ----------

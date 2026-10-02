@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import { HeartPulse, Users, Stethoscope, ArrowRight } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { HeartPulse, Users, Stethoscope, ArrowRight, Building2 } from 'lucide-react';
 
 const WORKSPACES = [
   {
@@ -56,6 +56,13 @@ export function LandingPage() {
           </button>
         ))}
       </div>
+
+      <Link
+        to="/external-simulator"
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '40px', fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'none' }}
+      >
+        <Building2 size={14} /> External Hospital Simulator (Demo)
+      </Link>
     </div>
   );
 }

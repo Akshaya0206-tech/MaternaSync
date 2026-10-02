@@ -22,6 +22,9 @@ class Task(Base):
     source_type = Column(String, nullable=True)  # manual | question | referral | consultation
     source_id = Column(String, nullable=True)
 
+    waiting_for = Column(String, nullable=True)  # human-readable reason, e.g. "External hospital acknowledgement"
+    waiting_since = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=now)
     updated_at = Column(DateTime, default=now)
 
