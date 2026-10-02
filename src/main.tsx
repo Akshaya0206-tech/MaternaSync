@@ -1,13 +1,16 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import './index.css'
-import App from './App.tsx'
-import { AuthGate } from './components/auth/AuthGate'
+import { AuthProvider } from './auth/AuthContext'
+import { AppRoutes } from './routes/AppRoutes'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthGate>
-      {(user, logout) => <App currentUser={user} onLogout={logout} />}
-    </AuthGate>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
   </StrictMode>,
 )

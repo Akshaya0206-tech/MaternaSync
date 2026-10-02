@@ -1,6 +1,6 @@
 import { api } from './client';
 
-export type UserRole = 'doctor' | 'nurse' | 'care_coordinator' | 'other';
+export type UserRole = 'patient' | 'doctor' | 'care_team' | 'nurse' | 'care_coordinator' | 'other';
 
 export interface CurrentUser {
   id: string;

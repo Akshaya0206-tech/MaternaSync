@@ -1,10 +1,19 @@
+"""Original single-clinician schema, preserved as-is so the existing
+Phase 1-5 clinician app keeps running unmodified while the new role-based
+system (Patient / Care Team / Doctor) is built alongside it.
+
+`User` is the one table genuinely shared between the old and new systems
+(it's just a login table) — it gets one additive, nullable column (`title`)
+for the new system's display purposes. Nothing else here changes.
+"""
+
 import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import relationship
 
-from .database import Base
+from ..database import Base
 
 
 def _uuid() -> str:
@@ -23,6 +32,7 @@ class User(Base):
     email = Column(String, nullable=False, unique=True, index=True)
     password_hash = Column(String, nullable=False)
     role = Column(String, nullable=False, default="other")
+    title = Column(String, nullable=True)  # e.g. "Care Coordinator" — display only, new system
     created_at = Column(DateTime, default=_now)
 
 
