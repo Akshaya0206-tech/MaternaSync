@@ -4,18 +4,43 @@ import { Field, inputStyle } from './AuthField';
 import { login } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { CurrentUser } from '../../api/auth';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SignInProps {
   onAuthenticated: (token: string, user: CurrentUser) => void;
   onSwitchToSignUp: () => void;
 }
 
+interface DemoAccount {
+  role: 'Patient' | 'Care Team' | 'Doctor';
+  name: string;
+  email: string;
+  password: string;
+}
+
+// Synthetic demo/development credentials only — no real patient data.
+// Visible here deliberately: this is a hackathon/demo application.
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  { role: 'Patient', name: 'Sarah Jenkins', email: 'sarah.jenkins@maternasync.app', password: 'SarahDemo123!' },
+  { role: 'Patient', name: 'Priya Sharma', email: 'priya.sharma@maternasync.app', password: 'PriyaDemo123!' },
+  { role: 'Patient', name: 'Ananya Kumar', email: 'ananya.kumar@maternasync.app', password: 'AnanyaDemo123!' },
+  { role: 'Patient', name: 'Meera Raj', email: 'meera.raj@maternasync.app', password: 'MeeraDemo123!' },
+  { role: 'Care Team', name: 'Brenda Miller', email: 'brenda.miller@maternasync.app', password: 'BrendaDemo123!' },
+  { role: 'Care Team', name: 'James Wilson', email: 'james.wilson@maternasync.app', password: 'JamesDemo123!' },
+  { role: 'Care Team', name: 'Kavya Narayanan', email: 'kavya.narayanan@maternasync.app', password: 'KavyaDemo123!' },
+  { role: 'Doctor', name: 'Dr. Eleanor Vance (Demo Doctor)', email: 'demo@maternasync.app', password: 'MaternaDemo123!' },
+  { role: 'Doctor', name: 'Dr. Eleanor Vance', email: 'eleanor.vance@maternasync.app', password: 'EleanorDemo123!' },
+  { role: 'Doctor', name: 'Dr. Arjun Menon', email: 'arjun.menon@maternasync.app', password: 'ArjunDemo123!' },
+];
+
+const DEMO_ROLE_ORDER: DemoAccount['role'][] = ['Patient', 'Care Team', 'Doctor'];
+
 export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignUp }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDemoAccounts, setShowDemoAccounts] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,14 +50,24 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
       const result = await login(email.trim(), password);
       onAuthenticated(result.accessToken, result.user);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setError('Invalid email or password.');
+      if (err instanceof ApiError) {
+        setError(err.status === 401 ? 'Invalid email or password.' : 'Something went wrong. Please try again.');
       } else {
-        setError('Something went wrong. Please try again.');
+        // fetch() itself failed before any response came back — e.g. the
+        // backend isn't running/reachable. Not an ApiError, so it needs its
+        // own message instead of being shown as a wrong-password failure.
+        console.error('Login request failed before reaching the server:', err);
+        setError("Can't reach the server right now. Please try again in a moment.");
       }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleUseDemoAccount = (account: DemoAccount) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    setError(null);
   };
 
   return (
@@ -88,6 +123,52 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
           Create Account
         </button>
       </p>
+
+      <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+        <button
+          type="button"
+          onClick={() => setShowDemoAccounts((v) => !v)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', padding: '4px' }}
+        >
+          Demo Accounts {showDemoAccounts ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        {showDemoAccounts && (
+          <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {DEMO_ROLE_ORDER.map((role) => (
+              <div key={role}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>
+                  {role}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {DEMO_ACCOUNTS.filter((a) => a.role === role).map((account) => (
+                    <div
+                      key={account.email}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '8px 10px' }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{account.name}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.email}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleUseDemoAccount(account)}
+                        className="btn-secondary"
+                        style={{ flexShrink: 0, fontSize: '0.72rem', padding: '6px 10px', whiteSpace: 'nowrap' }}
+                      >
+                        Use Demo Account
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>
+              Synthetic demo data only. Selecting an account fills the form above — click Sign In to continue.
+            </p>
+          </div>
+        )}
+      </div>
     </AuthLayout>
   );
 };

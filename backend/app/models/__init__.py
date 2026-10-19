@@ -24,6 +24,7 @@ from .notification import Notification
 from .audit import AuditLog
 from .ai_artifact import AIArtifact
 from .communication import Communication
+from .guideline import GuidelineSource, GuidelineChunk, GuidelineReview
 
 __all__ = [
     # legacy
@@ -56,4 +57,6 @@ __all__ = [
     "AIArtifact",
     # communication
     "Communication",
+    # clinical guidelines
+    "GuidelineSource", "GuidelineChunk", "GuidelineReview",
 ]

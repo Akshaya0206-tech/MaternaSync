@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Mic, Square, Keyboard, Sparkles, Edit3, CheckCircle2, XCircle, RotateCcw, Loader2, AlertTriangle } from 'lucide-react';
 import {
   fetchPatients, fetchTodaysBrief, startConsultation, transcribeConsultation, updateTranscript,
-  generateDraft, updateDraft, rejectDraft, approveDraft,
+  generateDraft, updateDraft, rejectDraft, approveDraft, confirmFollowUp,
 } from '../../api/doctorPortal';
 import type { DoctorPatientRow, TodaysBrief, Consultation, ConsultationDraft, ConsultationDraftContent } from '../../api/doctorPortal';
 import { ApiError } from '../../api/client';
@@ -30,6 +30,9 @@ export function ConsultationsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [edits, setEdits] = useState<ConsultationDraftContent | null>(null);
+  const [suggestedFollowUp, setSuggestedFollowUp] = useState<string | null>(null);
+  const [followUpStatus, setFollowUpStatus] = useState<'pending' | 'confirmed' | 'skipped'>('pending');
+  const [isConfirmingFollowUp, setIsConfirmingFollowUp] = useState(false);
 
   const recorder = useVoiceRecorder();
   const mediaRecorderBlobRef = useRef<Blob | null>(null);
@@ -181,13 +184,33 @@ export function ConsultationsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await approveDraft(draft.id);
+      const approved = await approveDraft(draft.id);
       setDraft({ ...draft, status: 'APPROVED' });
+      setSuggestedFollowUp(approved.suggestedFollowUp);
+      setFollowUpStatus('pending');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not approve this documentation.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleConfirmFollowUp = async () => {
+    if (!consultation || !suggestedFollowUp) return;
+    setIsConfirmingFollowUp(true);
+    setError(null);
+    try {
+      await confirmFollowUp(consultation.id, suggestedFollowUp);
+      setFollowUpStatus('confirmed');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create the follow-up task.');
+    } finally {
+      setIsConfirmingFollowUp(false);
+    }
+  };
+
+  const handleSkipFollowUp = () => {
+    setFollowUpStatus('skipped');
   };
 
   return (
@@ -344,6 +367,22 @@ export function ConsultationsPage() {
               </div>
             )}
           </div>
+
+          {draft.status === 'APPROVED' && suggestedFollowUp && followUpStatus === 'pending' && (
+            <div className="glass-panel" style={{ padding: '18px 22px' }}>
+              <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Suggested Follow-up</div>
+              <div style={{ fontSize: '0.86rem', color: 'var(--text-primary)', marginBottom: '14px' }}>&ldquo;{suggestedFollowUp}&rdquo;</div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={handleConfirmFollowUp} disabled={isConfirmingFollowUp} className="btn-primary"><CheckCircle2 size={14} /> Create Task</button>
+                <button onClick={handleSkipFollowUp} disabled={isConfirmingFollowUp} className="btn-secondary">Skip</button>
+              </div>
+            </div>
+          )}
+          {draft.status === 'APPROVED' && followUpStatus === 'confirmed' && (
+            <div className="glass-panel" style={{ padding: '14px 22px', fontSize: '0.84rem', color: 'var(--emerald-raw)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CheckCircle2 size={15} /> Follow-up task created.
+            </div>
+          )}
         </div>
       )}
     </main>

@@ -30,6 +30,7 @@ from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..schemas import as_utc
 from ..deps import get_current_user, require_episode_access, require_role
+from ..handover_service import HandoverService
 from ..referral_communication import ReferralCommunicationService, ReferralTransitionError
 
 router = APIRouter(prefix="/api/v2/doctor", tags=["doctor-portal"])
@@ -102,17 +103,51 @@ def _to_task_out(db: Session, t: models.Task) -> schemas_v2.TaskOut:
         title=t.title, description=t.description or "", owner_name=_user_name(db, t.owner_user_id),
         created_by_name=_user_name(db, t.created_by_user_id) or "Unknown",
         due_date=t.due_date, priority=t.priority, status=t.status, source_type=t.source_type, source_id=t.source_id,
-        waiting_for=t.waiting_for, waiting_since=t.waiting_since, created_at=t.created_at,
+        waiting_for=t.waiting_for, waiting_since=t.waiting_since, auto_generated=bool(t.auto_generated), created_at=t.created_at,
     )
 
 
-def _to_handover_out(db: Session, h: models.Handover) -> schemas_v2.HandoverOut:
+def _to_handover_out(db: Session, h: models.Handover, is_latest: bool = True, diff: dict | None = None) -> schemas_v2.HandoverOut:
     return schemas_v2.HandoverOut(
         id=h.id, episode_id=h.episode_id, patient_name=_episode_name(db, h.episode_id),
+        version=h.version or 1,
         context=h.context, what_happened=h.what_happened, what_remains=h.what_remains,
         who_owns_it=h.who_owns_it, what_to_discuss=h.what_to_discuss, status=h.status,
-        generated_by_ai=h.generated_by_ai, created_at=h.created_at,
+        superseded_by_id=h.superseded_by_id, is_latest=is_latest,
+        generated_by_ai=h.generated_by_ai, created_at=h.created_at, updated_at=h.updated_at or h.created_at,
+        changed_from_previous=(diff or {}).get("changed_from_previous"),
+        source_data_changed=(diff or {}).get("source_data_changed"),
     )
+
+
+def _to_handover_history_out(db: Session, h: models.Handover, is_latest: bool, diff: dict | None) -> schemas_v2.HandoverHistoryOut:
+    return schemas_v2.HandoverHistoryOut(
+        id=h.id, version=h.version or 1, status=h.status, generated_by_ai=h.generated_by_ai,
+        created_by_name=_user_name(db, h.created_by_user_id) or "Unknown",
+        created_at=h.created_at, updated_at=h.updated_at or h.created_at,
+        approved_by_name=_user_name(db, h.approved_by_user_id), approved_at=h.approved_at,
+        superseded_by_id=h.superseded_by_id, is_latest=is_latest,
+        changed_from_previous=(diff or {}).get("changed_from_previous"),
+        source_data_changed=(diff or {}).get("source_data_changed"),
+        context=h.context, what_happened=h.what_happened, what_remains=h.what_remains,
+        who_owns_it=h.who_owns_it, what_to_discuss=h.what_to_discuss,
+    )
+
+
+def _build_doctor_handover_content(db: Session, episode: models.PregnancyEpisode, current_user: models.User) -> dict:
+    recent_event = db.query(models.JourneyEvent).filter(models.JourneyEvent.episode_id == episode.id).order_by(models.JourneyEvent.event_date.desc()).first()
+    what_happened = f"{recent_event.title} ({recent_event.event_date})." if recent_event else "No recent recorded activity."
+
+    open_tasks = db.query(models.Task).filter(models.Task.episode_id == episode.id, models.Task.status.in_(OPEN_TASK_STATUSES)).count()
+    open_questions = db.query(models.PatientQuestion).filter(models.PatientQuestion.episode_id == episode.id, models.PatientQuestion.status.in_(OPEN_QUESTION_STATUSES)).count()
+    what_remains = f"{open_tasks} open task(s)." if open_tasks else "Nothing outstanding."
+    what_to_discuss = f"{open_questions} patient question(s) pending response." if open_questions else "No pending patient questions."
+
+    return {
+        "context": f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d, risk: {episode.risk_category}.",
+        "what_happened": what_happened, "what_remains": what_remains,
+        "who_owns_it": f"{current_user.full_name} (clinical).", "what_to_discuss": what_to_discuss,
+    }
 
 
 # ---------- dashboard ----------
@@ -438,7 +473,14 @@ def verify_document(document_id: str, current_user: models.User = Depends(requir
         title=(ext.record_type if ext and ext.record_type else document.filename), summary=document.description or "",
         event_date=document.document_date or (ext.event_date if ext else None) or datetime.now(timezone.utc).date().isoformat(),
         gestational_age_weeks=episode.gestational_age_weeks if episode else 0, gestational_age_days=episode.gestational_age_days if episode else 0,
+        actor_label=current_user.full_name,
     ))
+    db.add(models.Notification(
+        recipient_user_id=document.uploaded_by_user_id, episode_id=document.episode_id, type="document_verified",
+        title="Your care team reviewed your uploaded documents", body="Your journey has been updated.",
+        related_entity_type="MedicalDocument", related_entity_id=document.id,
+    ))
+    _complete_open_tasks_for(db, "document_review", document.id)
     _log(db, document.episode_id, current_user, "document_verified", f"{current_user.full_name} verified \"{document.filename}\"", "Clinically verified and added to journey.", "MedicalDocument", document.id)
     db.commit()
     db.refresh(document)
@@ -668,15 +710,15 @@ def approve_draft(draft_id: str, current_user: models.User = Depends(require_rol
         title="Consultation completed", summary=content.get("visitContext", ""),
         event_date=datetime.now(timezone.utc).date().isoformat(),
         gestational_age_weeks=episode.gestational_age_weeks, gestational_age_days=episode.gestational_age_days,
+        actor_label=current_user.full_name,
     ))
 
+    # The follow-up task is NOT auto-created here — it's inferred from
+    # free text, which is Level-2 automation per the governance model:
+    # the doctor must explicitly confirm it via /confirm-follow-up below
+    # before a task is created. We only surface the suggestion text.
     follow_up_text = content.get("followUpNextSteps", "")
-    if follow_up_text and follow_up_text.strip() and follow_up_text.strip() != "Not documented.":
-        db.add(models.Task(
-            episode_id=episode.id, title=f"Follow up: {follow_up_text.strip()[:120]}",
-            description=follow_up_text.strip(), owner_user_id=current_user.id, created_by_user_id=current_user.id,
-            status="OPEN", source_type="consultation", source_id=consultation.id,
-        ))
+    suggested_follow_up = follow_up_text.strip() if follow_up_text and follow_up_text.strip() != "Not documented." else None
 
     _log(db, episode.id, current_user, "draft_approved", f"{current_user.full_name} approved consultation documentation (v{draft.version})", "Added to patient journey.", "ConsultationDraft", draft.id)
     db.commit()
@@ -685,7 +727,42 @@ def approve_draft(draft_id: str, current_user: models.User = Depends(require_rol
     return schemas_v2.ApprovedConsultationOut(
         id=approved.id, consultation_id=approved.consultation_id, draft_id=approved.draft_id,
         approved_by_name=current_user.full_name, approved_at=approved.approved_at, final_content=approved.final_content,
+        suggested_follow_up=suggested_follow_up,
     )
+
+
+@router.post("/consultations/{consultation_id}/confirm-follow-up", response_model=schemas_v2.TaskOut)
+def confirm_follow_up_task(
+    consultation_id: str, payload: schemas_v2.ConfirmFollowUpIn,
+    current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db),
+):
+    """LEVEL 2 automation: a follow-up task inferred from the doctor's own
+    free-text documentation is never created silently — this endpoint is
+    the explicit confirmation step the UI calls when the doctor accepts
+    the suggestion surfaced by /drafts/{id}/approve."""
+    consultation = _get_assigned_consultation(db, current_user, consultation_id)
+    text = payload.follow_up_text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="No follow-up text to confirm.")
+
+    existing = db.query(models.Task).filter(
+        models.Task.source_type == "consultation", models.Task.source_id == consultation_id,
+        models.Task.status.in_(OPEN_TASK_STATUSES),
+    ).first()
+    if existing:
+        return _to_task_out(db, existing)
+
+    task = models.Task(
+        episode_id=consultation.episode_id, title=f"Follow up: {text[:120]}", description=text,
+        owner_user_id=current_user.id, created_by_user_id=current_user.id,
+        status="OPEN", source_type="consultation", source_id=consultation_id, auto_generated=True,
+    )
+    db.add(task)
+    _log(db, consultation.episode_id, current_user, "follow_up_task_confirmed",
+          "Doctor confirmed a suggested follow-up task", text[:200], "Task", task.id)
+    db.commit()
+    db.refresh(task)
+    return _to_task_out(db, task)
 
 
 # ---------- documentation history ----------
@@ -744,6 +821,16 @@ def _get_assigned_question(db: Session, current_user: models.User, question_id: 
     return question
 
 
+def _complete_open_tasks_for(db: Session, source_type: str, source_id: str) -> None:
+    tasks = db.query(models.Task).filter(
+        models.Task.source_type == source_type, models.Task.source_id == source_id,
+        models.Task.status.in_(OPEN_TASK_STATUSES),
+    ).all()
+    for t in tasks:
+        t.status = "COMPLETED"
+        t.updated_at = datetime.now(timezone.utc)
+
+
 @router.post("/questions/{question_id}/draft", response_model=schemas_v2.CareTeamQuestionOut)
 def draft_question_response(question_id: str, payload: schemas_v2.DraftResponseIn, current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
     question = _get_assigned_question(db, current_user, question_id)
@@ -785,6 +872,8 @@ def approve_question_response(question_id: str, current_user: models.User = Depe
     draft.approved_by_user_id = current_user.id
     draft.approved_at = datetime.now(timezone.utc)
     question.status = "ANSWERED"
+    _complete_open_tasks_for(db, "question_response", question.id)
+    _complete_open_tasks_for(db, "question_triage", question.id)
 
     db.add(models.Notification(
         recipient_user_id=question.asked_by_user_id, episode_id=question.episode_id, type="question_answered",
@@ -941,36 +1030,37 @@ def update_follow_up(task_id: str, payload: schemas_v2.TaskUpdateIn, current_use
 
 @router.get("/handover/{episode_id}", response_model=schemas_v2.HandoverOut | None)
 def get_handover(episode: models.PregnancyEpisode = Depends(require_episode_access), db: Session = Depends(get_db)):
-    handover = db.query(models.Handover).filter(models.Handover.episode_id == episode.id).order_by(models.Handover.created_at.desc()).first()
-    return _to_handover_out(db, handover) if handover else None
+    service = HandoverService(db)
+    handover = service.get_latest(episode.id)
+    if handover is None:
+        return None
+    return _to_handover_out(db, handover, is_latest=True, diff=service.diff_against_previous(handover))
+
+
+@router.get("/handover/{episode_id}/history", response_model=list[schemas_v2.HandoverHistoryOut])
+def get_handover_history(episode: models.PregnancyEpisode = Depends(require_episode_access), db: Session = Depends(get_db)):
+    service = HandoverService(db)
+    rows = service.list_history(episode.id)
+    return [
+        _to_handover_history_out(db, row, is_latest=(i == 0), diff=service.diff_against_previous(row))
+        for i, row in enumerate(rows)
+    ]
 
 
 @router.post("/handover/{episode_id}/generate", response_model=schemas_v2.HandoverOut)
-def generate_handover(episode: models.PregnancyEpisode = Depends(require_episode_access), current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "doctor":
-        raise HTTPException(status_code=403, detail="Only the assigned doctor can generate a handover draft here.")
+def generate_handover(episode: models.PregnancyEpisode = Depends(require_episode_access), current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
+    service = HandoverService(db)
+    content = _build_doctor_handover_content(db, episode, current_user)
+    handover = service.generate_new_version(episode, current_user, content)
 
-    recent_event = db.query(models.JourneyEvent).filter(models.JourneyEvent.episode_id == episode.id).order_by(models.JourneyEvent.event_date.desc()).first()
-    what_happened = f"{recent_event.title} ({recent_event.event_date})." if recent_event else "No recent recorded activity."
-
-    open_tasks = db.query(models.Task).filter(models.Task.episode_id == episode.id, models.Task.status.in_(OPEN_TASK_STATUSES)).count()
-    open_questions = db.query(models.PatientQuestion).filter(models.PatientQuestion.episode_id == episode.id, models.PatientQuestion.status.in_(OPEN_QUESTION_STATUSES)).count()
-    what_remains = f"{open_tasks} open task(s)." if open_tasks else "Nothing outstanding."
-    what_to_discuss = f"{open_questions} patient question(s) pending response." if open_questions else "No pending patient questions."
-
-    handover = models.Handover(
-        episode_id=episode.id,
-        context=f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d, risk: {episode.risk_category}.",
-        what_happened=what_happened, what_remains=what_remains,
-        who_owns_it=f"{current_user.full_name} (clinical).", what_to_discuss=what_to_discuss,
-        status="DRAFT", generated_by_ai=True, created_by_user_id=current_user.id,
-    )
-    db.add(handover)
-    db.flush()
-    _log(db, episode.id, current_user, "handover_created", "Handover draft generated by doctor", "AI-assisted draft, pending review.", "Handover", handover.id)
+    is_regenerate = handover.version > 1
+    _log(db, episode.id, current_user,
+         "handover_regenerated" if is_regenerate else "handover_created",
+         f"Handover draft generated by doctor (v{handover.version})" if is_regenerate else "Handover draft generated by doctor",
+         "AI-assisted draft, pending review.", "Handover", handover.id)
     db.commit()
     db.refresh(handover)
-    return _to_handover_out(db, handover)
+    return _to_handover_out(db, handover, is_latest=True, diff=service.diff_against_previous(handover))
 
 
 @router.patch("/handover/{handover_id}", response_model=schemas_v2.HandoverOut)
@@ -980,13 +1070,16 @@ def update_handover(handover_id: str, payload: schemas_v2.HandoverUpdateIn, curr
         raise HTTPException(status_code=404, detail="Handover not found.")
     if handover.episode_id not in _assigned_episode_ids(db, current_user):
         raise HTTPException(status_code=403, detail="You are not assigned to this patient.")
+    HandoverService(db).require_editable(handover)
     for field in ("context", "what_happened", "what_remains", "who_owns_it", "what_to_discuss"):
         value = getattr(payload, field)
         if value is not None:
             setattr(handover, field, value)
+    handover.updated_at = datetime.now(timezone.utc)
+    _log(db, handover.episode_id, current_user, "handover_edited", f"Handover draft edited by doctor (v{handover.version or 1})", "", "Handover", handover.id)
     db.commit()
     db.refresh(handover)
-    return _to_handover_out(db, handover)
+    return _to_handover_out(db, handover, is_latest=True)
 
 
 @router.post("/handover/{handover_id}/share", response_model=schemas_v2.HandoverOut)
@@ -996,13 +1089,15 @@ def share_handover(handover_id: str, current_user: models.User = Depends(require
         raise HTTPException(status_code=404, detail="Handover not found.")
     if handover.episode_id not in _assigned_episode_ids(db, current_user):
         raise HTTPException(status_code=403, detail="You are not assigned to this patient.")
+    HandoverService(db).require_editable(handover)
     handover.status = "FINAL"
     handover.approved_by_user_id = current_user.id
     handover.approved_at = datetime.now(timezone.utc)
+    handover.updated_at = handover.approved_at
     _log(db, handover.episode_id, current_user, "handover_shared", "Handover shared internally by doctor", "", "Handover", handover.id)
     db.commit()
     db.refresh(handover)
-    return _to_handover_out(db, handover)
+    return _to_handover_out(db, handover, is_latest=True)
 
 
 # ---------- updates ----------

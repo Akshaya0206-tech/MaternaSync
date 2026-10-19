@@ -7,12 +7,13 @@ existing credentials keep working. Idempotent — safe to run every startup.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy.orm import Session
 
 from . import models
+from .referral_communication import ReferralCommunicationService
 from .security import hash_password
 
 SEED_JSON = Path(__file__).resolve().parent.parent / "seed_mock_patients.json"
@@ -25,6 +26,18 @@ PASSWORDS = {
     "lin.park@maternasync.app": "LinDemo123!",                # second care_team
     "elena.rostova@maternasync.app": "ElenaDemo123!",           # patient (Dr. Chen's)
     "amara.okafor@maternasync.app": "AmaraDemo123!",              # patient (Dr. Vance's 2nd)
+    # Second batch, added on request (see ensure_additional_demo_accounts below)
+    "priya.sharma@maternasync.app": "PriyaDemo123!",             # patient (James/Eleanor Vance II)
+    "ananya.kumar@maternasync.app": "AnanyaDemo123!",             # patient (Kavya/Arjun Menon)
+    "meera.raj@maternasync.app": "MeeraDemo123!",                  # patient (Brenda/Eleanor Vance II)
+    "james.wilson@maternasync.app": "JamesDemo123!",                # care_team
+    "kavya.narayanan@maternasync.app": "KavyaDemo123!",              # care_team
+    "eleanor.vance@maternasync.app": "EleanorDemo123!",               # doctor — NOTE: shares a display
+                                                                        # name with demo@maternasync.app's
+                                                                        # "Dr. Eleanor Vance"; kept as a
+                                                                        # distinct account/email per request,
+                                                                        # differentiated only by title.
+    "arjun.menon@maternasync.app": "ArjunDemo123!",                     # doctor
 }
 
 
@@ -284,3 +297,272 @@ def ensure_patient_portal_demo_data(db: Session) -> None:
 
     db.commit()
     print("Seeded one answered patient question (with approved response) for Sarah Jenkins.")
+
+
+def ensure_additional_demo_accounts(db: Session) -> None:
+    """Second batch of synthetic demo accounts, added on request after the
+    original 3-patient / 2-doctor / 2-care-team seed above. Runs on every
+    startup independently of `run_seed_role_data`'s one-time gate, so it
+    backfills cleanly on a database that was already seeded before this
+    batch existed. User creation is idempotent via `_get_or_create_user`;
+    episode/workflow creation is additionally guarded by an
+    already-has-an-episode check per patient, so re-running this never
+    duplicates episodes, assignments, tasks, or referrals."""
+    james = _get_or_create_user(db, "james.wilson@maternasync.app", "James Wilson", "care_team", title="Care Coordinator")
+    kavya = _get_or_create_user(db, "kavya.narayanan@maternasync.app", "Kavya Narayanan", "care_team", title="Obstetric Triage Nurse")
+    dr_vance2 = _get_or_create_user(db, "eleanor.vance@maternasync.app", "Dr. Eleanor Vance", "doctor", title="Maternal-Fetal Medicine Specialist")
+    dr_menon = _get_or_create_user(db, "arjun.menon@maternasync.app", "Dr. Arjun Menon", "doctor", title="Attending Obstetrician")
+    brenda = db.query(models.User).filter(models.User.email == "brenda.miller@maternasync.app").first()
+
+    priya = _get_or_create_user(db, "priya.sharma@maternasync.app", "Priya Sharma", "patient")
+    ananya = _get_or_create_user(db, "ananya.kumar@maternasync.app", "Ananya Kumar", "patient")
+    meera = _get_or_create_user(db, "meera.raj@maternasync.app", "Meera Raj", "patient")
+    db.flush()
+
+    if not db.query(models.PatientProfile).filter(models.PatientProfile.user_id == priya.id).first():
+        db.add(models.PatientProfile(user_id=priya.id, date_of_birth="1997-03-14", mrn="MRN-10234"))
+    if not db.query(models.PatientProfile).filter(models.PatientProfile.user_id == ananya.id).first():
+        db.add(models.PatientProfile(user_id=ananya.id, date_of_birth="1993-07-22", mrn="MRN-10578"))
+    if not db.query(models.PatientProfile).filter(models.PatientProfile.user_id == meera.id).first():
+        db.add(models.PatientProfile(user_id=meera.id, date_of_birth="2000-01-05", mrn="MRN-10812"))
+    db.flush()
+
+    if db.query(models.PregnancyEpisode).filter(models.PregnancyEpisode.patient_user_id == priya.id).first():
+        db.commit()  # persist any role/profile backfill above even if episodes already exist
+        return
+
+    if brenda is None:
+        db.commit()
+        return  # original batch hasn't seeded yet; this will retry on the next startup
+
+    today = _now()
+
+    # --- Priya Sharma -> James Wilson (care team) / Dr. Eleanor Vance II (doctor) ---
+    priya_episode = models.PregnancyEpisode(
+        patient_user_id=priya.id, patient_name="Priya Sharma", mrn="MRN-10234", age=29,
+        dob="1997-03-14", edd=(today + timedelta(weeks=16)).strftime("%Y-%m-%d"),
+        gestational_age_weeks=24, gestational_age_days=2, gravida_para="G2P1", blood_type="O+",
+        allergies=[], risk_category="routine", risk_notes="No complications noted.",
+        facility="Riverside Maternity Center", is_ready_for_today_brief=True,
+    )
+    db.add(priya_episode)
+    db.flush()
+    db.add(models.PatientDoctorAssignment(episode_id=priya_episode.id, doctor_user_id=dr_vance2.id, is_primary=True))
+    db.add(models.PatientCareTeamAssignment(episode_id=priya_episode.id, care_team_user_id=james.id, role_on_case=james.title))
+
+    priya_doc = models.MedicalDocument(
+        episode_id=priya_episode.id, uploaded_by_user_id=priya.id, uploaded_by_role="patient",
+        filename="20-week-anatomy-scan.pdf", file_path="",
+        document_date=(today - timedelta(days=3)).strftime("%Y-%m-%d"), status="VERIFIED",
+        uploaded_at=today - timedelta(days=3),
+    )
+    db.add(priya_doc)
+    db.flush()
+    db.add(models.DocumentExtraction(
+        document_id=priya_doc.id, raw_text="Anatomy scan: fetal growth on track, anatomy survey normal.",
+        record_type="Ultrasound", event_date=(today - timedelta(days=3)).strftime("%Y-%m-%d"),
+        facility="Riverside Maternity Center", provider=dr_vance2.full_name,
+        gestational_age="24 weeks 0 days", field_status={"recordType": {"value": "Ultrasound", "status": "extracted"}},
+    ))
+    db.add(models.DocumentReview(document_id=priya_doc.id, reviewer_user_id=james.id, reviewer_role="care_team", action="VERIFY", reviewed_at=today - timedelta(days=2)))
+    db.add(models.JourneyEvent(
+        episode_id=priya_episode.id, event_type="document", source_document_id=priya_doc.id,
+        title="20-Week Anatomy Scan", summary="Anatomy survey normal; fetal growth on track.",
+        event_date=(today - timedelta(days=3)).strftime("%Y-%m-%d"),
+        gestational_age_weeks=24, gestational_age_days=0, actor_label=james.full_name,
+    ))
+
+    db.add(models.PatientQuestion(
+        episode_id=priya_episode.id, asked_by_user_id=priya.id,
+        question_text="Is it safe to travel by air at 24 weeks?", status="NEW", is_clinical=True,
+    ))
+
+    db.add(models.Task(
+        episode_id=priya_episode.id, title="Schedule glucose tolerance test",
+        description="Routine 24-28 week glucose screening.", owner_user_id=james.id,
+        created_by_user_id=dr_vance2.id, due_date=(today + timedelta(days=10)).strftime("%Y-%m-%d"),
+        priority="routine", status="OPEN", source_type="manual",
+    ))
+
+    db.add(models.Appointment(
+        episode_id=priya_episode.id,
+        scheduled_at=(today + timedelta(days=14)).replace(hour=10, minute=30, second=0, microsecond=0),
+        appointment_type="consultation", location="Riverside Maternity Center", status="scheduled",
+    ))
+
+    db.add(models.Handover(
+        episode_id=priya_episode.id, context="GA 24w2d, risk: routine.",
+        what_happened="20-week anatomy scan reviewed and verified.",
+        what_remains="Glucose tolerance test to be scheduled; air travel question awaiting response.",
+        who_owns_it=f"{james.full_name} (coordination), {dr_vance2.full_name} (clinical).",
+        what_to_discuss="Patient question on air travel safety at 24 weeks.",
+        status="DRAFT", generated_by_ai=True, created_by_user_id=james.id,
+    ))
+
+    db.add(models.Notification(recipient_user_id=dr_vance2.id, episode_id=priya_episode.id, type="brief_ready",
+                                title="Today's Brief ready for Priya Sharma", body="Context prepared from verified records."))
+    db.add(models.Notification(recipient_user_id=priya.id, episode_id=priya_episode.id, type="document_verified",
+                                title="Your care team reviewed your uploaded documents", body="Your journey has been updated."))
+    db.add(models.AuditLog(episode_id=priya_episode.id, actor_user_id=james.id, actor_role="care_team",
+                            actor_display_name=james.full_name, action="episode_seeded",
+                            title="Demo episode prepared for Priya Sharma", details="Seeded synthetic demo content.",
+                            object_type="PregnancyEpisode", object_id=priya_episode.id))
+
+    # --- Ananya Kumar -> Kavya Narayanan (care team) / Dr. Arjun Menon (doctor) ---
+    ananya_episode = models.PregnancyEpisode(
+        patient_user_id=ananya.id, patient_name="Ananya Kumar", mrn="MRN-10578", age=33,
+        dob="1993-07-22", edd=(today + timedelta(weeks=10)).strftime("%Y-%m-%d"),
+        gestational_age_weeks=30, gestational_age_days=0, gravida_para="G1P0", blood_type="A+",
+        allergies=["Penicillin"], risk_category="high_risk",
+        risk_notes="Gestational diabetes diagnosed at 28 weeks; referred for specialist review.",
+        facility="Westfield Women's Hospital", is_ready_for_today_brief=True,
+    )
+    db.add(ananya_episode)
+    db.flush()
+    db.add(models.PatientDoctorAssignment(episode_id=ananya_episode.id, doctor_user_id=dr_menon.id, is_primary=True))
+    db.add(models.PatientCareTeamAssignment(episode_id=ananya_episode.id, care_team_user_id=kavya.id, role_on_case=kavya.title))
+
+    ananya_doc = models.MedicalDocument(
+        episode_id=ananya_episode.id, uploaded_by_user_id=ananya.id, uploaded_by_role="patient",
+        filename="glucose-tolerance-test-results.pdf", file_path="",
+        document_date=(today - timedelta(days=1)).strftime("%Y-%m-%d"), status="NEEDS_REVIEW",
+        uploaded_at=today - timedelta(days=1),
+    )
+    db.add(ananya_doc)
+    db.flush()
+    db.add(models.DocumentExtraction(
+        document_id=ananya_doc.id,
+        raw_text="3-hour GTT: fasting 98, 1hr 192, 2hr 168, 3hr 142 — consistent with gestational diabetes.",
+        record_type="Lab Result", event_date=(today - timedelta(days=1)).strftime("%Y-%m-%d"),
+        facility="Westfield Women's Hospital", provider=dr_menon.full_name,
+        gestational_age="30 weeks 0 days", field_status={"recordType": {"value": "Lab Result", "status": "extracted"}},
+    ))
+
+    db.add(models.Appointment(
+        episode_id=ananya_episode.id,
+        scheduled_at=(today + timedelta(days=7)).replace(hour=9, minute=0, second=0, microsecond=0),
+        appointment_type="consultation", location="Westfield Women's Hospital", status="scheduled",
+    ))
+
+    db.add(models.Handover(
+        episode_id=ananya_episode.id, context="GA 30w0d, risk: high_risk (gestational diabetes).",
+        what_happened="Glucose tolerance test results pending care team review.",
+        what_remains="Maternal-fetal medicine referral in progress; pending test review.",
+        who_owns_it=f"{kavya.full_name} (coordination), {dr_menon.full_name} (clinical).",
+        what_to_discuss="Specialist referral status and glucose management plan.",
+        status="DRAFT", generated_by_ai=True, created_by_user_id=kavya.id,
+    ))
+
+    db.add(models.Notification(recipient_user_id=dr_menon.id, episode_id=ananya_episode.id, type="brief_ready",
+                                title="Today's Brief ready for Ananya Kumar", body="Context prepared from verified records."))
+    db.add(models.Notification(recipient_user_id=kavya.id, episode_id=ananya_episode.id, type="document_needs_review",
+                                title="New document needs review", body="Ananya Kumar uploaded glucose tolerance test results."))
+    db.add(models.AuditLog(episode_id=ananya_episode.id, actor_user_id=kavya.id, actor_role="care_team",
+                            actor_display_name=kavya.full_name, action="episode_seeded",
+                            title="Demo episode prepared for Ananya Kumar", details="Seeded synthetic demo content.",
+                            object_type="PregnancyEpisode", object_id=ananya_episode.id))
+
+    db.flush()  # assignments must be queryable before the referral service looks them up
+
+    referral_service = ReferralCommunicationService(db)
+    referral = referral_service.create_referral(
+        episode=ananya_episode, doctor_user=dr_menon,
+        title="Maternal-Fetal Medicine Consultation for Gestational Diabetes",
+        description="Specialist review requested following GTT results consistent with gestational diabetes.",
+        destination="Maternal-Fetal Medicine Specialist Center", referred_to="MFM Specialist",
+        due_date=(today + timedelta(days=14)).strftime("%Y-%m-%d"),
+    )
+    # The session has autoflush=False, and _sync_task finds-or-updates its
+    # tracking task by querying for it — without this flush, send_referral's
+    # query wouldn't see the task create_referral just added (still pending),
+    # so it would insert a second task instead of updating the first.
+    db.flush()
+    referral_service.send_referral(referral, kavya)
+
+    # --- Meera Raj -> Brenda Miller (existing care team) / Dr. Eleanor Vance II (doctor) ---
+    meera_episode = models.PregnancyEpisode(
+        patient_user_id=meera.id, patient_name="Meera Raj", mrn="MRN-10812", age=26,
+        dob="2000-01-05", edd=(today + timedelta(weeks=21)).strftime("%Y-%m-%d"),
+        gestational_age_weeks=18, gestational_age_days=5, gravida_para="G1P0", blood_type="B+",
+        allergies=[], risk_category="routine", risk_notes="Uncomplicated pregnancy to date.",
+        facility="Riverside Maternity Center", is_ready_for_today_brief=True,
+    )
+    db.add(meera_episode)
+    db.flush()
+    db.add(models.PatientDoctorAssignment(episode_id=meera_episode.id, doctor_user_id=dr_vance2.id, is_primary=True))
+    db.add(models.PatientCareTeamAssignment(episode_id=meera_episode.id, care_team_user_id=brenda.id, role_on_case=brenda.title or "Care Coordinator"))
+
+    meera_doc = models.MedicalDocument(
+        episode_id=meera_episode.id, uploaded_by_user_id=meera.id, uploaded_by_role="patient",
+        filename="first-trimester-screening.pdf", file_path="",
+        document_date=(today - timedelta(days=30)).strftime("%Y-%m-%d"), status="VERIFIED",
+        uploaded_at=today - timedelta(days=30),
+    )
+    db.add(meera_doc)
+    db.flush()
+    db.add(models.DocumentExtraction(
+        document_id=meera_doc.id, raw_text="First trimester combined screening: low risk for aneuploidy.",
+        record_type="Lab Result", event_date=(today - timedelta(days=30)).strftime("%Y-%m-%d"),
+        facility="Riverside Maternity Center", provider=dr_vance2.full_name,
+        gestational_age="12 weeks 0 days", field_status={"recordType": {"value": "Lab Result", "status": "extracted"}},
+    ))
+    db.add(models.DocumentReview(document_id=meera_doc.id, reviewer_user_id=brenda.id, reviewer_role="care_team", action="VERIFY", reviewed_at=today - timedelta(days=29)))
+    db.add(models.JourneyEvent(
+        episode_id=meera_episode.id, event_type="document", source_document_id=meera_doc.id,
+        title="First Trimester Screening", summary="Low risk for aneuploidy.",
+        event_date=(today - timedelta(days=30)).strftime("%Y-%m-%d"),
+        gestational_age_weeks=12, gestational_age_days=0, actor_label=brenda.full_name,
+    ))
+
+    meera_question = models.PatientQuestion(
+        episode_id=meera_episode.id, asked_by_user_id=meera.id,
+        question_text="Is it normal to still have mild nausea at 18 weeks?", status="ANSWERED",
+        is_clinical=True, assigned_to_user_id=dr_vance2.id,
+    )
+    db.add(meera_question)
+    db.flush()
+    db.add(models.QuestionResponse(
+        question_id=meera_question.id, responder_user_id=dr_vance2.id, responder_role="doctor",
+        response_text=(
+            "Yes, mild nausea can persist into the second trimester for some patients. "
+            "It should continue to improve; mention it at your next visit if it worsens."
+        ),
+        status="APPROVED", approved_by_user_id=dr_vance2.id, approved_at=today, visible_to_patient=True,
+    ))
+
+    db.add(models.Task(
+        episode_id=meera_episode.id, title="Confirm anatomy scan appointment",
+        description="Follow up to confirm the patient's upcoming 20-week scan.", owner_user_id=brenda.id,
+        created_by_user_id=brenda.id, status="COMPLETED", source_type="manual",
+    ))
+
+    db.add(models.Appointment(
+        episode_id=meera_episode.id,
+        scheduled_at=(today + timedelta(days=21)).replace(hour=11, minute=0, second=0, microsecond=0),
+        appointment_type="consultation", location="Riverside Maternity Center", status="scheduled",
+    ))
+
+    db.add(models.Handover(
+        episode_id=meera_episode.id, context="GA 18w5d, risk: routine.",
+        what_happened="First trimester screening reviewed and verified; nausea question answered.",
+        what_remains="20-week anatomy scan appointment confirmed.",
+        who_owns_it=f"{brenda.full_name} (coordination), {dr_vance2.full_name} (clinical).",
+        what_to_discuss="None pending.",
+        status="DRAFT", generated_by_ai=True, created_by_user_id=brenda.id,
+    ))
+
+    db.add(models.Notification(recipient_user_id=dr_vance2.id, episode_id=meera_episode.id, type="brief_ready",
+                                title="Today's Brief ready for Meera Raj", body="Context prepared from verified records."))
+    db.add(models.Notification(recipient_user_id=meera.id, episode_id=meera_episode.id, type="document_verified",
+                                title="Your care team reviewed your uploaded documents", body="Your journey has been updated."))
+    db.add(models.AuditLog(episode_id=meera_episode.id, actor_user_id=brenda.id, actor_role="care_team",
+                            actor_display_name=brenda.full_name, action="episode_seeded",
+                            title="Demo episode prepared for Meera Raj", details="Seeded synthetic demo content.",
+                            object_type="PregnancyEpisode", object_id=meera_episode.id))
+
+    db.commit()
+    print("Seeded additional demo accounts: 3 patients, 2 doctors, 2 care-team members.")
+    print("Patient logins: priya.sharma@maternasync.app/PriyaDemo123!, "
+          "ananya.kumar@maternasync.app/AnanyaDemo123!, meera.raj@maternasync.app/MeeraDemo123!")
+    print("Doctor logins: eleanor.vance@maternasync.app/EleanorDemo123!, arjun.menon@maternasync.app/ArjunDemo123!")
+    print("Care team logins: james.wilson@maternasync.app/JamesDemo123!, kavya.narayanan@maternasync.app/KavyaDemo123!")

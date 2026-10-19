@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from .. import extraction, models, schemas_v2
+from .. import automation, extraction, models, schemas_v2
 from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..deps import get_current_user, get_my_patient_episode, require_role
@@ -207,6 +207,11 @@ async def upload_my_document(
         object_type="MedicalDocument", object_id=document.id,
     ))
 
+    automation.dispatch_event(
+        db, automation.events.DOCUMENT_UPLOADED, episode_id=episode.id, actor_user_id=current_user.id,
+        source_type="MedicalDocument", source_id=document.id, payload={"filename": document.filename},
+    )
+
     db.commit()
     db.refresh(document)
 
@@ -277,6 +282,11 @@ def create_my_question(
         title=f"{current_user.full_name} submitted a question",
         details=text[:200], object_type="PatientQuestion", object_id=question.id,
     ))
+
+    automation.dispatch_event(
+        db, automation.events.PATIENT_QUESTION_CREATED, episode_id=episode.id, actor_user_id=current_user.id,
+        source_type="PatientQuestion", source_id=question.id, payload={"questionText": text},
+    )
 
     db.commit()
     db.refresh(question)

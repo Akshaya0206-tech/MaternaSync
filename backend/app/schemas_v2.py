@@ -22,17 +22,20 @@ __all__ = [
     "ReferralOut", "ReferralCreateIn", "ReferralUpdateIn",
     "SendReferralIn", "AcknowledgeReferralIn", "RecordAppointmentIn", "RecordResponseIn",
     "ReferralEventOut", "CommunicationEventOut", "ReferralDetailOut",
-    "HandoverOut", "HandoverUpdateIn",
+    "HandoverOut", "HandoverUpdateIn", "HandoverHistoryOut",
     "CareTeamProfileOut", "CareTeamProfileUpdateIn",
     # doctor
     "TodayPatientRowOut", "DoctorDashboardOut", "DoctorPatientRowOut",
     "DocumentSummaryOut", "TodaysBriefOut",
     "ConsultationStartIn", "ConsultationOut", "TranscriptUpdateIn",
-    "ConsultationDraftOut", "DraftUpdateIn", "ApprovedConsultationOut", "DocumentationItemOut",
+    "ConsultationDraftOut", "DraftUpdateIn", "ApprovedConsultationOut", "ConfirmFollowUpIn", "DocumentationItemOut",
     "DraftResponseIn",
     "DoctorProfileOut", "DoctorProfileUpdateIn",
     # external simulator
     "SimulatorReferralOut", "SimulatorAppointmentIn", "SimulatorResponseIn", "SimulatorAcknowledgeIn",
+    # clinical guidelines
+    "GuidelineSourceOut", "GuidelineSourceDetailOut", "GuidelineChunkOut",
+    "GuidelineFilterOptionsOut", "GuidelineSearchIn", "GuidelineExcerptOut", "GuidelineSearchOut",
 ]
 
 
@@ -73,7 +76,7 @@ DOCUMENT_STATUS_LABELS = {
     "PROCESSING": "Processing",
     "NEEDS_REVIEW": "Under Review",
     "VERIFIED": "Verified",
-    "REJECTED": "Needs Review",
+    "REJECTED": "Rejected",
 }
 
 
@@ -311,6 +314,7 @@ class TaskOut(CamelModel):
     source_id: str | None
     waiting_for: str | None
     waiting_since: datetime | None
+    auto_generated: bool
     created_at: datetime
 
 
@@ -440,14 +444,20 @@ class HandoverOut(CamelModel):
     id: str
     episode_id: str
     patient_name: str
+    version: int
     context: str
     what_happened: str
     what_remains: str
     who_owns_it: str
     what_to_discuss: str
-    status: str
+    status: str  # DRAFT | FINAL | SUPERSEDED
+    superseded_by_id: str | None = None
+    is_latest: bool
     generated_by_ai: bool
     created_at: datetime
+    updated_at: datetime
+    changed_from_previous: dict[str, bool] | None = None
+    source_data_changed: bool | None = None
 
 
 class HandoverUpdateIn(CamelModel):
@@ -456,6 +466,27 @@ class HandoverUpdateIn(CamelModel):
     what_remains: str | None = None
     who_owns_it: str | None = None
     what_to_discuss: str | None = None
+
+
+class HandoverHistoryOut(CamelModel):
+    id: str
+    version: int
+    status: str
+    generated_by_ai: bool
+    created_by_name: str
+    created_at: datetime
+    updated_at: datetime
+    approved_by_name: str | None = None
+    approved_at: datetime | None = None
+    superseded_by_id: str | None = None
+    is_latest: bool
+    changed_from_previous: dict[str, bool] | None = None
+    source_data_changed: bool | None = None
+    context: str
+    what_happened: str
+    what_remains: str
+    who_owns_it: str
+    what_to_discuss: str
 
 
 # ---------- Profile ----------
@@ -584,6 +615,11 @@ class ApprovedConsultationOut(CamelModel):
     approved_by_name: str
     approved_at: datetime
     final_content: dict
+    suggested_follow_up: str | None = None
+
+
+class ConfirmFollowUpIn(CamelModel):
+    follow_up_text: str
 
 
 class DocumentationItemOut(CamelModel):
@@ -648,3 +684,79 @@ class SimulatorAppointmentIn(CamelModel):
 
 class SimulatorResponseIn(CamelModel):
     response_text: str
+
+
+# ---------- Clinical Guidelines ----------
+
+class GuidelineSourceOut(CamelModel):
+    id: str
+    title: str
+    issuing_organization: str
+    source_url: str | None
+    version: str | None
+    publication_date: str | None
+    category: str
+    document_type: str
+    jurisdiction: str | None
+    language: str | None
+    filename: str
+    is_demo_content: bool
+    status: str  # PROCESSING | AWAITING_REVIEW | APPROVED | REJECTED | EXCLUDED
+    chunk_count: int
+    uploaded_by_name: str
+    uploaded_at: datetime
+    last_reviewed_at: datetime | None = None
+
+
+class GuidelineChunkOut(CamelModel):
+    id: str
+    chunk_index: int
+    text: str
+    page_number: int | None
+    section_label: str | None
+
+
+class GuidelineSourceDetailOut(GuidelineSourceOut):
+    chunks: list[GuidelineChunkOut]
+
+
+class GuidelineFilterOptionsOut(CamelModel):
+    categories: list[str]
+    organizations: list[str]
+    document_types: list[str]
+
+
+class GuidelineSearchIn(CamelModel):
+    query: str
+    category: str | None = None
+    organization: str | None = None
+    document_type: str | None = None
+    max_results: int = 5
+
+
+class GuidelineExcerptOut(CamelModel):
+    chunk_id: str
+    source_id: str
+    source_title: str
+    issuing_organization: str
+    version: str | None
+    publication_date: str | None
+    source_url: str | None
+    document_type: str
+    category: str
+    page_number: int | None
+    section_label: str | None
+    excerpt_text: str
+    similarity_score: float
+    is_demo_content: bool
+    last_reviewed_at: datetime | None = None
+
+
+class GuidelineSearchOut(CamelModel):
+    query: str
+    has_sufficient_evidence: bool
+    answer_text: str
+    excerpts: list[GuidelineExcerptOut]
+    distinct_source_count: int
+    disagreement_possible: bool
+    searched_at: datetime

@@ -37,9 +37,14 @@ ADDITIVE_COLUMNS = {
     "tasks": [
         ("waiting_for", "VARCHAR"),
         ("waiting_since", "DATETIME"),
+        ("auto_generated", "BOOLEAN"),
+        ("last_reminder_sent_at", "DATETIME"),
     ],
     "medical_documents": [
         ("referral_id", "VARCHAR"),
+    ],
+    "journey_events": [
+        ("actor_label", "VARCHAR"),
     ],
     "communications": [
         ("related_referral_id", "VARCHAR"),
@@ -50,6 +55,11 @@ ADDITIVE_COLUMNS = {
         ("source", "VARCHAR"),
         ("external_reference", "VARCHAR"),
         ("received_at", "DATETIME"),
+    ],
+    "handovers": [
+        ("version", "INTEGER"),
+        ("superseded_by_id", "VARCHAR"),
+        ("updated_at", "DATETIME"),
     ],
 }
 
@@ -63,3 +73,36 @@ def run_additive_migrations(engine: Engine) -> None:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"))
                     conn.commit()
                     print(f"[migrations] added {table}.{col_name}")
+
+
+def backfill_handover_versions(engine: Engine) -> None:
+    """One-time, idempotent fix for the pre-existing bug where every
+    'Regenerate' click inserted a new Handover row with no version link,
+    silently orphaning the previous one. Reconstructs version numbers from
+    created_at order and marks every non-final row but the last SUPERSEDED,
+    without deleting or touching any already-FINAL (shared) row. No-ops
+    once every row has a version (checked via a single COUNT query)."""
+    from sqlalchemy.orm import Session
+
+    from . import models
+
+    with Session(engine) as db:
+        if db.query(models.Handover).filter(models.Handover.version.is_(None)).count() == 0:
+            return
+        episode_ids = [row[0] for row in db.query(models.Handover.episode_id).distinct()]
+        for episode_id in episode_ids:
+            rows = (
+                db.query(models.Handover)
+                .filter(models.Handover.episode_id == episode_id)
+                .order_by(models.Handover.created_at.asc())
+                .all()
+            )
+            for i, row in enumerate(rows):
+                row.version = i + 1
+                if i < len(rows) - 1 and row.status == "DRAFT":
+                    row.status = "SUPERSEDED"
+                    row.superseded_by_id = rows[i + 1].id
+                if row.updated_at is None:
+                    row.updated_at = row.created_at
+        db.commit()
+        print(f"[migrations] backfilled handover versions for {len(episode_ids)} episode(s)")

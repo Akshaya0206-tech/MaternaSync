@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 
 from ..database import Base
@@ -24,6 +24,9 @@ class Task(Base):
 
     waiting_for = Column(String, nullable=True)  # human-readable reason, e.g. "External hospital acknowledgement"
     waiting_since = Column(DateTime, nullable=True)
+
+    auto_generated = Column(Boolean, default=False)  # True when the automation layer created this, not a human
+    last_reminder_sent_at = Column(DateTime, nullable=True)  # reminder dedup — see app/reminders.py
 
     created_at = Column(DateTime, default=now)
     updated_at = Column(DateTime, default=now)

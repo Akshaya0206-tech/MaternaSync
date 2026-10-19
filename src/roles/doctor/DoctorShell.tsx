@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, FileCheck2, Stethoscope, MessageCircle, FileText, ListTodo, ArrowRightLeft, Bell, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Users, FileCheck2, Stethoscope, MessageCircle, FileText, ListTodo, ArrowRightLeft, Bell, UserCircle, BookOpen } from 'lucide-react';
 import { RoleSidebar } from '../../components/shared/RoleSidebar';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: 'Patient Questions', to: '/doctor/questions', icon: <MessageCircle size={18} /> },
   { label: 'Documentation', to: '/doctor/documentation', icon: <FileText size={18} /> },
   { label: 'Follow-ups', to: '/doctor/follow-ups', icon: <ListTodo size={18} /> },
+  { label: 'Guidelines', to: '/doctor/guidelines', icon: <BookOpen size={18} /> },
   { label: 'Handover', to: '/doctor/handover', icon: <ArrowRightLeft size={18} /> },
   { label: 'Updates', to: '/doctor/updates', icon: <Bell size={18} /> },
   { label: 'Profile', to: '/doctor/profile', icon: <UserCircle size={18} /> },

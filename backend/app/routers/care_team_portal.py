@@ -28,6 +28,7 @@ from .. import extraction, models, schemas_v2
 from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..deps import get_current_user, require_episode_access, require_role
+from ..handover_service import HandoverService
 from ..referral_communication import ReferralCommunicationService, ReferralTransitionError
 
 router = APIRouter(prefix="/api/v2/care-team", tags=["care-team-portal"])
@@ -230,6 +231,7 @@ def verify_document(
         event_date=document.document_date or (ext.event_date if ext else None) or datetime.now(timezone.utc).date().isoformat(),
         gestational_age_weeks=episode.gestational_age_weeks if episode else 0,
         gestational_age_days=episode.gestational_age_days if episode else 0,
+        actor_label=current_user.full_name,
     ))
 
     db.add(models.Notification(
@@ -237,6 +239,16 @@ def verify_document(
         title="Your care team reviewed your uploaded documents", body="Your journey has been updated.",
         related_entity_type="MedicalDocument", related_entity_id=document.id,
     ))
+
+    doctor = _primary_doctor(db, document.episode_id)
+    if doctor:
+        db.add(models.Notification(
+            recipient_user_id=doctor.id, episode_id=document.episode_id, type="document_verified",
+            title="A document was verified and added to the patient's journey",
+            body=document.filename, related_entity_type="MedicalDocument", related_entity_id=document.id,
+        ))
+
+    _complete_open_tasks_for(db, "document_review", document.id)
 
     _log(db, document.episode_id, current_user, "document_verified", f"Document \"{document.filename}\" verified",
           "Added to the patient's journey.", "MedicalDocument", document.id)
@@ -256,6 +268,14 @@ def reject_document(
         document_id=document.id, reviewer_user_id=current_user.id, reviewer_role=current_user.role,
         action="REJECT", notes=payload.notes, reviewed_at=datetime.now(timezone.utc),
     ))
+
+    db.add(models.Notification(
+        recipient_user_id=document.uploaded_by_user_id, episode_id=document.episode_id, type="document_rejected",
+        title="Your care team reviewed an uploaded document",
+        body=payload.notes or "This document could not be used — please check it and upload again if needed.",
+        related_entity_type="MedicalDocument", related_entity_id=document.id,
+    ))
+
     _log(db, document.episode_id, current_user, "document_rejected", f"Document \"{document.filename}\" rejected",
           payload.notes or "Rejected by care team review.", "MedicalDocument", document.id)
     db.commit()
@@ -382,13 +402,19 @@ def list_patients(current_user: models.User = Depends(require_role("care_team"))
 
 
 @router.get("/episodes/{episode_id}/journey", response_model=list[schemas_v2.JourneyEventOut])
-def episode_journey(episode: models.PregnancyEpisode = Depends(require_episode_access), db: Session = Depends(get_db)):
+def episode_journey(
+    episode: models.PregnancyEpisode = Depends(require_episode_access),
+    current_user: models.User = Depends(require_role("care_team")), db: Session = Depends(get_db),
+):
     events = db.query(models.JourneyEvent).filter(models.JourneyEvent.episode_id == episode.id).order_by(models.JourneyEvent.event_date.desc()).all()
     return [schemas_v2.JourneyEventOut.model_validate(e) for e in events]
 
 
 @router.get("/episodes/{episode_id}/appointments", response_model=list[schemas_v2.AppointmentOut])
-def episode_appointments(episode: models.PregnancyEpisode = Depends(require_episode_access), db: Session = Depends(get_db)):
+def episode_appointments(
+    episode: models.PregnancyEpisode = Depends(require_episode_access),
+    current_user: models.User = Depends(require_role("care_team")), db: Session = Depends(get_db),
+):
     doctor = _primary_doctor_user(db, episode.id)
     appointments = db.query(models.Appointment).filter(models.Appointment.episode_id == episode.id).order_by(models.Appointment.scheduled_at.asc()).all()
     return [
@@ -425,6 +451,19 @@ def _get_assigned_question(db: Session, current_user: models.User, question_id: 
     if question.episode_id not in _assigned_episode_ids(db, current_user):
         raise HTTPException(status_code=403, detail="You are not assigned to this patient.")
     return question
+
+
+def _complete_open_tasks_for(db: Session, source_type: str, source_id: str) -> None:
+    """Closes any still-open automation-tracked tasks for a resolved
+    question — e.g. the triage task once it's been responded to or
+    routed. Never marks a task completed without a real event behind it."""
+    tasks = db.query(models.Task).filter(
+        models.Task.source_type == source_type, models.Task.source_id == source_id,
+        models.Task.status.in_(OPEN_TASK_STATUSES),
+    ).all()
+    for t in tasks:
+        t.status = "COMPLETED"
+        t.updated_at = datetime.now(timezone.utc)
 
 
 @router.get("/questions", response_model=list[schemas_v2.CareTeamQuestionOut])
@@ -490,6 +529,8 @@ def respond_to_question(
         approved_at=datetime.now(timezone.utc), visible_to_patient=True,
     ))
     question.status = "ANSWERED"
+    _complete_open_tasks_for(db, "question_triage", question.id)
+    _complete_open_tasks_for(db, "question_response", question.id)
 
     db.add(models.Notification(
         recipient_user_id=question.asked_by_user_id, episode_id=question.episode_id, type="question_answered",
@@ -515,6 +556,17 @@ def assign_question_to_doctor(
     question.status = "ASSIGNED"
     question.is_clinical = True
     question.assigned_to_user_id = doctor.id
+    _complete_open_tasks_for(db, "question_triage", question.id)
+
+    if not db.query(models.Task).filter(
+        models.Task.source_type == "question_response", models.Task.source_id == question.id,
+        models.Task.status.in_(OPEN_TASK_STATUSES),
+    ).first():
+        db.add(models.Task(
+            episode_id=question.episode_id, title="Respond to clinical question",
+            description=question.question_text[:300], owner_user_id=doctor.id, created_by_user_id=current_user.id,
+            status="OPEN", source_type="question_response", source_id=question.id, auto_generated=True,
+        ))
 
     db.add(models.Notification(
         recipient_user_id=doctor.id, episode_id=question.episode_id, type="clinical_question_assigned",
@@ -532,6 +584,8 @@ def assign_question_to_doctor(
 def close_question(question_id: str, current_user: models.User = Depends(require_role("care_team")), db: Session = Depends(get_db)):
     question = _get_assigned_question(db, current_user, question_id)
     question.status = "CLOSED"
+    _complete_open_tasks_for(db, "question_triage", question.id)
+    _complete_open_tasks_for(db, "question_response", question.id)
     _log(db, question.episode_id, current_user, "question_closed", "Question closed", question.question_text[:200], "PatientQuestion", question.id)
     db.commit()
     db.refresh(question)
@@ -546,7 +600,7 @@ def _task_out(db: Session, t: models.Task) -> schemas_v2.TaskOut:
         title=t.title, description=t.description or "", owner_name=_user_name(db, t.owner_user_id),
         created_by_name=_user_name(db, t.created_by_user_id) or "Unknown",
         due_date=t.due_date, priority=t.priority, status=t.status, source_type=t.source_type, source_id=t.source_id,
-        waiting_for=t.waiting_for, waiting_since=t.waiting_since, created_at=t.created_at,
+        waiting_for=t.waiting_for, waiting_since=t.waiting_since, auto_generated=bool(t.auto_generated), created_at=t.created_at,
     )
 
 
@@ -843,29 +897,34 @@ async def upload_referral_document(
 
 # ---------- handover ----------
 
-def _handover_out(db: Session, h: models.Handover) -> schemas_v2.HandoverOut:
+def _handover_out(db: Session, h: models.Handover, is_latest: bool = True, diff: dict | None = None) -> schemas_v2.HandoverOut:
     return schemas_v2.HandoverOut(
         id=h.id, episode_id=h.episode_id, patient_name=_episode_name(db, h.episode_id),
+        version=h.version or 1,
         context=h.context, what_happened=h.what_happened, what_remains=h.what_remains,
         who_owns_it=h.who_owns_it, what_to_discuss=h.what_to_discuss, status=h.status,
-        generated_by_ai=h.generated_by_ai, created_at=h.created_at,
+        superseded_by_id=h.superseded_by_id, is_latest=is_latest,
+        generated_by_ai=h.generated_by_ai, created_at=h.created_at, updated_at=h.updated_at or h.created_at,
+        changed_from_previous=(diff or {}).get("changed_from_previous"),
+        source_data_changed=(diff or {}).get("source_data_changed"),
     )
 
 
-@router.get("/handover/{episode_id}", response_model=schemas_v2.HandoverOut | None)
-def get_handover(episode: models.PregnancyEpisode = Depends(require_episode_access), db: Session = Depends(get_db)):
-    handover = db.query(models.Handover).filter(models.Handover.episode_id == episode.id).order_by(models.Handover.created_at.desc()).first()
-    return _handover_out(db, handover) if handover else None
+def _handover_history_out(db: Session, h: models.Handover, is_latest: bool, diff: dict | None) -> schemas_v2.HandoverHistoryOut:
+    return schemas_v2.HandoverHistoryOut(
+        id=h.id, version=h.version or 1, status=h.status, generated_by_ai=h.generated_by_ai,
+        created_by_name=_user_name(db, h.created_by_user_id) or "Unknown",
+        created_at=h.created_at, updated_at=h.updated_at or h.created_at,
+        approved_by_name=_user_name(db, h.approved_by_user_id), approved_at=h.approved_at,
+        superseded_by_id=h.superseded_by_id, is_latest=is_latest,
+        changed_from_previous=(diff or {}).get("changed_from_previous"),
+        source_data_changed=(diff or {}).get("source_data_changed"),
+        context=h.context, what_happened=h.what_happened, what_remains=h.what_remains,
+        who_owns_it=h.who_owns_it, what_to_discuss=h.what_to_discuss,
+    )
 
 
-@router.post("/handover/{episode_id}/generate", response_model=schemas_v2.HandoverOut)
-def generate_handover(
-    episode: models.PregnancyEpisode = Depends(require_episode_access),
-    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db),
-):
-    if current_user.role != "care_team":
-        raise HTTPException(status_code=403, detail="Only care team members can generate a handover draft.")
-
+def _build_care_team_handover_content(db: Session, episode: models.PregnancyEpisode, current_user: models.User) -> dict:
     doctor = _primary_doctor(db, episode.id)
 
     recent_event = db.query(models.JourneyEvent).filter(models.JourneyEvent.episode_id == episode.id).order_by(models.JourneyEvent.event_date.desc()).first()
@@ -883,18 +942,50 @@ def generate_handover(
 
     who_owns_it = f"{current_user.full_name} (coordination)" + (f", {doctor.full_name} (clinical)." if doctor else ".")
 
-    handover = models.Handover(
-        episode_id=episode.id,
-        context=f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d, risk: {episode.risk_category}.",
-        what_happened=what_happened, what_remains=what_remains, who_owns_it=who_owns_it, what_to_discuss=what_to_discuss,
-        status="DRAFT", generated_by_ai=True, created_by_user_id=current_user.id,
-    )
-    db.add(handover)
-    db.flush()
-    _log(db, episode.id, current_user, "handover_created", "Handover draft generated", "AI-assisted draft, pending review.", "Handover", handover.id)
+    return {
+        "context": f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d, risk: {episode.risk_category}.",
+        "what_happened": what_happened, "what_remains": what_remains,
+        "who_owns_it": who_owns_it, "what_to_discuss": what_to_discuss,
+    }
+
+
+@router.get("/handover/{episode_id}", response_model=schemas_v2.HandoverOut | None)
+def get_handover(episode: models.PregnancyEpisode = Depends(require_episode_access), db: Session = Depends(get_db)):
+    handover = HandoverService(db).get_latest(episode.id)
+    if handover is None:
+        return None
+    diff = HandoverService(db).diff_against_previous(handover)
+    return _handover_out(db, handover, is_latest=True, diff=diff)
+
+
+@router.get("/handover/{episode_id}/history", response_model=list[schemas_v2.HandoverHistoryOut])
+def get_handover_history(episode: models.PregnancyEpisode = Depends(require_episode_access), db: Session = Depends(get_db)):
+    service = HandoverService(db)
+    rows = service.list_history(episode.id)
+    return [
+        _handover_history_out(db, row, is_latest=(i == 0), diff=service.diff_against_previous(row))
+        for i, row in enumerate(rows)
+    ]
+
+
+@router.post("/handover/{episode_id}/generate", response_model=schemas_v2.HandoverOut)
+def generate_handover(
+    episode: models.PregnancyEpisode = Depends(require_episode_access),
+    current_user: models.User = Depends(require_role("care_team")), db: Session = Depends(get_db),
+):
+    service = HandoverService(db)
+    content = _build_care_team_handover_content(db, episode, current_user)
+    handover = service.generate_new_version(episode, current_user, content)
+
+    is_regenerate = handover.version > 1
+    _log(db, episode.id, current_user,
+         "handover_regenerated" if is_regenerate else "handover_created",
+         f"Handover draft generated (v{handover.version})" if is_regenerate else "Handover draft generated",
+         "AI-assisted draft, pending review.", "Handover", handover.id)
     db.commit()
     db.refresh(handover)
-    return _handover_out(db, handover)
+    diff = service.diff_against_previous(handover)
+    return _handover_out(db, handover, is_latest=True, diff=diff)
 
 
 @router.patch("/handover/{handover_id}", response_model=schemas_v2.HandoverOut)
@@ -904,15 +995,18 @@ def update_handover(handover_id: str, payload: schemas_v2.HandoverUpdateIn, curr
         raise HTTPException(status_code=404, detail="Handover not found.")
     if handover.episode_id not in _assigned_episode_ids(db, current_user):
         raise HTTPException(status_code=403, detail="You are not assigned to this patient.")
+    HandoverService(db).require_editable(handover)
 
     for field in ("context", "what_happened", "what_remains", "who_owns_it", "what_to_discuss"):
         value = getattr(payload, field)
         if value is not None:
             setattr(handover, field, value)
+    handover.updated_at = datetime.now(timezone.utc)
 
+    _log(db, handover.episode_id, current_user, "handover_edited", f"Handover draft edited (v{handover.version or 1})", "", "Handover", handover.id)
     db.commit()
     db.refresh(handover)
-    return _handover_out(db, handover)
+    return _handover_out(db, handover, is_latest=True)
 
 
 @router.post("/handover/{handover_id}/share", response_model=schemas_v2.HandoverOut)
@@ -922,14 +1016,16 @@ def share_handover(handover_id: str, current_user: models.User = Depends(require
         raise HTTPException(status_code=404, detail="Handover not found.")
     if handover.episode_id not in _assigned_episode_ids(db, current_user):
         raise HTTPException(status_code=403, detail="You are not assigned to this patient.")
+    HandoverService(db).require_editable(handover)
 
     handover.status = "FINAL"
     handover.approved_by_user_id = current_user.id
     handover.approved_at = datetime.now(timezone.utc)
+    handover.updated_at = handover.approved_at
     _log(db, handover.episode_id, current_user, "handover_shared", "Handover shared internally", "Visible to the care team and doctor.", "Handover", handover.id)
     db.commit()
     db.refresh(handover)
-    return _handover_out(db, handover)
+    return _handover_out(db, handover, is_latest=True)
 
 
 # ---------- updates (notifications) ----------
