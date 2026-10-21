@@ -12,7 +12,7 @@ const STATUS_TONE: Record<PatientDocument['status'], BadgeTone> = {
   PROCESSING: 'neutral',
   NEEDS_REVIEW: 'amber',
   VERIFIED: 'green',
-  REJECTED: 'amber',
+  REJECTED: 'red',
 };
 
 export function MyRecordsPage() {

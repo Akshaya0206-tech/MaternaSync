@@ -412,7 +412,7 @@ function OutputEditor({
       )}
       {doctor && (
         <p className="continuity-muted">
-          <Link to="/doctor/guidelines">
+          <Link to="/doctor/library">
             Attach a guideline or manage templates in the reference library
           </Link>
         </p>

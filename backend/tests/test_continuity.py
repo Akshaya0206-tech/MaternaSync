@@ -205,7 +205,14 @@ class ContinuityTests(unittest.TestCase):
         self.request("POST", f"/api/v2/doctor/questions/{question['id']}/approve-response")
         self.assertEqual(next(q for q in self.request("GET", "/api/v2/patient/questions", "patient") if q["id"] == question["id"])["status"], "ANSWERED")
         handover = self.request("POST", f"/api/v2/care-team/handover/{self.ep}/generate", "staff")
+        self.assertIn("document / explanation draft(s) awaiting review", handover["whatRemains"])
         self.request("POST", f"/api/v2/care-team/handover/{handover['id']}/share", "staff")
+        doctor_handover = self.request("POST", f"/api/v2/doctor/handover/{self.ep}/generate")
+        self.assertEqual(doctor_handover["version"], handover["version"] + 1)
+        self.assertIn("document / explanation draft(s) awaiting review", doctor_handover["whatRemains"])
+        history = self.request("GET", f"/api/v2/doctor/handover/{self.ep}/history")
+        self.assertEqual(next(h for h in history if h["id"] == handover["id"])["status"], "FINAL")
+        self.request("PATCH", f"/api/v2/doctor/handover/{handover['id']}", payload={"context": "Cannot edit final"}, expected=409)
         self.request("GET", f"/api/v2/doctor/episodes/{self.ep}/todays-brief")
 
     def test_voice_language_and_original_transcript(self):

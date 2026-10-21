@@ -27,6 +27,7 @@ from .communication import Communication
 from .continuity import (DailyLog, PatientPreference, SharingConsent, CareReminder,
                          ClinicalResource, ClinicalOutput, ReferenceAttachment,
                          PathwayEnrollment, MonitoringPlan, Outreach, RecordedOutcome)
+from .guideline import GuidelineSource, GuidelineChunk, GuidelineReview
 
 __all__ = [
     # legacy
@@ -59,4 +60,6 @@ __all__ = [
     "AIArtifact",
     # communication
     "Communication",
+    # clinical guidelines
+    "GuidelineSource", "GuidelineChunk", "GuidelineReview",
 ]

@@ -121,7 +121,9 @@ try {
   await page.getByLabel(/I reviewed the source/).check();
   await page.getByRole("button", { name: "Save, sign & release" }).click();
   await page.getByText(/Signed by Dr. Eleanor Vance/).waitFor();
-  await navigate("/doctor/guidelines", "Clinical reference library");
+  await navigate("/doctor/guidelines", "Clinical Guidelines");
+  await page.getByRole("button", { name: "Manage Sources", exact: true }).waitFor();
+  await navigate("/doctor/library", "Clinical reference library");
   await page.getByLabel("Search title, topic or passage").fill("ICMR");
   await page
     .getByRole("button", { name: "Read source & history" })

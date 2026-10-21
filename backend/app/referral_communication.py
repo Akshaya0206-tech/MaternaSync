@@ -131,6 +131,7 @@ class ReferralCommunicationService:
                 owner_user_id=owner_user_id, created_by_user_id=referral.created_by_user_id,
                 status=task_status, priority="routine", source_type="referral", source_id=referral.id,
                 waiting_for=waiting_for, waiting_since=datetime.now(timezone.utc) if waiting_for else None,
+                auto_generated=True,
             )
             self.db.add(task)
         else:

@@ -26,4 +26,6 @@ class JourneyEvent(Base):
     gestational_age_weeks = Column(Integer, default=0)
     gestational_age_days = Column(Integer, default=0)
 
+    actor_label = Column(String, nullable=True)  # e.g. a person's name, or "System" for automation-generated rows
+
     created_at = Column(DateTime, default=now)

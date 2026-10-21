@@ -83,6 +83,28 @@ def extract_text(file_path: Path) -> tuple[str, bool, bool]:
     return "", False, False
 
 
+def extract_pages(file_path: Path) -> list[list[str]]:
+    """Per-page, per-block PDF text, for callers that need paragraph/heading
+    structure (e.g. guideline chunking) rather than one joined string.
+    Uses PyMuPDF's "blocks" extraction mode, which groups text by actual
+    layout position — this reliably separates a heading from the paragraph
+    below it for any reasonably well-formatted PDF (most published
+    guideline documents), without guessing from line-wrap punctuation.
+    Deliberately standalone rather than refactored out of extract_text()
+    above — that function is relied on by the existing document-upload
+    path and is left untouched so this addition carries zero risk of
+    changing its behavior."""
+    if file_path.suffix.lower() != ".pdf":
+        return []
+    doc = fitz.open(file_path)
+    pages = []
+    for page in doc:
+        blocks = page.get_text("blocks")
+        texts = [" ".join(b[4].split()) for b in blocks if b[4].strip()]
+        pages.append(texts)
+    return pages
+
+
 def _field(value: str | None, status: str) -> dict:
     return {"value": value or "", "status": status}
 

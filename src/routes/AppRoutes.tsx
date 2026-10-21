@@ -39,6 +39,7 @@ import { ConsultationsPage } from '../roles/doctor/ConsultationsPage';
 import { DocumentationHistoryPage } from '../roles/doctor/DocumentationHistoryPage';
 import { QuestionsPage as DoctorQuestionsPage } from '../roles/doctor/QuestionsPage';
 import { FollowUpsPage } from '../roles/doctor/FollowUpsPage';
+import { GuidelinesPage } from '../roles/doctor/GuidelinesPage';
 import { ReferralDetailPage as DoctorReferralDetailPage } from '../roles/doctor/ReferralDetailPage';
 import { HandoverPage as DoctorHandoverPage } from '../roles/doctor/HandoverPage';
 import { UpdatesPage as DoctorUpdatesPage } from '../roles/doctor/UpdatesPage';
@@ -111,13 +112,14 @@ export function AppRoutes() {
         <Route path="questions" element={<DoctorQuestionsPage />} />
         <Route path="documentation" element={<DocumentationHistoryPage />} />
         <Route path="follow-ups" element={<FollowUpsPage />} />
+        <Route path="guidelines" element={<GuidelinesPage />} />
         <Route path="referrals/:referralId" element={<DoctorReferralDetailPage />} />
         <Route path="handover" element={<DoctorHandoverPage />} />
         <Route path="updates" element={<DoctorUpdatesPage />} />
         <Route path="profile" element={<DoctorProfilePage />} />
         <Route path="care-workspace" element={<CareWorkspacePage />} />
         <Route path="draft-studio" element={<CareWorkspacePage initialTab="drafts" />} />
-        <Route path="guidelines" element={<LibraryPage />} />
+        <Route path="library" element={<LibraryPage />} />
         <Route path="clinic" element={<ClinicPage />} />
       </Route>
 

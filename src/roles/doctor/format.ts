@@ -86,3 +86,17 @@ export const DRAFT_STATUS_TONE: Record<string, BadgeTone> = {
   SUPERSEDED: 'neutral',
   APPROVED: 'green',
 };
+
+const HANDOVER_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'AI-Generated Draft',
+  FINAL: 'Final · Shared Internally',
+  SUPERSEDED: 'Superseded',
+};
+export function friendlyHandoverStatus(status: string): string {
+  return HANDOVER_STATUS_LABELS[status] ?? status;
+}
+export const HANDOVER_STATUS_TONE: Record<string, BadgeTone> = {
+  DRAFT: 'purple',
+  FINAL: 'green',
+  SUPERSEDED: 'neutral',
+};

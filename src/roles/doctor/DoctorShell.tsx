@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, FileCheck2, Stethoscope, MessageCircle, FileText, ListTodo, ArrowRightLeft, Bell, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Users, FileCheck2, Stethoscope, MessageCircle, FileText, ListTodo, ArrowRightLeft, Bell, UserCircle, BookOpen } from 'lucide-react';
 import { RoleSidebar } from '../../components/shared/RoleSidebar';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -12,9 +12,10 @@ const NAV_ITEMS = [
   { label: 'Documentation', to: '/doctor/documentation', icon: <FileText size={18} /> },
   { label: 'Document Studio', to: '/doctor/draft-studio', icon: <FileText size={18} /> },
   { label: 'Connected Care', to: '/doctor/care-workspace', icon: <ListTodo size={18} /> },
-  { label: 'Clinical Guidelines', to: '/doctor/guidelines', icon: <FileCheck2 size={18} /> },
+  { label: 'Reference Library', to: '/doctor/library', icon: <FileCheck2 size={18} /> },
   { label: 'Clinic Overview', to: '/doctor/clinic', icon: <Users size={18} /> },
   { label: 'Follow-ups', to: '/doctor/follow-ups', icon: <ListTodo size={18} /> },
+  { label: 'Guidelines', to: '/doctor/guidelines', icon: <BookOpen size={18} /> },
   { label: 'Handover', to: '/doctor/handover', icon: <ArrowRightLeft size={18} /> },
   { label: 'Updates', to: '/doctor/updates', icon: <Bell size={18} /> },
   { label: 'Profile', to: '/doctor/profile', icon: <UserCircle size={18} /> },

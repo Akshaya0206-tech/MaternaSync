@@ -1,7 +1,7 @@
 import { api } from './client';
-import type { JourneyEvent, CareTeamAppointment, CareTeamQuestion, Task, Handover, CareTeamNotification, CareTeamDocument, Referral, ReferralDetail } from './careTeamPortal';
+import type { JourneyEvent, CareTeamAppointment, CareTeamQuestion, Task, Handover, HandoverHistoryEntry, CareTeamNotification, CareTeamDocument, Referral, ReferralDetail } from './careTeamPortal';
 
-export type { JourneyEvent, CareTeamAppointment, CareTeamQuestion, Task, Handover, CareTeamNotification, CareTeamDocument, Referral, ReferralDetail };
+export type { JourneyEvent, CareTeamAppointment, CareTeamQuestion, Task, Handover, HandoverHistoryEntry, CareTeamNotification, CareTeamDocument, Referral, ReferralDetail };
 
 export interface TodayPatientRow {
   episodeId: string;
@@ -94,6 +94,7 @@ export interface ApprovedConsultation {
   approvedByName: string;
   approvedAt: string;
   finalContent: ConsultationDraftContent;
+  suggestedFollowUp: string | null;
 }
 
 export interface DocumentationItem {
@@ -222,6 +223,10 @@ export function approveDraft(draftId: string): Promise<ApprovedConsultation> {
   return api.post<ApprovedConsultation>(`/api/v2/doctor/drafts/${draftId}/approve`);
 }
 
+export function confirmFollowUp(consultationId: string, followUpText: string): Promise<Task> {
+  return api.post<Task>(`/api/v2/doctor/consultations/${consultationId}/confirm-follow-up`, { followUpText });
+}
+
 // ---------- Documentation history ----------
 export function fetchDocumentation(): Promise<DocumentationItem[]> {
   return api.get<DocumentationItem[]>('/api/v2/doctor/documentation');
@@ -278,6 +283,10 @@ export function closeReferral(referralId: string): Promise<Referral> {
 // ---------- Handover ----------
 export function fetchHandover(episodeId: string): Promise<Handover | null> {
   return api.get<Handover | null>(`/api/v2/doctor/handover/${episodeId}`);
+}
+
+export function fetchHandoverHistory(episodeId: string): Promise<HandoverHistoryEntry[]> {
+  return api.get<HandoverHistoryEntry[]>(`/api/v2/doctor/handover/${episodeId}/history`);
 }
 
 export function generateHandover(episodeId: string): Promise<Handover> {
