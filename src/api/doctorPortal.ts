@@ -186,9 +186,10 @@ export function fetchConsultation(consultationId: string): Promise<Consultation>
   return api.get<Consultation>(`/api/v2/doctor/consultations/${consultationId}`);
 }
 
-export function transcribeConsultation(consultationId: string, audioBlob: Blob): Promise<Consultation> {
+export function transcribeConsultation(consultationId: string, audioBlob: Blob, language = 'auto'): Promise<Consultation> {
   const formData = new FormData();
   formData.append('file', audioBlob, 'recording.webm');
+  formData.append('language', language);
   return api.upload<Consultation>(`/api/v2/doctor/consultations/${consultationId}/transcribe`, formData);
 }
 

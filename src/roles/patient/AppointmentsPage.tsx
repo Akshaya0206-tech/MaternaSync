@@ -5,6 +5,9 @@ import type { PatientAppointment } from '../../api/patientPortal';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { BadgeTone } from '../../components/StatusBadge';
 import { formatFriendlyDate, formatFriendlyTime, friendlyAppointmentStatus } from './format';
+import { Link } from 'react-router-dom';
+import { useWorkspace, Panel } from '../../components/continuity/shared';
+import { SummaryList } from './SupportPages';
 
 const STATUS_TONE: Record<string, BadgeTone> = {
   scheduled: 'blue',
@@ -13,6 +16,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 };
 
 export function AppointmentsPage() {
+  const workspace = useWorkspace();
   const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +31,7 @@ export function AppointmentsPage() {
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
       <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>Appointments</h1>
+      <Link to="/patient/care-plan" className="btn-secondary" style={{ marginBottom: 16 }}>Request an appointment / view reminders</Link>
 
       {isLoading && (
         <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading your appointments…</div>
@@ -71,6 +76,7 @@ export function AppointmentsPage() {
           ))}
         </div>
       )}
+      {workspace.data && <Panel title="Approved visit summaries"><SummaryList data={{ ...workspace.data, outputs: workspace.data.outputs.filter(o => !!o.appointmentId) }} /></Panel>}
     </main>
   );
 }

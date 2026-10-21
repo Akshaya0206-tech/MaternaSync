@@ -32,6 +32,8 @@ export function friendlyQuestionStatus(status: string): string {
 }
 
 const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
+  requested: 'Awaiting confirmation',
+  no_show: 'Missed appointment',
   scheduled: 'Scheduled',
   completed: 'Completed',
   cancelled: 'Cancelled',

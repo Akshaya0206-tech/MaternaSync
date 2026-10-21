@@ -11,6 +11,20 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 VALID_ROLES = {"doctor", "nurse", "care_coordinator", "other"}
 
 
+@router.get("/demo-accounts")
+def demo_accounts(db: Session = Depends(get_db)):
+    from ..config import DEMO_ENABLED
+    from ..seed_role_data import PASSWORDS
+    if not DEMO_ENABLED:
+        return []
+    accounts = []
+    for email, label in [("sarah.jenkins@maternasync.app", "Patient"), ("brenda.miller@maternasync.app", "Care Team"), ("demo@maternasync.app", "Doctor")]:
+        user = db.query(models.User).filter_by(email=email).first()
+        if user:
+            accounts.append({"label": label, "role": user.role, "name": user.full_name, "email": email, "password": PASSWORDS[email]})
+    return accounts
+
+
 @router.post("/register", response_model=schemas.TokenResponse)
 def register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
     if payload.password != payload.confirm_password:

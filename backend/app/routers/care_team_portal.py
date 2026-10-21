@@ -30,7 +30,7 @@ from ..database import get_db
 from ..deps import get_current_user, require_episode_access, require_role
 from ..referral_communication import ReferralCommunicationService, ReferralTransitionError
 
-router = APIRouter(prefix="/api/v2/care-team", tags=["care-team-portal"])
+router = APIRouter(prefix="/api/v2/care-team", tags=["care-team-portal"], dependencies=[Depends(require_role("care_team"))])
 
 ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".bmp"}
 OPEN_TASK_STATUSES = ("OPEN", "IN_PROGRESS", "WAITING")
@@ -480,6 +480,8 @@ def respond_to_question(
     current_user: models.User = Depends(require_role("care_team")), db: Session = Depends(get_db),
 ):
     question = _get_assigned_question(db, current_user, question_id)
+    if question.is_clinical:
+        raise HTTPException(status_code=403, detail="Clinical questions require an assigned doctor's approved response.")
     text = payload.response_text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="Please write a response before submitting.")
@@ -881,6 +883,10 @@ def generate_handover(
     open_questions = db.query(models.PatientQuestion).filter(models.PatientQuestion.episode_id == episode.id, models.PatientQuestion.status.in_(OPEN_QUESTION_STATUSES)).count()
     what_to_discuss = f"{open_questions} patient question(s) pending response." if open_questions else "No pending patient questions."
 
+    from ..continuity_service import handover_continuity
+    continuity_items = handover_continuity(db, episode.id)
+    if continuity_items:
+        what_remains += "\n" + continuity_items
     who_owns_it = f"{current_user.full_name} (coordination)" + (f", {doctor.full_name} (clinical)." if doctor else ".")
 
     handover = models.Handover(

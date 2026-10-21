@@ -44,6 +44,11 @@ import { HandoverPage as DoctorHandoverPage } from '../roles/doctor/HandoverPage
 import { UpdatesPage as DoctorUpdatesPage } from '../roles/doctor/UpdatesPage';
 import { ProfilePage as DoctorProfilePage } from '../roles/doctor/ProfilePage';
 import { ExternalSimulatorPage } from '../pages/ExternalSimulatorPage';
+import { DailyLogPage } from '../roles/patient/DailyLogPage';
+import { CarePlanPage, CompanionPage, ConsentPage } from '../roles/patient/SupportPages';
+import { CareWorkspacePage } from '../components/continuity/CareWorkspacePage';
+import { LibraryPage } from '../components/continuity/LibraryPage';
+import { ClinicPage } from '../components/continuity/ClinicPage';
 
 function RootRoute() {
   const { user, isLoading } = useAuth();
@@ -70,6 +75,10 @@ export function AppRoutes() {
         <Route path="updates" element={<PatientUpdatesPage />} />
         <Route path="profile" element={<PatientProfilePage />} />
         <Route path="journey" element={<JourneyPage />} />
+        <Route path="daily-log" element={<DailyLogPage />} />
+        <Route path="care-plan" element={<CarePlanPage />} />
+        <Route path="companion" element={<CompanionPage />} />
+        <Route path="consent" element={<ConsentPage />} />
       </Route>
 
       <Route path="/care-team" element={<RequireRole role="care_team"><CareTeamShell /></RequireRole>}>
@@ -86,6 +95,10 @@ export function AppRoutes() {
         <Route path="handover" element={<HandoverPage />} />
         <Route path="updates" element={<CareTeamUpdatesPage />} />
         <Route path="profile" element={<CareTeamProfilePage />} />
+        <Route path="care-workspace" element={<CareWorkspacePage />} />
+        <Route path="draft-studio" element={<CareWorkspacePage initialTab="drafts" />} />
+        <Route path="guidelines" element={<LibraryPage />} />
+        <Route path="clinic" element={<ClinicPage />} />
       </Route>
 
       <Route path="/doctor" element={<RequireRole role="doctor"><DoctorShell /></RequireRole>}>
@@ -102,6 +115,10 @@ export function AppRoutes() {
         <Route path="handover" element={<DoctorHandoverPage />} />
         <Route path="updates" element={<DoctorUpdatesPage />} />
         <Route path="profile" element={<DoctorProfilePage />} />
+        <Route path="care-workspace" element={<CareWorkspacePage />} />
+        <Route path="draft-studio" element={<CareWorkspacePage initialTab="drafts" />} />
+        <Route path="guidelines" element={<LibraryPage />} />
+        <Route path="clinic" element={<ClinicPage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

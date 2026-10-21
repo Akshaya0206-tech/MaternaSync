@@ -32,6 +32,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     try {
       const data = await res.json();
       if (typeof data.detail === 'string') message = data.detail;
+      else if (Array.isArray(data.detail)) {
+        message = data.detail.map((issue: { loc?: (string | number)[]; msg?: string }) => {
+          const field = issue.loc?.filter(part => part !== 'body').join(' · ');
+          return `${field ? `${field}: ` : ''}${issue.msg || 'Invalid value'}`;
+        }).join('; ');
+      }
     } catch {
       // ignore — use default message
     }

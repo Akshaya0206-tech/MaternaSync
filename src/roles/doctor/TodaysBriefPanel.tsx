@@ -5,6 +5,8 @@ import { fetchTodaysBrief, markBriefReviewed } from '../../api/doctorPortal';
 import type { TodaysBrief } from '../../api/doctorPortal';
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatFriendlyDate, formatFriendlyDateTime, formatFriendlyTime } from './format';
+import { Link } from 'react-router-dom';
+import { TrendsPanel } from '../../components/continuity/TrendsPanel';
 
 const NOT_AVAILABLE = 'Not available in current records.';
 
@@ -69,7 +71,8 @@ export function TodaysBriefPanel({ episodeId }: Props) {
         {brief.pendingItems.length === 0 ? <Empty text="No outstanding tasks or follow-ups." /> : (
           brief.pendingItems.map((t) => (
             <div key={t.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.86rem', color: 'var(--text-primary)' }}>
-              {t.title}{t.dueDate && <span style={{ color: 'var(--text-muted)' }}> · Due {formatFriendlyDate(t.dueDate)}</span>}
+              <Link to={`/doctor/care-workspace?episodeId=${episodeId}`}>{t.title}</Link>{t.dueDate && <span style={{ color: 'var(--text-muted)' }}> · Due {formatFriendlyDate(t.dueDate)}</span>}
+              <span style={{ display: 'block', color: 'var(--text-muted)' }}>Owner: {t.ownerName || 'Unassigned'}</span>
             </div>
           ))
         )}
@@ -79,7 +82,7 @@ export function TodaysBriefPanel({ episodeId }: Props) {
         {brief.patientQuestions.length === 0 ? <Empty text="No unanswered questions." /> : (
           brief.patientQuestions.map((q) => (
             <div key={q.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.86rem', color: 'var(--text-primary)' }}>
-              {q.questionText}
+              <Link to="/doctor/questions">{q.questionText}</Link>
             </div>
           ))
         )}
@@ -109,6 +112,8 @@ export function TodaysBriefPanel({ episodeId }: Props) {
       </BriefSection>
 
       <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Generated {formatFriendlyDateTime(brief.generatedAt)}</div>
+
+      <TrendsPanel episodeId={episodeId} />
 
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         <button onClick={handleStartConsultation} className="btn-primary"><Stethoscope size={15} /> Start Consultation</button>

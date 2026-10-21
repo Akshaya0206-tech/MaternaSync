@@ -5,6 +5,10 @@ import { useAuth } from '../../auth/AuthContext';
 
 const NAV_ITEMS = [
   { label: 'My Care', to: '/patient/dashboard', icon: <HeartPulse size={18} /> },
+  { label: 'Daily Check-in', to: '/patient/daily-log', icon: <HeartPulse size={18} /> },
+  { label: 'My Care Plan', to: '/patient/care-plan', icon: <Calendar size={18} /> },
+  { label: 'Care Companion', to: '/patient/companion', icon: <MessageCircle size={18} /> },
+  { label: 'Sharing & Consent', to: '/patient/consent', icon: <UserCircle size={18} /> },
   { label: 'My Records', to: '/patient/records', icon: <FolderHeart size={18} /> },
   { label: 'My Questions', to: '/patient/questions', icon: <MessageCircle size={18} /> },
   { label: 'Appointments', to: '/patient/appointments', icon: <Calendar size={18} /> },

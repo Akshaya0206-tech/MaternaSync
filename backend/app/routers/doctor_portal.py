@@ -21,7 +21,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,7 @@ from ..schemas import as_utc
 from ..deps import get_current_user, require_episode_access, require_role
 from ..referral_communication import ReferralCommunicationService, ReferralTransitionError
 
-router = APIRouter(prefix="/api/v2/doctor", tags=["doctor-portal"])
+router = APIRouter(prefix="/api/v2/doctor", tags=["doctor-portal"], dependencies=[Depends(require_role("doctor"))])
 
 OPEN_TASK_STATUSES = ("OPEN", "IN_PROGRESS", "WAITING")
 OPEN_QUESTION_STATUSES = ("NEW", "ASSIGNED", "WAITING_FOR_RESPONSE")
@@ -510,20 +510,28 @@ def get_consultation(consultation_id: str, current_user: models.User = Depends(r
 @router.post("/consultations/{consultation_id}/transcribe", response_model=schemas_v2.ConsultationOut)
 async def transcribe_consultation(
     consultation_id: str, file: UploadFile = File(...),
+    language: str = Form("auto"),
     current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db),
 ):
     consultation = _get_assigned_consultation(db, current_user, consultation_id)
 
+    if language not in ("auto", "en", "hi", "ta", "te"):
+        raise HTTPException(status_code=400, detail="Unsupported transcription language.")
+
     suffix = Path(file.filename or "").suffix.lower() or ".webm"
+    if suffix not in AUDIO_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Unsupported audio format.")
     stored_name = f"{uuid.uuid4().hex}{suffix}"
     dest_path = UPLOAD_DIR / stored_name
-    contents = await file.read()
+    contents = await file.read(25 * 1024 * 1024 + 1)
+    if len(contents) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Audio recordings must be smaller than 25 MB.")
     if not contents:
         raise HTTPException(status_code=400, detail="The recording is empty.")
     dest_path.write_bytes(contents)
 
     try:
-        text = transcription.transcribe_audio(dest_path)
+        text = transcription.transcribe_audio(dest_path, language=None if language == "auto" else language)
     except transcription.TranscriptionError:
         raise HTTPException(status_code=422, detail="Transcription could not be completed.")
 
@@ -956,6 +964,10 @@ def generate_handover(episode: models.PregnancyEpisode = Depends(require_episode
     open_tasks = db.query(models.Task).filter(models.Task.episode_id == episode.id, models.Task.status.in_(OPEN_TASK_STATUSES)).count()
     open_questions = db.query(models.PatientQuestion).filter(models.PatientQuestion.episode_id == episode.id, models.PatientQuestion.status.in_(OPEN_QUESTION_STATUSES)).count()
     what_remains = f"{open_tasks} open task(s)." if open_tasks else "Nothing outstanding."
+    from ..continuity_service import handover_continuity
+    continuity_items = handover_continuity(db, episode.id)
+    if continuity_items:
+        what_remains += "\n" + continuity_items
     what_to_discuss = f"{open_questions} patient question(s) pending response." if open_questions else "No pending patient questions."
 
     handover = models.Handover(

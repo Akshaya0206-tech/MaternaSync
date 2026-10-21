@@ -24,6 +24,9 @@ from .notification import Notification
 from .audit import AuditLog
 from .ai_artifact import AIArtifact
 from .communication import Communication
+from .continuity import (DailyLog, PatientPreference, SharingConsent, CareReminder,
+                         ClinicalResource, ClinicalOutput, ReferenceAttachment,
+                         PathwayEnrollment, MonitoringPlan, Outreach, RecordedOutcome)
 
 __all__ = [
     # legacy

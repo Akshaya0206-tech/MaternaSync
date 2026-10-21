@@ -7,6 +7,9 @@ from .migrations import run_additive_migrations
 from .routers import auth, care_team_portal, doctor_portal, episodes, external_simulator, patient_portal, patients, records, workflow
 from .seed_data import run_seed
 from .seed_role_data import ensure_patient_portal_demo_data, run_seed_role_data
+from .routers import continuity, clinical_library
+from .seed_continuity import run_seed_continuity
+from .config import DEMO_ENABLED
 
 Base.metadata.create_all(bind=engine)
 run_additive_migrations(engine)
@@ -30,15 +33,19 @@ app.include_router(patient_portal.router)
 app.include_router(care_team_portal.router)
 app.include_router(doctor_portal.router)
 app.include_router(external_simulator.router)
+app.include_router(continuity.router)
+app.include_router(clinical_library.router)
 
 
 @app.on_event("startup")
 def on_startup():
     db = SessionLocal()
     try:
-        run_seed(db)
-        run_seed_role_data(db)
-        ensure_patient_portal_demo_data(db)
+        if DEMO_ENABLED:
+            run_seed(db)
+            run_seed_role_data(db)
+            ensure_patient_portal_demo_data(db)
+            run_seed_continuity(db)
     finally:
         db.close()
 

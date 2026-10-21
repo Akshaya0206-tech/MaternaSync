@@ -5,6 +5,10 @@ import { useAuth } from '../../auth/AuthContext';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/care-team/dashboard', icon: <LayoutDashboard size={18} /> },
+  { label: 'Clinic Overview', to: '/care-team/clinic', icon: <LayoutDashboard size={18} /> },
+  { label: 'Connected Care', to: '/care-team/care-workspace', icon: <ListTodo size={18} /> },
+  { label: 'Document Studio', to: '/care-team/draft-studio', icon: <FileCheck2 size={18} /> },
+  { label: 'Clinical Guidelines', to: '/care-team/guidelines', icon: <FileCheck2 size={18} /> },
   { label: 'Patients', to: '/care-team/patients', icon: <Users size={18} /> },
   { label: 'Documents', to: '/care-team/documents', icon: <FileCheck2 size={18} /> },
   { label: 'Patient Questions', to: '/care-team/questions', icon: <MessageCircle size={18} /> },

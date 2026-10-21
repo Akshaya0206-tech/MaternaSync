@@ -13,6 +13,7 @@ import { formatFriendlyDate } from './format';
 import { DOCUMENT_STATUS_TONE, QUESTION_STATUS_TONE, TASK_STATUS_TONE, friendlyQuestionStatus, friendlyTaskStatus } from './format';
 import { TodaysBriefPanel } from './TodaysBriefPanel';
 import { CreateReferralModal } from './CreateReferralModal';
+import { CareWorkspaceLink } from '../../components/continuity/CareWorkspacePage';
 
 type Tab = 'brief' | 'journey' | 'documents' | 'consultations' | 'questions' | 'followups' | 'handover' | 'referrals';
 
@@ -101,6 +102,7 @@ export function PatientWorkspacePage() {
 
       {episode && !isLoading && (
         <>
+          <CareWorkspaceLink episodeId={episodeId} role="doctor" />
           <div className="glass-panel" style={{ padding: '18px 22px', marginBottom: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <div className="page-title" style={{ fontSize: '1.25rem' }}>{episode.patientName}</div>

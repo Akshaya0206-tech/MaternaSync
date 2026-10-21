@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AuthLayout } from './AuthLayout';
 import { Field, inputStyle } from './AuthField';
-import { login } from '../../api/auth';
+import { fetchDemoAccounts, login } from '../../api/auth';
+import type { DemoAccount } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { CurrentUser } from '../../api/auth';
 import { AlertCircle } from 'lucide-react';
@@ -16,6 +17,17 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
+  const [demoError, setDemoError] = useState('');
+  const [demoRole, setDemoRole] = useState('');
+  useEffect(() => { let active = true; fetchDemoAccounts().then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError('Demo logins are unavailable. Check that the API is running.'); }); return () => { active = false; }; }, []);
+  const signInDemo = async (account: DemoAccount) => {
+    if (isSubmitting) return;
+    setEmail(account.email); setPassword(account.password); setDemoRole(account.role); setIsSubmitting(true); setError(null);
+    try { const result = await login(account.email, account.password); onAuthenticated(result.accessToken, result.user); }
+    catch (err) { setError(err instanceof ApiError ? err.message : 'Could not reach the API. Start the backend and try again.'); }
+    finally { setIsSubmitting(false); setDemoRole(''); }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +93,14 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
           {isSubmitting ? 'Signing in…' : 'Sign In'}
         </button>
       </form>
+
+      {demoAccounts.length > 0 && <section aria-label="Demo logins" style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border-color)' }}>
+        <h2 style={{ fontSize: '.95rem', margin: '0 0 6px' }}>Explore a demo workspace</h2>
+        <p style={{ fontSize: '.77rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>One-click sign-in with synthetic patient data.</p>
+        <div style={{ display: 'grid', gap: 8 }}>{demoAccounts.map(account => <button type="button" key={account.role} className="btn-secondary" disabled={isSubmitting} onClick={() => void signInDemo(account)} style={{ justifyContent: 'space-between', width: '100%', padding: '11px 13px' }}><span>{demoRole === account.role ? 'Signing in…' : `Demo ${account.label}`}</span><span style={{ fontSize: '.72rem', fontWeight: 400 }}>{account.name}</span></button>)}</div>
+        <details style={{ fontSize: '.74rem', color: 'var(--text-secondary)', marginTop: 12 }}><summary style={{ cursor: 'pointer' }}>View demo credentials</summary>{demoAccounts.map(account => <p key={account.role} style={{ overflowWrap: 'anywhere' }}><strong>{account.label}</strong><br />{account.email}<br />{account.password}</p>)}</details>
+      </section>}
+      {demoError && <p role="status" style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{demoError}</p>}
 
       <p style={{ textAlign: 'center', fontSize: '0.825rem', color: 'var(--text-secondary)', marginTop: '20px' }}>
         Don't have an account?{' '}

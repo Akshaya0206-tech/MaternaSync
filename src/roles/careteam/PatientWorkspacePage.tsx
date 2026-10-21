@@ -11,6 +11,7 @@ import { DOCUMENT_STATUS_TONE, QUESTION_STATUS_TONE, TASK_STATUS_TONE, REFERRAL_
 import { UploadDocumentFallbackModal } from './UploadDocumentFallbackModal';
 import { AddTaskModal } from './AddTaskModal';
 import { AddQuestionModal } from './AddQuestionModal';
+import { CareWorkspaceLink } from '../../components/continuity/CareWorkspacePage';
 
 type Tab = 'journey' | 'documents' | 'questions' | 'tasks' | 'referrals';
 
@@ -73,6 +74,7 @@ export function PatientWorkspacePage() {
 
       {episode && !isLoading && (
         <>
+          <CareWorkspaceLink episodeId={episodeId} role="care_team" />
           <div className="glass-panel" style={{ padding: '18px 22px', marginBottom: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <div className="page-title" style={{ fontSize: '1.25rem' }}>{episode.patientName}</div>

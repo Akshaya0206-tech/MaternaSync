@@ -10,12 +10,13 @@ silently fabricating a transcript.
 """
 
 from pathlib import Path
+import os
 from threading import Lock
 
 _model = None
 _model_lock = Lock()
 
-WHISPER_MODEL_SIZE = "base"
+WHISPER_MODEL_SIZE = os.environ.get("MATERNASYNC_WHISPER_MODEL", "base")
 
 
 class TranscriptionError(Exception):
@@ -32,13 +33,16 @@ def _get_model():
     return _model
 
 
-def transcribe_audio(file_path: Path) -> str:
+def transcribe_audio(file_path: Path, language: str | None = None) -> str:
     """Runs the audio file through Whisper and returns the plain-text
     transcript. Raises TranscriptionError on any failure — never returns
     partial or invented text."""
     try:
         model = _get_model()
-        segments, _info = model.transcribe(str(file_path), language="en")
+        if language not in (None, "en", "hi", "ta", "te"):
+            raise TranscriptionError("Unsupported transcription language.")
+        segments, _info = model.transcribe(str(file_path), language=language, task="transcribe", vad_filter=True,
+            initial_prompt="Maternal care consultation. Preserve Hindi, Tamil, Telugu and English speech in its original language; do not translate.")
         text = " ".join(segment.text.strip() for segment in segments).strip()
         return text
     except Exception as exc:

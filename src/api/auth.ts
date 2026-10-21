@@ -32,3 +32,6 @@ export function register(payload: {
 export function fetchCurrentUser(): Promise<CurrentUser> {
   return api.get<CurrentUser>('/api/auth/me');
 }
+
+export interface DemoAccount { label: string; role: UserRole; name: string; email: string; password: string }
+export const fetchDemoAccounts = () => api.get<DemoAccount[]>('/api/auth/demo-accounts');

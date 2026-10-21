@@ -30,6 +30,7 @@ export function ConsultationsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [edits, setEdits] = useState<ConsultationDraftContent | null>(null);
+  const [language, setLanguage] = useState('auto');
 
   const recorder = useVoiceRecorder();
   const mediaRecorderBlobRef = useRef<Blob | null>(null);
@@ -80,7 +81,7 @@ export function ConsultationsPage() {
         try {
           const blob = await fetch(recorder.audioUrl!).then((r) => r.blob());
           mediaRecorderBlobRef.current = blob;
-          const updated = await transcribeConsultation(consultation.id, blob);
+          const updated = await transcribeConsultation(consultation.id, blob, language);
           setConsultation(updated);
         } catch (err) {
           setError(err instanceof ApiError ? err.message : 'Transcription could not be completed.');
@@ -250,6 +251,12 @@ export function ConsultationsPage() {
           {writeMode === 'voice' && (
             <div className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '14px' }}>Voice Note</div>
+              <label style={{ display: 'block', marginBottom: 16, fontSize: '.85rem' }}>Spoken language{' '}
+                <select value={language} onChange={e => setLanguage(e.target.value)} disabled={recorder.status === 'recording' || isTranscribing}>
+                  <option value="auto">Auto-detect / mixed languages</option><option value="en">English</option><option value="hi">Hindi / Hinglish</option><option value="ta">Tamil</option><option value="te">Telugu</option>
+                </select>
+              </label>
+              <p style={{ fontSize: '.78rem', color: 'var(--text-secondary)' }}>Review names, medicines and mixed-language terminology in the transcript before generating a draft.</p>
               {recorder.status === 'idle' && (
                 <button onClick={() => recorder.start()} className="btn-primary"><Mic size={16} /> Start Recording</button>
               )}
