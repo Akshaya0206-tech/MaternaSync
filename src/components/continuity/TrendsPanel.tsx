@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { api } from "../../api/client";
-import { ROOT, formatTime } from "../../api/continuity";
-import type { DailyLog, Trends } from "../../api/continuity";
-import { Badge, Empty, Feedback, Panel } from "./shared";
+import { ROOT, formatTime, getContext } from "../../api/continuity";
+import type { DailyLog, Flag, Tier, Trends } from "../../api/continuity";
+import { Badge, Empty, Feedback, Panel, useAction } from "./shared";
 
 function Chart({
   logs,
@@ -80,6 +80,146 @@ function Chart({
   );
 }
 
+const tierLabels: Record<Tier, string> = {
+  urgent: "Urgent review",
+  soon: "Review soon",
+  routine: "Routine review",
+};
+
+function FlagCard({
+  flag: f,
+  members,
+  canConfirm,
+  busy,
+  confirm,
+}: {
+  flag: Flag;
+  members: { id: string; name: string }[];
+  canConfirm: boolean;
+  busy: boolean;
+  confirm: (body: {
+    decision: "create_task" | "no_action_needed";
+    ownerUserId: string | null;
+    note: string;
+  }) => Promise<void>;
+}) {
+  const [decision, setDecision] = useState<"create_task" | "no_action_needed">(
+    "create_task",
+  );
+  const [owner, setOwner] = useState("");
+  const [note, setNote] = useState("");
+  const [reviewed, setReviewed] = useState(false);
+  return (
+    <div className="continuity-note" id={`flag-${f.id}`}>
+      <strong>
+        {f.ruleTitle} · v{f.version}
+      </strong>{" "}
+      <Badge>{tierLabels[f.tier]}</Badge>
+      <p>
+        {f.metric.replaceAll("_", " ")}: {f.value}{" "}
+        {f.operator === "gt" ? ">" : "<"} {f.threshold} ·{" "}
+        {formatTime(f.recordedAt)}
+      </p>
+      {f.nextAction && (
+        <p>
+          <strong>Next action in the rule:</strong> {f.nextAction}
+        </p>
+      )}
+      <p className="continuity-muted">
+        Rule approved by {f.reviewer}. {f.context}
+      </p>
+      <a href={f.sourceUrl} target="_blank" rel="noreferrer">
+        Rule source
+      </a>
+      {f.sourceId && f.metric !== "overdue_task_days" && (
+        <>
+          {" "}
+          · <a href={`#trend-${f.sourceId}`}>Recorded value</a>
+        </>
+      )}
+      {f.confirmed && (
+        <p className="continuity-success" style={{ marginBottom: 0 }}>
+          Reviewed by {f.confirmed.by} on {formatTime(f.confirmed.at)} ·{" "}
+          {f.confirmed.decision === "create_task"
+            ? "follow-up task created"
+            : "no action needed"}
+          {f.confirmed.note ? ` · “${f.confirmed.note}”` : ""}
+        </p>
+      )}
+      {!f.confirmed && canConfirm && (
+        <form
+          style={{ marginTop: 12 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void confirm({
+              decision,
+              ownerUserId: decision === "create_task" ? owner : null,
+              note,
+            });
+          }}
+        >
+          <div className="continuity-fields">
+            <label className="continuity-field">
+              <span>Your decision</span>
+              <select
+                value={decision}
+                onChange={(e) =>
+                  setDecision(e.target.value as "create_task" | "no_action_needed")
+                }
+              >
+                <option value="create_task">Create a follow-up task</option>
+                <option value="no_action_needed">No action needed</option>
+              </select>
+            </label>
+            {decision === "create_task" && (
+              <label className="continuity-field">
+                <span>Task owner</span>
+                <select
+                  required
+                  value={owner}
+                  onChange={(e) => setOwner(e.target.value)}
+                >
+                  <option value="">Choose who follows up</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="continuity-field">
+              <span>
+                {decision === "create_task"
+                  ? "Note for the task (optional)"
+                  : "Why no action is needed"}
+              </span>
+              <input
+                required={decision === "no_action_needed"}
+                minLength={decision === "no_action_needed" ? 3 : undefined}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </label>
+          </div>
+          <label className="continuity-check">
+            <input
+              type="checkbox"
+              checked={reviewed}
+              onChange={(e) => setReviewed(e.target.checked)}
+            />
+            I reviewed this flag and the recorded value. This is my clinical
+            decision.
+          </label>
+          <button className="btn-primary" disabled={busy || !reviewed}>
+            Record my decision
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export function TrendsPanel({
   episodeId,
   initial,
@@ -88,8 +228,24 @@ export function TrendsPanel({
   initial?: Trends;
 }) {
   const { user } = useAuth();
+  const action = useAction();
   const [data, setData] = useState<Trends | null>(initial ?? null);
   const [error, setError] = useState("");
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    let active = true;
+    getContext()
+      .then((c) => {
+        if (active)
+          setMembers(c.episodes.find((e) => e.id === episodeId)?.members ?? []);
+      })
+      .catch(() => {
+        /* the owner list is only needed to assign a follow-up */
+      });
+    return () => {
+      active = false;
+    };
+  }, [episodeId]);
   useEffect(() => {
     let active = true;
     if (initial) {
@@ -180,10 +336,35 @@ export function TrendsPanel({
             </table>
           </div>
           {!data.logs.length && <Empty>No entries during this period.</Empty>}
-          <h3 style={{ marginTop: 20 }}>Configured review flags</h3>
+          <h3 style={{ marginTop: 20 }} id="risk-review">
+            Risk review · what needs a clinician to look
+          </h3>
+          <p className="continuity-muted">
+            Flags come only from rules a doctor approved in the Reference
+            Library, and show the rule, its source and the recorded value. The
+            priority is the order to review in. It is not a clinical risk score
+            and does not diagnose. Nothing is sent to the patient or assigned
+            until a doctor confirms.
+          </p>
+          {data.activeRuleCount > 0 && (
+            <p>
+              <strong>Review priority: </strong>
+              <Badge>
+                {data.reviewPriority === "none"
+                  ? "Nothing waiting for review"
+                  : tierLabels[data.reviewPriority]}
+              </Badge>{" "}
+              <span className="continuity-muted">
+                {data.tierCounts.urgent} urgent · {data.tierCounts.soon} soon ·{" "}
+                {data.tierCounts.routine} routine, not yet reviewed
+              </span>
+            </p>
+          )}
+          <Feedback error={action.error} message={action.message} />
           {!data.activeRuleCount && (
             <Empty>
-              No current approved thresholds or workflow rules are configured.
+              No approved review rules are configured. A doctor can approve the
+              starter rules under Reference Library → Review rules.
             </Empty>
           )}
           {data.activeRuleCount > 0 && !data.flags.length && (
@@ -192,29 +373,24 @@ export function TrendsPanel({
               assessment.
             </Empty>
           )}
-          {data.flags.map((f, i) => (
-            <div key={`${f.ruleId}-${i}`} className="continuity-note">
-              <strong>
-                {f.ruleTitle} · v{f.version}
-              </strong>
-              <p>
-                {f.metric.replaceAll("_", " ")}: {f.value}{" "}
-                {f.operator === "gt" ? ">" : "<"} {f.threshold} ·{" "}
-                {formatTime(f.recordedAt)}
-              </p>
-              <p className="continuity-muted">
-                Reviewed by {f.reviewer}. {f.context}
-              </p>
-              <a href={f.sourceUrl} target="_blank" rel="noreferrer">
-                Rule source
-              </a>
-              {f.sourceId && f.metric !== "overdue_task_days" && (
-                <>
-                  {" "}
-                  · <a href={`#trend-${f.sourceId}`}>Recorded value</a>
-                </>
-              )}
-            </div>
+          {data.flags.map((f) => (
+            <FlagCard
+              key={f.id}
+              flag={f}
+              members={members}
+              canConfirm={user?.role === "doctor"}
+              busy={action.busy}
+              confirm={(body) =>
+                action.run(async () => {
+                  await api.post(`${ROOT}/episodes/${episodeId}/risk-flags/confirm`, {
+                    flagId: f.id,
+                    confirmed: true,
+                    ...body,
+                  });
+                  setData(await api.get<Trends>(`${ROOT}/episodes/${episodeId}/trends`));
+                }, body.decision === "create_task" ? "Follow-up task created and assigned." : "Decision recorded.")
+              }
+            />
           ))}
           <div className="continuity-actions">
             <Link

@@ -61,6 +61,13 @@ ADDITIVE_COLUMNS = {
         ("superseded_by_id", "VARCHAR"),
         ("updated_at", "DATETIME"),
     ],
+    "outreach_messages": [
+        ("provider", "VARCHAR"),
+        ("sent_at", "DATETIME"),
+        ("delivered_at", "DATETIME"),
+        ("read_at", "DATETIME"),
+        ("failed_reason", "VARCHAR"),
+    ],
 }
 
 

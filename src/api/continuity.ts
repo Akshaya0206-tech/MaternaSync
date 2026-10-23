@@ -1,4 +1,5 @@
 import { api } from "./client";
+import { currentLocale, translate } from "../i18n";
 
 export const ROOT = "/api/v2/continuity";
 export const languages = {
@@ -94,6 +95,31 @@ export interface Resource {
     [key: string]: unknown;
   };
 }
+export interface ParsedResult {
+  name: string;
+  testId: string | null;
+  valueText: string;
+  unit: string | null;
+  rangeText: string;
+  printedFlag: string | null;
+  position: "within" | "below" | "above" | "none";
+  originalLine: string;
+}
+export interface ReviewNote {
+  level: "blocker" | "warning" | "info";
+  text: string;
+}
+export interface CompanionReply {
+  language: Language;
+  intent: string;
+  message: string;
+  safety: "urgent" | "clinical" | null;
+  actions: (
+    | { type: "send_to_care_team" }
+    | { type: "navigate"; route: string; label: string }
+  )[];
+  education: Resource[];
+}
 export interface ClinicalOutput {
   id: string;
   kind: string;
@@ -107,7 +133,12 @@ export interface ClinicalOutput {
     text: string;
     date?: string;
     reviewer?: string;
+    draftNotes?: string[];
+    parsedResults?: ParsedResult[];
   };
+  reviewNotes?: ReviewNote[];
+  /** Heading → section kind (happened, next, general, results…) for sectioned plain-language outputs. */
+  sectionKinds?: Record<string, string>;
   appointmentId: string | null;
   structuredData?: Record<string, string>;
   selectedCodes?: string[];
@@ -118,7 +149,9 @@ export interface ClinicalOutput {
   approvedAt: string | null;
   references?: Resource[];
 }
+export type Tier = "urgent" | "soon" | "routine";
 export interface Flag {
+  id: string;
   ruleId: string;
   ruleTitle: string;
   version: number;
@@ -126,11 +159,20 @@ export interface Flag {
   value: number;
   operator: string;
   threshold: number;
+  tier: Tier;
+  nextAction: string;
   sourceId: string | null;
   recordedAt: string;
   sourceUrl: string;
   reviewer: string;
   context: string;
+  confirmed: {
+    by: string;
+    at: string;
+    decision: "create_task" | "no_action_needed" | null;
+    note: string;
+    taskId: string | null;
+  } | null;
 }
 export interface Trends {
   logs: DailyLog[];
@@ -138,13 +180,48 @@ export interface Trends {
   daysWithLogs: number;
   missingDays: number;
   activeRuleCount: number;
+  reviewPriority: Tier | "none";
+  tierCounts: Record<Tier, number>;
+}
+export interface SafetyAlert {
+  key: string;
+  kind: "allergy" | "pregnancy" | "interaction";
+  severity: "major" | "moderate" | "minor";
+  drugs: string[];
+  message: string;
+  management: string;
+  sourceUrl: string | null;
+  quote: string | null;
+  setTitle: string;
+  withEarlier?: boolean;
+}
+export interface SafetyCheck {
+  status: "checked" | "unchecked";
+  medicines: string[];
+  alerts: SafetyAlert[];
+  limitation: string;
+  allergiesRecorded: string[];
+  checkedAgainst: {
+    title: string;
+    version: number;
+    approvedBy: string;
+    reviewDue: string;
+    pairs: number;
+    cautions: number;
+  }[];
 }
 export interface Outreach {
   id: string;
   recipient: string;
   message: string;
   status: string;
+  provider: string | null;
+  providerReference: string | null;
   createdAt: string;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  readAt: string | null;
+  failedReason: string | null;
 }
 export interface Task {
   id: string;
@@ -166,6 +243,7 @@ export interface Workspace {
   appointments: Appointment[];
   sources?: Source[];
   trends?: Trends;
+  whatsapp?: { mode: "cloud_api" | "simulator" | "manual"; automatic: boolean };
   monitoring: {
     intervalDays: number;
     active: boolean;
@@ -206,6 +284,7 @@ export interface Clinic {
     lastCheckIn: string | null;
     checkInDue: string | null;
     missingCheckIn: boolean;
+    reviewPriority: Tier | "none";
     monitoringOwner: string | null;
   }[];
   metrics: {
@@ -225,11 +304,11 @@ export const getLibrary = (query = "") =>
   api.get<Resource[]>(`/api/v2/library${query ? `?${query}` : ""}`);
 export const formatTime = (value: string | null) =>
   value
-    ? new Date(value).toLocaleString(undefined, {
+    ? new Date(value).toLocaleString(currentLocale(), {
         dateStyle: "medium",
         timeStyle: "short",
       })
-    : "Not recorded";
+    : translate("Not recorded");
 export function localDateTime(value = new Date()) {
   return new Date(value.getTime() - value.getTimezoneOffset() * 60000)
     .toISOString()

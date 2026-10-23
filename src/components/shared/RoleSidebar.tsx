@@ -15,13 +15,16 @@ interface RoleSidebarProps {
   userName: string;
   roleLabel: string;
   onLogout: () => void;
+  logoutLabel?: string;
+  /** Optional control placed above the user block, e.g. a language switcher. */
+  footerExtra?: ReactNode;
 }
 
 /** Navigation shell shared by all three role workspaces. Active-state and
  * navigation are driven entirely by the URL (NavLink), not local state —
  * this is what makes browser back/forward and direct URL entry work for
  * free, unlike the old phase-based Sidebar it's modeled on. */
-export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLogout }: RoleSidebarProps) {
+export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLogout, logoutLabel = 'Logout', footerExtra }: RoleSidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const initials = userName.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
 
@@ -111,12 +114,13 @@ export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLo
               })}
             >
               <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon}</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+              <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.35 }}>{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
         <div style={{ padding: '10px 12px', borderTop: '1px solid var(--sidebar-border)' }}>
+          {footerExtra}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 8px' }}>
             <span style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--sidebar-active-bg)', color: 'var(--forest-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800, flexShrink: 0 }}>
               {initials || 'U'}
@@ -131,7 +135,7 @@ export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLo
             style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', marginTop: '4px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: 'var(--terracotta)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
           >
             <LogOut size={18} />
-            <span>Logout</span>
+            <span>{logoutLabel}</span>
           </button>
         </div>
       </aside>

@@ -10,8 +10,10 @@ from ..database import get_db
 from ..deps import require_role
 from .. import continuity_schemas as S
 from ..continuity_service import (ADMIN_REPLIES, allowed_ids, audit, candidate_codes, current_resource,
-    episode, get_object, member_ids, name, notify, now, output_out, require_member, resource_out,
-    row, source_snapshot, trend_data, utc, due_reminders)
+    episode, get_object, member_ids, name, notify, now, output_out, plain_language_draft, require_member,
+    resource_out, row, run_safety_check, source_snapshot, suggested_appointment, trend_data, utc, due_reminders, TIER_LABEL)
+from ..plain_language import SECTIONED_KINDS, unresolved_placeholders
+from .. import whatsapp
 
 router = APIRouter(prefix="/api/v2/continuity", tags=["continuity"])
 authenticated = require_role("patient", "doctor", "care_team")
@@ -70,13 +72,16 @@ def workspace(episode_id: str, user=Depends(authenticated), db: Session = Depend
         docs = db.query(models.MedicalDocument).filter_by(episode_id=ep.id, status="VERIFIED").all()
         approved = db.query(models.ApprovedConsultation).join(models.Consultation, models.ApprovedConsultation.consultation_id == models.Consultation.id).filter(models.Consultation.episode_id == ep.id).all()
         questions = db.query(models.PatientQuestion).filter_by(episode_id=ep.id).all()
+        outreach_items = db.query(models.Outreach).filter_by(episode_id=ep.id).order_by(models.Outreach.created_at.desc()).all()
+        whatsapp.advance_simulated(db, outreach_items, now, utc)
         result.update({
+            "whatsapp": {"mode": whatsapp.mode(), "automatic": whatsapp.automatic()},
             "sources": [{"id": d.id, "type": "document", "title": d.filename} for d in docs]
                 + [{"id": a.id, "type": "consultation", "title": f"Approved visit — {utc(a.approved_at).date()}"} for a in approved]
                 + [{"id": q.id, "type": "question", "title": q.question_text} for q in questions],
             "trends": trend_data(db, ep),
             "enrollments": [{**row(e), "title": db.get(models.ClinicalResource, e.resource_id).title} for e in db.query(models.PathwayEnrollment).filter_by(episode_id=ep.id).all()],
-            "outreach": [row(o) for o in db.query(models.Outreach).filter_by(episode_id=ep.id).order_by(models.Outreach.created_at.desc()).all()],
+            "outreach": [row(o) for o in outreach_items],
             "outcomes": [row(o) for o in db.query(models.RecordedOutcome).filter_by(episode_id=ep.id).all()],
             "handovers": [{"id": h.id, "title": f"Handover {utc(h.created_at).date()}"} for h in db.query(models.Handover).filter_by(episode_id=ep.id).all()],
             "references": [{**row(a), "resource": resource_out(db, db.get(models.ClinicalResource, a.resource_id))} for a in db.query(models.ReferenceAttachment).filter_by(episode_id=ep.id).all()],
@@ -216,6 +221,40 @@ def trends(episode_id: str, user=Depends(staff), db: Session = Depends(get_db)):
     return trend_data(db, episode(db, user, episode_id))
 
 
+@router.post("/episodes/{episode_id}/risk-flags/confirm")
+def confirm_risk_flag(episode_id: str, payload: S.RiskConfirmIn, user=Depends(doctor), db: Session = Depends(get_db)):
+    """A doctor records what they decided about a review flag: create a follow-up task for a named owner, or
+    record that no action is needed and why. Flags never create tasks or messages on their own."""
+    ep = episode(db, user, episode_id)
+    flag = next((f for f in trend_data(db, ep)["flags"] if f["id"] == payload.flag_id), None)
+    if not flag:
+        raise HTTPException(404, "That flag is no longer active. Reload the page.")
+    if flag["confirmed"]:
+        raise HTTPException(409, "A doctor has already reviewed this flag.")
+    task = None
+    if payload.decision == "create_task":
+        require_member(db, episode_id, payload.owner_user_id)
+        due = now().date() + timedelta(days={"urgent": 0, "soon": 2, "routine": 7}[flag["tier"]])
+        task = models.Task(
+            episode_id=episode_id, title=f"{TIER_LABEL[flag['tier']]}: {flag['ruleTitle']}",
+            description="\n".join(filter(None, [
+                flag["nextAction"] or "Review the flagged value and decide the next step.",
+                f"Flag: {flag['metric'].replace('_', ' ')} {flag['value']} {'>' if flag['operator'] == 'gt' else '<'} {flag['threshold']}, recorded {flag['recordedAt'][:10]}.",
+                f"Rule source: {flag['sourceUrl']}", f"Doctor's note: {payload.note}" if payload.note else ""])),
+            owner_user_id=payload.owner_user_id, created_by_user_id=user.id, due_date=due.isoformat(),
+            priority="urgent" if flag["tier"] == "urgent" else "routine", source_type="risk_review", source_id=flag["id"])
+        db.add(task)
+        db.flush()
+        db.add(models.TaskAssignment(task_id=task.id, assigned_to_user_id=payload.owner_user_id, assigned_by_user_id=user.id))
+        notify(db, episode_id, payload.owner_user_id, f"{TIER_LABEL[flag['tier']]} follow-up assigned", flag["ruleTitle"])
+    db.add(models.AuditLog(
+        episode_id=episode_id, actor_user_id=user.id, actor_role=user.role, actor_display_name=user.full_name, action="risk_flag_confirmed",
+        title="Review flag confirmed by a doctor", details=payload.note, object_type="RiskFlag", object_id=flag["id"],
+        new_state={"decision": payload.decision, "taskId": task.id if task else None, "tier": flag["tier"], "rule": flag["ruleTitle"]}))
+    db.commit()
+    return {"flagId": flag["id"], "decision": payload.decision, "task": row(task) if task else None}
+
+
 @router.post("/episodes/{episode_id}/outputs")
 def draft_output(episode_id: str, payload: S.OutputIn, user=Depends(staff), db: Session = Depends(get_db)):
     ep = episode(db, user, episode_id)
@@ -240,12 +279,16 @@ def draft_output(episode_id: str, payload: S.OutputIn, user=Depends(staff), db: 
     fields = template.configuration.get("fields", []) if template else []
     structured = {field: "" for field in fields}
     content = f"Patient: {ep.patient_name}\nSource: {snapshot['title']}\n\n{snapshot['text']}"
-    if payload.kind in ("visit_summary", "explanation", "lab_explanation"):
-        content = "What was recorded\n" + snapshot["text"] + "\n\nWhat this means for you\n[Clinician to write and review plain-language explanation]\n\nConfirmed instructions\n[Clinician to confirm from the source]\n\nQuestions for your next visit\n[Add with the patient]"
+    title = payload.kind.replace("_", " ").title()
+    appointment_id = payload.appointment_id or suggested_appointment(db, ep, payload)
+    if payload.kind in SECTIONED_KINDS:
+        built = plain_language_draft(db, ep, payload, snapshot)
+        title, content, structured = built["title"], built["content"], built["structured"]
+        snapshot = {**snapshot, "draftNotes": built["notes"], **({"parsedResults": built["parsed"]} if "parsed" in built else {})}
     elif payload.kind == "reply":
         content = ADMIN_REPLIES[payload.language]
     elif payload.kind == "prescription":
-        content = f"Patient: {ep.patient_name}\nAllergies recorded: {', '.join(ep.allergies or []) or 'Not documented'}\n\nClinician-entered prescription. No automated dose or interaction checking."
+        content = f"Patient: {ep.patient_name}\nAllergies recorded: {', '.join(ep.allergies or []) or 'Not documented'}\n\nClinician-entered prescription. Every medicine and dose below was entered by the doctor."
         structured = {"Medicine": "", "Dose": "", "Route": "", "Frequency": "", "Duration": "", "Instructions": ""}
     elif fields:
         content += "\n\n" + "\n\n".join(f"{field}\n[Complete from verified information]" for field in fields)
@@ -260,9 +303,9 @@ def draft_output(episode_id: str, payload: S.OutputIn, user=Depends(staff), db: 
             "note": ["Documented history", "Observations", "Clinician assessment", "Confirmed plan"],
         }
         content += "\n\n" + "\n\n".join(f"{heading}\n[Complete from verified information]" for heading in headings.get(payload.kind, []))
-    output = models.ClinicalOutput(episode_id=ep.id, kind=payload.kind, title=payload.kind.replace("_", " ").title(),
+    output = models.ClinicalOutput(episode_id=ep.id, kind=payload.kind, title=title,
         content=content, language=payload.language, source_type=payload.source_type, source_id=payload.source_id,
-        source_snapshot=snapshot, appointment_id=payload.appointment_id, template_id=payload.template_id,
+        source_snapshot=snapshot, appointment_id=appointment_id, template_id=payload.template_id,
         structured_data=structured, created_by_user_id=user.id)
     db.add(output)
     db.flush()
@@ -283,6 +326,12 @@ def edit_output(output_id: str, payload: S.OutputEdit, user=Depends(staff), db: 
     valid_codes = {item["code"] for item in candidate_codes(db, output.source_snapshot.get("text", ""))}
     if any(code not in valid_codes for code in payload.selected_codes):
         raise HTTPException(400, "Choose codes from the reviewed candidate set.")
+    if payload.appointment_id is not None:
+        if payload.appointment_id:
+            appt = db.get(models.Appointment, payload.appointment_id)
+            if not appt or appt.episode_id != output.episode_id:
+                raise HTTPException(400, "Select an appointment for this patient.")
+        output.appointment_id = payload.appointment_id or None
     before = row(output)
     output.content, output.structured_data, output.selected_codes = payload.content, payload.structured_data, payload.selected_codes
     output.revision += 1
@@ -297,6 +346,14 @@ def codes(output_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
     return candidate_codes(db, output.source_snapshot.get("text", ""))
 
 
+@router.get("/outputs/{output_id}/safety-check")
+def safety_check(output_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
+    output = get_object(db, user, models.ClinicalOutput, output_id)
+    if output.kind != "prescription":
+        raise HTTPException(400, "Safety checks apply to prescriptions.")
+    return run_safety_check(db, output)
+
+
 @router.post("/outputs/{output_id}/approve")
 def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db: Session = Depends(get_db)):
     output = get_object(db, user, models.ClinicalOutput, output_id)
@@ -308,10 +365,16 @@ def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db
         raise HTTPException(409, "The source changed after drafting. Prepare a new draft from the current source.")
     if user.role != "doctor" and (output.kind != "reply" or source.get("isClinical", True)):
         raise HTTPException(403, "Clinical outputs require an assigned doctor's approval.")
-    if output.revision < 2 or "[Clinician to" in output.content or "[Complete from" in output.content or "[Add with" in output.content:
+    if output.revision < 2 or unresolved_placeholders(output.content, output.structured_data):
         raise HTTPException(400, "Edit the draft and replace all review placeholders before approval.")
+    safety = None
     if output.kind == "prescription" and any(not output.structured_data.get(f, "").strip() for f in ("Medicine", "Dose", "Route", "Frequency", "Duration")):
         raise HTTPException(400, "Complete the clinician-entered prescription fields.")
+    if output.kind == "prescription":
+        safety = run_safety_check(db, output)
+        unread = [a for a in safety["alerts"] if a["key"] not in payload.acknowledged_alerts]
+        if unread:
+            raise HTTPException(409, f"Read and acknowledge all {len(safety['alerts'])} drug-safety alert(s) before signing ({len(unread)} still unacknowledged).")
     if output.template_id:
         template = db.get(models.ClinicalResource, output.template_id)
         if not current_resource(template):
@@ -323,7 +386,9 @@ def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db
     output.visible_to_patient = payload.visible_to_patient
     if payload.visible_to_patient:
         body = output.content
-        if output.structured_data:
+        if output.structured_data and output.kind in SECTIONED_KINDS:
+            body += "\n\n" + "\n\n".join(f"{key}\n{value}" for key, value in output.structured_data.items() if value.strip())
+        elif output.structured_data:
             body += "\n\n" + "\n".join(f"{key}: {value}" for key, value in output.structured_data.items())
         db.add(models.JourneyEvent(episode_id=ep.id, event_type="approved_output", title=output.title, summary=body,
             event_date=now().date().isoformat(), gestational_age_weeks=ep.gestational_age_weeks, gestational_age_days=ep.gestational_age_days))
@@ -334,6 +399,10 @@ def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db
                 response_text=output.content, status="APPROVED", approved_by_user_id=user.id, approved_at=now(), visible_to_patient=True))
             q.status = "ANSWERED"
     audit(db, user, "clinical_output_approved", output, after=row(output))
+    if safety is not None:
+        audit(db, user, "prescription_safety_check_recorded", output, details=(
+            f"Interaction/pregnancy lists: {safety['status']} ({', '.join(s['title'] + ' v' + str(s['version']) for s in safety['checkedAgainst']) or 'none approved'}). "
+            f"{len(safety['alerts'])} alert(s) shown and acknowledged by the signing doctor."))
     db.commit()
     return output_out(db, output)
 
@@ -403,6 +472,48 @@ def prepare_outreach(episode_id: str, payload: S.OutreachIn, user=Depends(staff)
     db.add(item)
     db.flush()
     audit(db, user, "outreach_prepared", item, details="Recipient verified by staff. Minimal notification only.")
+    db.commit()
+    return row(item)
+
+
+def _live_consent(db, item):
+    consent = db.get(models.SharingConsent, item.consent_id)
+    if not consent or consent.revoked_at or utc(consent.expires_at) <= now():
+        raise HTTPException(409, "Consent has expired or been revoked.")
+
+
+@router.post("/outreach/{outreach_id}/send")
+def send_outreach(outreach_id: str, user=Depends(staff), db: Session = Depends(get_db)):
+    """Send the minimal notification through the configured provider and record the real outcome."""
+    item = get_object(db, user, models.Outreach, outreach_id)
+    _live_consent(db, item)
+    if item.status not in ("PREPARED", "COMPOSER_LINK_READY", "FAILED"):
+        raise HTTPException(409, "This notification was already sent or was cancelled.")
+    if not whatsapp.automatic():
+        raise HTTPException(409, "Automatic sending is not configured. Use the WhatsApp composer link, then record it as sent.")
+    try:
+        result = whatsapp.send(item.recipient, item.message)
+    except whatsapp.WhatsAppError as error:
+        item.status, item.failed_reason, item.updated_at = "FAILED", str(error)[:300], now()
+        audit(db, user, "whatsapp_send_failed", item, details=item.failed_reason)
+        db.commit()
+        raise HTTPException(502, item.failed_reason)
+    item.status, item.provider, item.provider_reference = "SENT", result["provider"], result["reference"]
+    item.sent_at, item.updated_at, item.failed_reason = now(), now(), None
+    audit(db, user, "whatsapp_sent", item, details=f"Sent through {result['provider']}. Minimal sign-in notification only.")
+    db.commit()
+    return row(item)
+
+
+@router.post("/outreach/{outreach_id}/mark-sent")
+def mark_outreach_sent(outreach_id: str, user=Depends(staff), db: Session = Depends(get_db)):
+    """Staff record that they sent it themselves from the composer link. Delivery stays unconfirmed."""
+    item = get_object(db, user, models.Outreach, outreach_id)
+    _live_consent(db, item)
+    if item.status not in ("PREPARED", "COMPOSER_LINK_READY", "FAILED"):
+        raise HTTPException(409, "This notification was already sent or was cancelled.")
+    item.status, item.provider, item.sent_at, item.updated_at = "MANUALLY_SENT", "manual", now(), now()
+    audit(db, user, "whatsapp_marked_sent", item, details="Staff recorded sending from the composer link. Delivery is unconfirmed.")
     db.commit()
     return row(item)
 
@@ -511,6 +622,7 @@ def clinic(user=Depends(staff), db: Session = Depends(get_db)):
             "lastCheckIn": utc(latest.recorded_at).isoformat() if latest else None,
             "checkInDue": checkin_due.isoformat() if checkin_due else None,
             "missingCheckIn": bool(checkin_due and checkin_due < now()),
+            "reviewPriority": trend_data(db, ep)["reviewPriority"],
             "monitoringOwner": name(db, plan.owner_user_id) if plan else None})
     outcomes = db.query(models.RecordedOutcome).filter(models.RecordedOutcome.episode_id.in_(ids)).all()
     appts = db.query(models.Appointment).filter(models.Appointment.episode_id.in_(ids), models.Appointment.status.in_(["completed", "no_show"])).all()

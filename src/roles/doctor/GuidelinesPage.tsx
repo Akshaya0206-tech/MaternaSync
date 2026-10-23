@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, Upload, CheckCircle2, XCircle, Ban, ChevronDown, ChevronUp, AlertTriangle, BookOpen } from 'lucide-react';
 import {
-  searchGuidelines, fetchFilterOptions, fetchSources, uploadSource, approveSource, rejectSource, excludeSource,
+  searchGuidelines, fetchFilterOptions, fetchSources, uploadSource, approveSource, approveSourcesBatch, rejectSource, excludeSource,
   GUIDELINE_CATEGORIES, GUIDELINE_DOCUMENT_TYPES,
 } from '../../api/clinicalGuidelines';
 import type { GuidelineSearchResult, GuidelineFilterOptions, GuidelineSource } from '../../api/clinicalGuidelines';
@@ -220,6 +220,7 @@ function ManageSourcesView() {
   const [version, setVersion] = useState('');
   const [pubDate, setPubDate] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
+  const [batchConfirmed, setBatchConfirmed] = useState(false);
 
   const load = () => {
     setIsLoading(true);
@@ -259,6 +260,18 @@ function ManageSourcesView() {
     }
   };
 
+  const approveAll = async () => {
+    setError(null);
+    try {
+      const result = await approveSourcesBatch(awaiting.map((s) => s.id));
+      setBatchConfirmed(false);
+      load();
+      if (result.failed.length) setError(`${result.approved.length} approved. ${result.failed.length} could not be approved: ${result.failed.map((f) => f.reason).join('; ')}`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not approve these sources.');
+    }
+  };
+
   const awaiting = sources.filter((s) => s.status === 'AWAITING_REVIEW');
   const approved = sources.filter((s) => s.status === 'APPROVED');
   const other = sources.filter((s) => s.status !== 'AWAITING_REVIEW' && s.status !== 'APPROVED');
@@ -295,6 +308,17 @@ function ManageSourcesView() {
         <>
           <SectionLabel>Awaiting Review ({awaiting.length})</SectionLabel>
           {awaiting.length === 0 && <EmptyRow text="Nothing awaiting review." />}
+          {awaiting.length > 1 && (
+            <div className="glass-panel" style={{ padding: '14px 16px', marginBottom: '10px' }}>
+              <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.8rem', marginBottom: '10px' }}>
+                <input type="checkbox" checked={batchConfirmed} onChange={(e) => setBatchConfirmed(e.target.checked)} />
+                I reviewed each of these {awaiting.length} documents, their publisher, version and licence, and approve them for passage search with my professional signature.
+              </label>
+              <button className="btn-primary" disabled={!batchConfirmed} onClick={() => void approveAll()} style={{ fontSize: '0.78rem' }}>
+                <CheckCircle2 size={13} /> Approve all {awaiting.length}
+              </button>
+            </div>
+          )}
           {awaiting.map((s) => (
             <SourceRow key={s.id} source={s}>
               <input

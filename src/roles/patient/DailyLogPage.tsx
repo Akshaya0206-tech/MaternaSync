@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import { ROOT, formatTime, localDateTime } from "../../api/continuity";
 import type { DailyLog } from "../../api/continuity";
+import { tx, useLanguage } from "../../i18n";
 import {
   Badge,
   Empty,
@@ -13,6 +14,26 @@ import {
   useAction,
   useWorkspace,
 } from "../../components/continuity/shared";
+
+const MOODS: Record<string, string> = {
+  not_recorded: tx("Not recorded"),
+  good: tx("Good"),
+  okay: tx("Okay"),
+  low: tx("Low"),
+  anxious: tx("Anxious"),
+};
+const ADHERENCE: Record<string, string> = {
+  not_recorded: tx("Not recorded"),
+  done: tx("Done"),
+  skipped: tx("Skipped"),
+  needs_help: tx("I need help"),
+  not_applicable: tx("Not applicable"),
+};
+
+const HISTORY_ACTIONS: Record<string, string> = {
+  patient_log_recorded: tx("Entry recorded"),
+  patient_log_corrected: tx("Entry corrected"),
+};
 
 const empty = () => ({
   recordedAt: localDateTime(),
@@ -28,6 +49,7 @@ const empty = () => ({
 });
 
 export function DailyLogPage() {
+  const { t } = useLanguage();
   const workspace = useWorkspace();
   const action = useAction();
   const [form, setForm] = useState(empty);
@@ -79,8 +101,8 @@ export function DailyLogPage() {
         await workspace.reload();
       },
       skipped
-        ? "Check-in skipped. No clinical conclusion has been recorded."
-        : "Your check-in was saved for your care team.",
+        ? t("Check-in skipped. No clinical conclusion has been recorded.")
+        : t("Your check-in was saved for your care team."),
     );
   function edit(log: DailyLog) {
     setEditing(log.id);
@@ -100,25 +122,27 @@ export function DailyLogPage() {
   }
   return (
     <Page
-      title="Daily check-in"
-      subtitle="A few optional details to help your team understand how you’ve been between visits."
+      title={t("Daily check-in")}
+      subtitle={t(
+        "A few optional details to help your team understand how you’ve been between visits.",
+      )}
     >
       <Feedback
         error={workspace.error || action.error}
         message={action.message}
       />
-      {workspace.loading && <p role="status">Loading your check-ins…</p>}
+      {workspace.loading && <p role="status">{t("Loading your check-ins…")}</p>}
       {workspace.data && (
         <>
           <div className="continuity-note">
-            Your entries are patient-reported and are not monitored
-            continuously. If you are concerned about your health or your baby’s
-            movements, contact your maternity team.{" "}
-            <Link to="/patient/questions">Ask your care team</Link>.
+            {t(
+              "Your entries are patient-reported and are not monitored continuously. If you are concerned about your health or your baby’s movements, contact your maternity team.",
+            )}{" "}
+            <Link to="/patient/questions">{t("Ask your care team")}</Link>.
           </div>
           <Panel
-            title={editing ? "Correct a check-in" : "How are you today?"}
-            aside={<Badge>Optional · about 2 minutes</Badge>}
+            title={editing ? t("Correct a check-in") : t("How are you today?")}
+            aside={<Badge>{t("Optional · about 2 minutes")}</Badge>}
           >
             <form
               onSubmit={(e) => {
@@ -127,7 +151,7 @@ export function DailyLogPage() {
               }}
             >
               <div className="continuity-fields">
-                <Field label="Recorded at">
+                <Field label={t("Recorded at")}>
                   <input
                     type="datetime-local"
                     required
@@ -136,7 +160,7 @@ export function DailyLogPage() {
                     onChange={(e) => set("recordedAt", e.target.value)}
                   />
                 </Field>
-                <Field label="Systolic BP (mmHg)">
+                <Field label={t("Systolic BP (mmHg)")}>
                   <input
                     type="number"
                     min="30"
@@ -145,7 +169,7 @@ export function DailyLogPage() {
                     onChange={(e) => set("systolic", e.target.value)}
                   />
                 </Field>
-                <Field label="Diastolic BP (mmHg)">
+                <Field label={t("Diastolic BP (mmHg)")}>
                   <input
                     type="number"
                     min="20"
@@ -154,7 +178,7 @@ export function DailyLogPage() {
                     onChange={(e) => set("diastolic", e.target.value)}
                   />
                 </Field>
-                <Field label="Weight (kg)">
+                <Field label={t("Weight (kg)")}>
                   <input
                     type="number"
                     min="20"
@@ -164,40 +188,32 @@ export function DailyLogPage() {
                     onChange={(e) => set("weightKg", e.target.value)}
                   />
                 </Field>
-                <Field label="Mood">
+                <Field label={t("Mood")}>
                   <select
                     value={form.mood}
                     onChange={(e) => set("mood", e.target.value)}
                   >
-                    {["not_recorded", "good", "okay", "low", "anxious"].map(
-                      (s) => (
-                        <option key={s} value={s}>
-                          {s.replaceAll("_", " ")}
-                        </option>
-                      ),
-                    )}
+                    {Object.entries(MOODS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {t(label)}
+                      </option>
+                    ))}
                   </select>
                 </Field>
-                <Field label="Medicine adherence">
+                <Field label={t("Medicine adherence")}>
                   <select
                     value={form.adherence}
                     onChange={(e) => set("adherence", e.target.value)}
                   >
-                    {[
-                      "not_recorded",
-                      "done",
-                      "skipped",
-                      "needs_help",
-                      "not_applicable",
-                    ].map((s) => (
-                      <option key={s} value={s}>
-                        {s.replaceAll("_", " ")}
+                    {Object.entries(ADHERENCE).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {t(label)}
                       </option>
                     ))}
                   </select>
                 </Field>
               </div>
-              <Field label="Symptoms or anything you want your team to know">
+              <Field label={t("Symptoms or anything you want your team to know")}>
                 <textarea
                   rows={3}
                   maxLength={4000}
@@ -206,7 +222,7 @@ export function DailyLogPage() {
                 />
               </Field>
               <div className="continuity-fields">
-                <Field label="Movements recorded (optional)">
+                <Field label={t("Movements recorded (optional)")}>
                   <input
                     type="number"
                     min="0"
@@ -215,7 +231,7 @@ export function DailyLogPage() {
                     onChange={(e) => set("movementCount", e.target.value)}
                   />
                 </Field>
-                <Field label="Observation duration (minutes)">
+                <Field label={t("Observation duration (minutes)")}>
                   <input
                     type="number"
                     min="1"
@@ -226,7 +242,7 @@ export function DailyLogPage() {
                 </Field>
               </div>
               {editing && (
-                <Field label="Reason for correction">
+                <Field label={t("Reason for correction")}>
                   <input
                     required
                     value={form.correctionReason}
@@ -236,7 +252,7 @@ export function DailyLogPage() {
               )}
               <div className="continuity-actions">
                 <button className="btn-primary" disabled={action.busy}>
-                  Save check-in
+                  {t("Save check-in")}
                 </button>
                 {!editing && (
                   <button
@@ -245,7 +261,7 @@ export function DailyLogPage() {
                     disabled={action.busy}
                     onClick={() => void save(true)}
                   >
-                    Skip today
+                    {t("Skip today")}
                   </button>
                 )}
                 {editing && (
@@ -257,26 +273,29 @@ export function DailyLogPage() {
                       setForm(empty());
                     }}
                   >
-                    Cancel correction
+                    {t("Cancel correction")}
                   </button>
                 )}
               </div>
             </form>
           </Panel>
           <Panel
-            title="Movement counter"
-            aside={<Badge>Observation only</Badge>}
+            title={t("Movement counter")}
+            aside={<Badge>{t("Observation only")}</Badge>}
           >
             <p className="continuity-muted">
-              Use the instructions your maternity team has given you. This
-              counter records movements and time; it does not interpret a count
-              or indicate that everything is well.
+              {t(
+                "Use the instructions your maternity team has given you. This counter records movements and time; it does not interpret a count or indicate that everything is well.",
+              )}
             </p>
             <div className="continuity-count" aria-live="polite">
               {count}
             </div>
             <p className="continuity-muted" style={{ textAlign: "center" }}>
-              {Math.floor(elapsed / 60)}m {elapsed % 60}s elapsed
+              {t("{minutes}m {seconds}s elapsed", {
+                minutes: Math.floor(elapsed / 60),
+                seconds: elapsed % 60,
+              })}
             </p>
             <div className="continuity-actions">
               {start ? (
@@ -285,7 +304,7 @@ export function DailyLogPage() {
                     className="btn-primary"
                     onClick={() => setCount((c) => c + 1)}
                   >
-                    Record a movement
+                    {t("Record a movement")}
                   </button>
                   <button
                     className="btn-secondary"
@@ -300,7 +319,7 @@ export function DailyLogPage() {
                       setStart(null);
                     }}
                   >
-                    Use count in check-in
+                    {t("Use count in check-in")}
                   </button>
                 </>
               ) : (
@@ -312,15 +331,15 @@ export function DailyLogPage() {
                     setStart(Date.now());
                   }}
                 >
-                  Start observation
+                  {t("Start observation")}
                 </button>
               )}
             </div>
           </Panel>
-          <Panel title="Your entries">
+          <Panel title={t("Your entries")}>
             {!workspace.data.logs.length && (
               <Empty>
-                No check-ins yet. It’s okay to leave measurements blank.
+                {t("No check-ins yet. It’s okay to leave measurements blank.")}
               </Empty>
             )}
             {workspace.data.logs.map((log) => (
@@ -332,32 +351,34 @@ export function DailyLogPage() {
                 <h3>
                   {formatTime(log.recordedAt)}{" "}
                   <Badge>
-                    {log.skipped ? "Skipped" : "Patient-reported"} · v
+                    {log.skipped ? t("Skipped") : t("Patient-reported")} · v
                     {log.revision}
                   </Badge>
                 </h3>
                 <p>
-                  BP:{" "}
+                  {t("BP")}:{" "}
                   {log.systolic != null
                     ? `${log.systolic}/${log.diastolic} mmHg`
-                    : "Not recorded"}{" "}
-                  · Weight:{" "}
-                  {log.weightKg != null ? `${log.weightKg} kg` : "Not recorded"}
+                    : t("Not recorded")}{" "}
+                  · {t("Weight")}:{" "}
+                  {log.weightKg != null ? `${log.weightKg} kg` : t("Not recorded")}
                 </p>
                 <p>
-                  {log.symptoms || "No symptoms entered"} · Mood:{" "}
-                  {log.mood.replaceAll("_", " ")} · Adherence:{" "}
-                  {log.adherence.replaceAll("_", " ")}
+                  {log.symptoms || t("No symptoms entered")} · {t("Mood")}:{" "}
+                  {t(MOODS[log.mood] ?? log.mood)} · {t("Adherence")}:{" "}
+                  {t(ADHERENCE[log.adherence] ?? log.adherence)}
                 </p>
                 {log.movementCount != null && (
                   <p>
-                    {log.movementCount} movements over {log.movementMinutes}{" "}
-                    minutes
+                    {t("{count} movements over {minutes} minutes", {
+                      count: log.movementCount,
+                      minutes: log.movementMinutes ?? 0,
+                    })}
                   </p>
                 )}
                 <div className="continuity-actions">
                   <button className="btn-secondary" onClick={() => edit(log)}>
-                    Correct entry
+                    {t("Correct entry")}
                   </button>
                   <button
                     className="btn-secondary"
@@ -372,18 +393,19 @@ export function DailyLogPage() {
                       )
                     }
                   >
-                    View correction history
+                    {t("View correction history")}
                   </button>
                 </div>
               </article>
             ))}
           </Panel>
           {history.length > 0 && (
-            <Panel title="Entry history">
+            <Panel title={t("Entry history")}>
               {history.map((h, i) => (
                 <p key={i} className="continuity-muted">
-                  {formatTime(h.timestamp)} · {h.action.replaceAll("_", " ")} ·{" "}
-                  {h.newState?.correctionReason || "Original entry"}
+                  {formatTime(h.timestamp)} ·{" "}
+                  {t(HISTORY_ACTIONS[h.action] ?? h.action.replaceAll("_", " "))} ·{" "}
+                  {h.newState?.correctionReason || t("Original entry")}
                 </p>
               ))}
             </Panel>

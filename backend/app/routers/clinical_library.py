@@ -12,7 +12,7 @@ from .. import models
 from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..deps import require_role
-from ..continuity_schemas import ResourceIn, ApprovalIn
+from ..continuity_schemas import ResourceIn, ApprovalIn, BatchApprovalIn
 from ..continuity_service import audit, current_resource, now, resource_out
 
 router = APIRouter(prefix="/api/v2/library", tags=["clinical-library"])
@@ -41,8 +41,7 @@ def search(q: str = Query("", max_length=200), kind: str = "", issuer: str = "",
 @router.post("")
 def create(payload: ResourceIn, user=Depends(doctor), db: Session = Depends(get_db)):
     data = payload.model_dump(exclude={"previous_version_id"})
-    for key in ("publication_date", "review_due"):
-        data[key] = data[key].isoformat() if data[key] else None
+    data["review_due"] = data["review_due"].isoformat() if data["review_due"] else None
     family_id, version = str(uuid.uuid4()), 1
     if payload.previous_version_id:
         previous = db.get(models.ClinicalResource, payload.previous_version_id)
@@ -67,9 +66,8 @@ def education(language: str = "en", stage: str = "all", user=Depends(require_rol
     return [resource_out(db, r) for r in resources if current_resource(r) and (stage == "all" or r.stage in (stage, "all"))]
 
 
-@router.post("/{resource_id}/approve")
-def approve(resource_id: str, payload: ApprovalIn, user=Depends(doctor), db: Session = Depends(get_db)):
-    resource = db.get(models.ClinicalResource, resource_id)
+def approve_resource(db, user, resource):
+    """Shared by single and batch approval: the same governance checks apply to both."""
     if not resource:
         raise HTTPException(404, "Resource not found.")
     if resource.status != "DRAFT":
@@ -91,8 +89,30 @@ def approve(resource_id: str, payload: ApprovalIn, user=Depends(doctor), db: Ses
     resource.approved_by_user_id = user.id
     resource.approved_at = resource.last_checked_at = now()
     audit(db, user, "resource_approved", resource, details="Reviewer confirmed source, applicability and governance review.")
+
+
+@router.post("/{resource_id}/approve")
+def approve(resource_id: str, payload: ApprovalIn, user=Depends(doctor), db: Session = Depends(get_db)):
+    resource = db.get(models.ClinicalResource, resource_id)
+    approve_resource(db, user, resource)
     db.commit()
     return resource_out(db, resource)
+
+
+@router.post("/approve-batch")
+def approve_batch(payload: BatchApprovalIn, user=Depends(doctor), db: Session = Depends(get_db)):
+    """Approve several drafts the doctor has reviewed. Each item is checked on its own; failures are reported, not hidden."""
+    approved, failed = [], []
+    for resource_id in dict.fromkeys(payload.ids):
+        try:  # every check runs before the first change, so a failed item leaves nothing half-applied
+            approve_resource(db, user, db.get(models.ClinicalResource, resource_id))
+            approved.append(resource_id)
+        except HTTPException as error:
+            failed.append({"id": resource_id, "reason": error.detail})
+        except ValueError:
+            failed.append({"id": resource_id, "reason": "The saved configuration is no longer valid. Create a corrected version."})
+    db.commit()
+    return {"approved": approved, "failed": failed}
 
 
 @router.post("/{resource_id}/retire")

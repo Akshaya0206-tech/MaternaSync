@@ -5,9 +5,11 @@ import { fetchMyDashboard } from '../../api/patientPortal';
 import type { PatientDashboard } from '../../api/patientPortal';
 import { useAuth } from '../../auth/AuthContext';
 import { formatFriendlyDate, formatFriendlyTime, timeOfDayGreeting } from './format';
+import { tx, useLanguage } from '../../i18n';
 
 export function MyCarePage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<PatientDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,7 +19,7 @@ export function MyCarePage() {
     let cancelled = false;
     fetchMyDashboard()
       .then((data) => { if (!cancelled) setDashboard(data); })
-      .catch(() => { if (!cancelled) setError("We couldn't load your care summary. Please try again."); })
+      .catch(() => { if (!cancelled) setError(tx("We couldn't load your care summary. Please try again.")); })
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
   }, []);
@@ -32,13 +34,13 @@ export function MyCarePage() {
 
       {isLoading && (
         <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading your care summary…
+          {t('Loading your care summary…')}
         </div>
       )}
 
       {error && !isLoading && (
         <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>
-          {error}
+          {t(error)}
         </div>
       )}
 
@@ -52,9 +54,9 @@ export function MyCarePage() {
               <AlertCircle size={18} style={{ color: 'var(--amber-pending)', flexShrink: 0, marginTop: '2px' }} />
               <div>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--amber-pending)', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '2px' }}>
-                  Action Needed
+                  {t('Action Needed')}
                 </div>
-                <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>{dashboard.actionNeeded}</div>
+                <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>{t(dashboard.actionNeeded)}</div>
               </div>
             </div>
           )}
@@ -62,43 +64,45 @@ export function MyCarePage() {
           <div className="glass-panel" style={{ padding: '4px 0' }}>
             <SummaryRow
               icon={<HeartPulse size={18} />}
-              label="My Pregnancy"
+              label={t('My Pregnancy')}
               value={
                 dashboard.gestationalAgeWeeks != null
-                  ? `${dashboard.gestationalAgeWeeks} weeks${dashboard.gestationalAgeDays ? ` ${dashboard.gestationalAgeDays} days` : ''}`
-                  : 'Not yet recorded'
+                  ? dashboard.gestationalAgeDays
+                    ? t('{weeks} weeks {days} days', { weeks: dashboard.gestationalAgeWeeks, days: dashboard.gestationalAgeDays })
+                    : t('{weeks} weeks', { weeks: dashboard.gestationalAgeWeeks })
+                  : t('Not yet recorded')
               }
             />
             <SummaryRow
               icon={<CalendarClock size={18} />}
-              label="Estimated Due Date"
-              value={dashboard.edd ? formatFriendlyDate(dashboard.edd) : 'Not yet recorded'}
+              label={t('Estimated Due Date')}
+              value={dashboard.edd ? formatFriendlyDate(dashboard.edd) : t('Not yet recorded')}
             />
             <SummaryRow
               icon={<Clock3 size={18} />}
-              label="Next Appointment"
+              label={t('Next Appointment')}
               value={
                 dashboard.nextAppointment
                   ? `${formatFriendlyDate(dashboard.nextAppointment.scheduledAt)} · ${formatFriendlyTime(dashboard.nextAppointment.scheduledAt)}${dashboard.nextAppointment.doctorName ? ` · ${dashboard.nextAppointment.doctorName}` : ''}`
-                  : 'No upcoming appointment has been recorded.'
+                  : t('No upcoming appointment has been recorded.')
               }
             />
             <SummaryRow
               icon={<MessageCircleQuestion size={18} />}
-              label="Questions"
-              value={dashboard.openQuestionsCount > 0 ? `${dashboard.openQuestionsCount} waiting for response` : 'No open questions'}
+              label={t('Questions')}
+              value={dashboard.openQuestionsCount > 0 ? t('{count} waiting for response', { count: dashboard.openQuestionsCount }) : t('No open questions')}
             />
             <SummaryRow
               icon={<HeartPulse size={18} />}
-              label="Recent Care"
-              value={dashboard.recentCareTitle ? `${dashboard.recentCareTitle} (${formatFriendlyDate(dashboard.recentCareDate)})` : 'Nothing recorded yet'}
+              label={t('Recent Care')}
+              value={dashboard.recentCareTitle ? `${dashboard.recentCareTitle} (${formatFriendlyDate(dashboard.recentCareDate)})` : t('Nothing recorded yet')}
               isLast
             />
           </div>
 
           <div>
             <button onClick={() => navigate('/patient/journey')} className="btn-primary">
-              View My Journey
+              {t('View My Journey')}
             </button>
           </div>
         </div>

@@ -3,8 +3,10 @@ import { Bell } from 'lucide-react';
 import { fetchMyUpdates, markMyUpdateRead } from '../../api/patientPortal';
 import type { PatientNotification } from '../../api/patientPortal';
 import { formatFriendlyDate } from './format';
+import { tx, useLanguage } from '../../i18n';
 
 export function UpdatesPage() {
+  const { t } = useLanguage();
   const [updates, setUpdates] = useState<PatientNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +14,7 @@ export function UpdatesPage() {
   useEffect(() => {
     fetchMyUpdates()
       .then(setUpdates)
-      .catch(() => setError("We couldn't load your updates. Please try again."))
+      .catch(() => setError(tx("We couldn't load your updates. Please try again.")))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -25,19 +27,19 @@ export function UpdatesPage() {
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>Updates</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('Updates')}</h1>
 
       {isLoading && (
-        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading your updates…</div>
+        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading your updates…')}</div>
       )}
 
       {error && !isLoading && (
-        <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{error}</div>
+        <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>
       )}
 
       {!isLoading && !error && updates.length === 0 && (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          No updates yet.
+          {t('No updates yet.')}
         </div>
       )}
 

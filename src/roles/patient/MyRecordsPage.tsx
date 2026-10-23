@@ -5,8 +5,9 @@ import type { PatientDocument } from '../../api/patientPortal';
 import { fetchBlobWithAuth } from '../../api/client';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { BadgeTone } from '../../components/StatusBadge';
-import { formatFriendlyDate } from './format';
+import { formatFriendlyDate, friendlyDocumentStatus } from './format';
 import { UploadDocumentModal } from './UploadDocumentModal';
+import { useLanguage } from '../../i18n';
 
 const STATUS_TONE: Record<PatientDocument['status'], BadgeTone> = {
   PROCESSING: 'neutral',
@@ -16,6 +17,7 @@ const STATUS_TONE: Record<PatientDocument['status'], BadgeTone> = {
 };
 
 export function MyRecordsPage() {
+  const { t } = useLanguage();
   const [documents, setDocuments] = useState<PatientDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export function MyRecordsPage() {
     setIsLoading(true);
     fetchMyDocuments()
       .then(setDocuments)
-      .catch(() => setError("We couldn't load your records. Please try again."))
+      .catch(() => setError(t("We couldn't load your records. Please try again.")))
       .finally(() => setIsLoading(false));
   };
 
@@ -38,7 +40,7 @@ export function MyRecordsPage() {
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
     } catch {
-      setNotice('The original file for this record is not available to view.');
+      setNotice(t('The original file for this record is not available to view.'));
       window.setTimeout(() => setNotice(null), 4000);
     }
   };
@@ -46,9 +48,9 @@ export function MyRecordsPage() {
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-        <h1 className="page-title" style={{ fontSize: '1.4rem', margin: 0 }}>My Records</h1>
+        <h1 className="page-title" style={{ fontSize: '1.4rem', margin: 0 }}>{t('My Records')}</h1>
         <button onClick={() => setIsUploadOpen(true)} className="btn-primary">
-          <Plus size={16} /> Upload Medical Record
+          <Plus size={16} /> {t('Upload Medical Record')}
         </button>
       </div>
 
@@ -59,7 +61,7 @@ export function MyRecordsPage() {
       )}
 
       {isLoading && (
-        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading your records…</div>
+        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading your records…')}</div>
       )}
 
       {error && !isLoading && (
@@ -68,7 +70,7 @@ export function MyRecordsPage() {
 
       {!isLoading && !error && documents.length === 0 && (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          You haven't uploaded any medical records yet.
+          {t("You haven't uploaded any medical records yet.")}
         </div>
       )}
 
@@ -88,13 +90,14 @@ export function MyRecordsPage() {
                   {doc.description || doc.filename}
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {doc.documentDate ? formatFriendlyDate(doc.documentDate) : `Uploaded ${formatFriendlyDate(doc.uploadedAt)}`}
+                  {doc.documentDate ? formatFriendlyDate(doc.documentDate) : t('Uploaded {date}', { date: formatFriendlyDate(doc.uploadedAt) })}
                 </div>
               </div>
-              <StatusBadge label={doc.statusLabel} tone={STATUS_TONE[doc.status]} />
+              <StatusBadge label={friendlyDocumentStatus(doc.status, doc.statusLabel)} tone={STATUS_TONE[doc.status]} />
               <button
                 onClick={() => handleView(doc)}
-                title="View original document"
+                title={t('View original document')}
+                aria-label={t('View original document')}
                 style={{ background: 'none', border: 'none', color: 'var(--teal-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
               >
                 <Eye size={18} />

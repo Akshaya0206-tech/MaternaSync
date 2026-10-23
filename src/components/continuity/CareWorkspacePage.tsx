@@ -511,9 +511,20 @@ function Reminders({
       </Panel>
       <Panel title="WhatsApp outreach">
         <div className="continuity-note">
-          Recipients must have active permission for this purpose. The external
-          composer contains a minimal sign-in notification. Delivery remains
-          unconfirmed without a connected provider.
+          Recipients must have active permission for this purpose, and every
+          message is only a prompt to sign in: no names, results or medicines.{" "}
+          {data.whatsapp?.mode === "cloud_api" &&
+            "Messages are sent through the WhatsApp Business Cloud API, and sent, delivered and read are reported by the provider. A recipient who replies STOP withdraws permission automatically."}
+          {data.whatsapp?.mode === "simulator" && (
+            <strong>
+              SIMULATED: no message leaves this server and no phone receives
+              anything. Statuses are generated so the flow can be demonstrated.
+              Set MATERNASYNC_WHATSAPP_PROVIDER=cloud_api with WhatsApp Business
+              credentials to send for real.
+            </strong>
+          )}
+          {data.whatsapp?.mode === "manual" &&
+            "Automatic sending is not configured. Prepare the composer link, send from your own WhatsApp, then record it as sent. Delivery stays unconfirmed."}
         </div>
         <form
           onSubmit={(e) => {
@@ -626,29 +637,87 @@ function Reminders({
         {data.outreach?.map((o) => (
           <div key={o.id} className="continuity-item">
             <h3>
-              {o.recipient} <Badge>{o.status.replaceAll("_", " ")}</Badge>
+              {o.recipient} <Badge>{o.status.replaceAll("_", " ")}</Badge>{" "}
+              {o.provider === "simulator" && <Badge>SIMULATED</Badge>}
             </h3>
             <p>{o.message}</p>
             <p className="continuity-muted">
-              {formatTime(o.createdAt)} · Delivery: unconfirmed
+              Prepared {formatTime(o.createdAt)}
+              {o.sentAt && ` · Sent ${formatTime(o.sentAt)}`}
+              {o.deliveredAt && ` · Delivered ${formatTime(o.deliveredAt)}`}
+              {o.readAt && ` · Read ${formatTime(o.readAt)}`}
+              <br />
+              Delivery:{" "}
+              {o.status === "DELIVERED" || o.status === "READ"
+                ? o.provider === "simulator"
+                  ? "simulated, nothing was delivered to a phone"
+                  : "confirmed by the WhatsApp provider"
+                : o.status === "SENT"
+                  ? "sent, waiting for the provider to confirm delivery"
+                  : o.status === "MANUALLY_SENT"
+                    ? "sent by staff from the composer, not confirmed"
+                    : o.status === "FAILED"
+                      ? "failed"
+                      : o.status === "CANCELLED"
+                        ? "cancelled, permission was withdrawn"
+                        : "not sent yet"}
             </p>
-            {["PREPARED", "COMPOSER_LINK_READY"].includes(o.status) && (
-              <button
-                className="btn-secondary"
-                disabled={action.busy}
-                onClick={() =>
-                  action.run(async () => {
-                    const result = await api.post<{ url: string }>(
-                      `${ROOT}/outreach/${o.id}/open`,
-                    );
-                    setReadyLink(result.url);
-                    await reload();
-                  }, "")
-                }
-              >
-                Verify consent & prepare WhatsApp link
-              </button>
+            {o.failedReason && (
+              <p role="alert" className="continuity-alert">
+                {o.failedReason}
+              </p>
             )}
+            <div className="continuity-actions">
+              {data.whatsapp?.automatic &&
+                ["PREPARED", "COMPOSER_LINK_READY", "FAILED"].includes(o.status) && (
+                  <button
+                    className="btn-primary"
+                    disabled={action.busy}
+                    onClick={() =>
+                      action.run(async () => {
+                        try {
+                          await api.post(`${ROOT}/outreach/${o.id}/send`);
+                        } finally {
+                          await reload();
+                        }
+                      }, data.whatsapp?.mode === "simulator" ? "Simulated send recorded. No real message was sent." : "Message handed to WhatsApp. Delivery status will update.")
+                    }
+                  >
+                    {o.status === "FAILED" ? "Try sending again" : "Send now"}
+                  </button>
+                )}
+              {["PREPARED", "COMPOSER_LINK_READY"].includes(o.status) && (
+                <button
+                  className="btn-secondary"
+                  disabled={action.busy}
+                  onClick={() =>
+                    action.run(async () => {
+                      const result = await api.post<{ url: string }>(
+                        `${ROOT}/outreach/${o.id}/open`,
+                      );
+                      setReadyLink(result.url);
+                      await reload();
+                    }, "")
+                  }
+                >
+                  Verify consent & prepare WhatsApp link
+                </button>
+              )}
+              {o.status === "COMPOSER_LINK_READY" && (
+                <button
+                  className="btn-secondary"
+                  disabled={action.busy}
+                  onClick={() =>
+                    action.run(async () => {
+                      await api.post(`${ROOT}/outreach/${o.id}/mark-sent`);
+                      await reload();
+                    }, "Recorded as sent by staff. Delivery is unconfirmed.")
+                  }
+                >
+                  I sent it from WhatsApp
+                </button>
+              )}
+            </div>
           </div>
         ))}
         {readyLink && (

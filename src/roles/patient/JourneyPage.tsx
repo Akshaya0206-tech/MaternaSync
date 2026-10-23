@@ -4,8 +4,10 @@ import { ArrowLeft } from 'lucide-react';
 import { fetchMyJourney } from '../../api/patientPortal';
 import type { JourneyEvent } from '../../api/patientPortal';
 import { formatFriendlyDate } from './format';
+import { tx, useLanguage } from '../../i18n';
 
 export function JourneyPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [events, setEvents] = useState<JourneyEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -14,7 +16,7 @@ export function JourneyPage() {
   useEffect(() => {
     fetchMyJourney()
       .then(setEvents)
-      .catch(() => setError("We couldn't load your journey. Please try again."))
+      .catch(() => setError(tx("We couldn't load your journey. Please try again.")))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -24,22 +26,22 @@ export function JourneyPage() {
         onClick={() => navigate('/patient/dashboard')}
         style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', color: 'var(--teal-primary)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, padding: 0, marginBottom: '14px' }}
       >
-        <ArrowLeft size={15} /> Back to My Care
+        <ArrowLeft size={15} /> {t('Back to My Care')}
       </button>
 
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>My Journey</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('My Journey')}</h1>
 
       {isLoading && (
-        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading your journey…</div>
+        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading your journey…')}</div>
       )}
 
       {error && !isLoading && (
-        <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{error}</div>
+        <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>
       )}
 
       {!isLoading && !error && events.length === 0 && (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Your journey will appear here as your care team reviews your records and visits.
+          {t('Your journey will appear here as your care team reviews your records and visits.')}
         </div>
       )}
 
@@ -57,7 +59,7 @@ export function JourneyPage() {
                 </div>
                 <div className="glass-panel" style={{ padding: '14px 18px' }}>
                   <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{event.title}</div>
-                  {event.summary && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{event.summary}</div>}
+                  {event.summary && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{event.summary}</div>}
                 </div>
               </div>
             </div>

@@ -117,6 +117,7 @@ export function ClinicPage() {
                 <thead>
                   <tr>
                     <th>Patient</th>
+                    <th>Review priority</th>
                     <th>Clinicians</th>
                     <th>Open / overdue / unassigned</th>
                     <th>Last check-in</th>
@@ -133,6 +134,19 @@ export function ClinicPage() {
                         >
                           {p.patientName}
                         </Link>
+                      </td>
+                      <td>
+                        {p.reviewPriority === "none" ? (
+                          "Nothing waiting"
+                        ) : (
+                          <Link
+                            to={`/${user?.role === "doctor" ? "doctor" : "care-team"}/care-workspace?episodeId=${p.episodeId}`}
+                          >
+                            <Badge>
+                              {{ urgent: "Urgent review", soon: "Review soon", routine: "Routine review" }[p.reviewPriority]}
+                            </Badge>
+                          </Link>
+                        )}
                       </td>
                       <td>{p.doctors.join(", ")}</td>
                       <td>

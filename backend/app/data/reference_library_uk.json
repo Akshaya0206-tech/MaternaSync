@@ -1,0 +1,137 @@
+[
+ {
+  "id": "nice-ng201", "title": "Antenatal care", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "ANTENATAL_CARE", "topic": "Routine antenatal care",
+  "publication_date": "2021-08-19",
+  "version_note": "NICE guideline NG201; published 2021-08-19; latest minor change listed December 2025 (RSV immunisation information at booking); replaces CG62. Developed with the RCOG.",
+  "source_url": "https://www.nice.org.uk/guidance/ng201", "document_url": "https://www.nice.org.uk/guidance/ng201/resources/antenatal-care-pdf-66143709695941", "section": "NICE guideline NG201",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Sets out the routine care pregnant women should be offered from booking onwards, including check-ups, tests, information and support, how antenatal services should be organised, and how to manage common problems in pregnancy.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng133", "title": "Hypertension in pregnancy: diagnosis and management", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Hypertension and pre-eclampsia",
+  "publication_date": "2019-06-25",
+  "version_note": "NICE guideline NG133; last updated 2023-04-17 (PLGF-based testing recommendations aligned with NICE diagnostics guidance); replaces CG107.",
+  "source_url": "https://www.nice.org.uk/guidance/ng133", "document_url": "https://www.nice.org.uk/guidance/ng133/resources/hypertension-in-pregnancy-diagnosis-and-management-pdf-66141717671365", "section": "NICE guideline NG133",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Covers diagnosing and managing chronic hypertension, gestational hypertension and pre-eclampsia during pregnancy, labour and birth, advice for women with hypertension who want to conceive or who have had a hypertensive pregnancy, and postnatal treatment and follow-up.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng3", "title": "Diabetes in pregnancy: management from preconception to the postnatal period", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Pre-existing and gestational diabetes",
+  "publication_date": "2015-02-25",
+  "version_note": "NICE guideline NG3; last updated 2020-12-16 (continuous and flash glucose monitoring for type 1 diabetes); an update on hybrid closed loop systems is planned; replaces CG63.",
+  "source_url": "https://www.nice.org.uk/guidance/ng3", "document_url": "https://www.nice.org.uk/guidance/ng3/resources/diabetes-in-pregnancy-management-from-preconception-to-the-postnatal-period-pdf-51038446021", "section": "NICE guideline NG3",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Addresses care for women with type 1, type 2 or gestational diabetes who are planning pregnancy or already pregnant, from preconception planning through diagnosis and treatment of gestational diabetes to antenatal, intrapartum, neonatal and postnatal care.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng207", "title": "Inducing labour", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "LABOR_DELIVERY", "topic": "Induction of labour",
+  "publication_date": "2021-11-04",
+  "version_note": "NICE guideline NG207; published 2021-11-04; latest minor change listed May 2026; replaces CG70.",
+  "source_url": "https://www.nice.org.uk/guidance/ng207", "document_url": "https://www.nice.org.uk/guidance/ng207/resources/inducing-labour-pdf-66143719773637", "section": "NICE guideline NG207",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Describes when induction of labour should be offered, the available methods, how to assess and monitor women being induced, pain relief during induction and the management of complications such as hyperstimulation.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng235", "title": "Intrapartum care", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "LABOR_DELIVERY", "topic": "Care in labour for women at term",
+  "publication_date": "2023-09-29",
+  "version_note": "NICE guideline NG235; last updated 2026-06-09 (vitamin K deficiency bleeding recommendations reintroduced); replaces CG190.",
+  "source_url": "https://www.nice.org.uk/guidance/ng235", "document_url": "https://www.nice.org.uk/guidance/ng235/resources/intrapartum-care-pdf-66143897812933", "section": "NICE guideline NG235",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Covers care during labour and immediately after birth for women giving birth at term (37 to 42 weeks), including choice of place of birth, pain relief, the stages of labour, ruptured membranes at term, newborn care and care of the woman after birth.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng194", "title": "Postnatal care", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "POSTPARTUM", "topic": "Routine postnatal care of women and babies",
+  "publication_date": "2021-04-20",
+  "version_note": "NICE guideline NG194; last updated 2026-06-09; replaces CG37. Developed with the RCOG.",
+  "source_url": "https://www.nice.org.uk/guidance/ng194", "document_url": "https://www.nice.org.uk/guidance/ng194/resources/postnatal-care-pdf-66142082148037", "section": "NICE guideline NG194",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Sets out routine care for women and babies in the first 8 weeks after birth, how postnatal services are delivered, how to spot and manage common and serious problems, and support for parent-baby attachment and infant feeding.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng192", "title": "Caesarean birth", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "LABOR_DELIVERY", "topic": "Caesarean birth",
+  "publication_date": "2021-03-31",
+  "version_note": "NICE guideline NG192; last updated 2025-06-10; previously titled 'Caesarean section'; replaces CG132.",
+  "source_url": "https://www.nice.org.uk/guidance/ng192", "document_url": "https://www.nice.org.uk/guidance/ng192/resources/caesarean-birth-pdf-66142078788805", "section": "NICE guideline NG192",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Explains when caesarean birth should be offered and discussed, how the operation is carried out, care and recovery afterwards, benefits and risks compared with vaginal birth, placenta accreta spectrum, and pregnancy and birth after a previous caesarean.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng25", "title": "Preterm labour and birth", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Preterm labour and birth",
+  "publication_date": "2015-11-20",
+  "version_note": "NICE guideline NG25; last updated 2022-06-10 (repeat courses of maternal corticosteroids); later minor change February 2026.",
+  "source_url": "https://www.nice.org.uk/guidance/ng25", "document_url": "https://www.nice.org.uk/guidance/ng25/resources/preterm-labour-and-birth-pdf-1837333576645", "section": "NICE guideline NG25",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Covers women with a singleton pregnancy at increased risk of, or showing signs of, labour before 37 weeks and those having a planned preterm birth, including how to reduce the risk to the baby and which treatments can prevent or delay early labour and birth.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng229", "title": "Fetal monitoring in labour", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "LABOR_DELIVERY", "topic": "Intrapartum fetal monitoring",
+  "publication_date": "2022-12-14",
+  "version_note": "NICE guideline NG229; last updated 2026-03-25.",
+  "source_url": "https://www.nice.org.uk/guidance/ng229", "document_url": "https://www.nice.org.uk/guidance/ng229/resources/fetal-monitoring-in-labour-pdf-66143844065221", "section": "NICE guideline NG229",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Describes how to monitor the baby's wellbeing during labour, including risk assessment to choose the level of monitoring, using clinical assessment alongside monitoring, and interpreting and acting on the findings.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng137", "title": "Twin and triplet pregnancy", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Multiple pregnancy",
+  "publication_date": "2019-09-04",
+  "version_note": "NICE guideline NG137; last updated 2024-04-09 (screening for and preventing spontaneous preterm birth).",
+  "source_url": "https://www.nice.org.uk/guidance/ng137", "document_url": "https://www.nice.org.uk/guidance/ng137/resources/twin-and-triplet-pregnancy-pdf-66141724389829", "section": "NICE guideline NG137",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Covers the extra care needed for twin and triplet pregnancies on top of routine pregnancy and labour care, with the aim of reducing complications; to be read alongside NICE's antenatal, intrapartum and fetal monitoring guidelines.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng121", "title": "Intrapartum care for women with existing medical conditions or obstetric complications and their babies", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "LABOR_DELIVERY", "topic": "High-risk intrapartum care",
+  "publication_date": "2019-03-06",
+  "version_note": "NICE guideline NG121; last updated 2019-04-25; later minor changes only, most recent November 2025.",
+  "source_url": "https://www.nice.org.uk/guidance/ng121", "document_url": "https://www.nice.org.uk/guidance/ng121/resources/intrapartum-care-for-women-with-existing-medical-conditions-or-obstetric-complications-and-their-babies-pdf-66141653845957", "section": "NICE guideline NG121",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Covers care in labour and birth for women who need extra support because of a medical condition or a complication in the current or a previous pregnancy, and women who have had no antenatal care.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-ng126", "title": "Ectopic pregnancy and miscarriage: diagnosis and initial management", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Early pregnancy complications",
+  "publication_date": "2019-04-17",
+  "version_note": "NICE guideline NG126; last updated 2026-06-17 (anti-D immunoglobulin prophylaxis); replaces CG154.",
+  "source_url": "https://www.nice.org.uk/guidance/ng126", "document_url": "https://www.nice.org.uk/guidance/ng126/resources/ectopic-pregnancy-and-miscarriage-diagnosis-and-initial-management-pdf-66141662244037", "section": "NICE guideline NG126",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Covers how ectopic pregnancy and miscarriage are diagnosed and initially managed in people with pain or bleeding in early pregnancy (up to 13 completed weeks), and the support given to reduce the psychological impact of early pregnancy loss.",
+  "passage_search": false
+ },
+ {
+  "id": "nice-cg192", "title": "Antenatal and postnatal mental health: clinical management and service guidance", "issuer": "NICE", "jurisdiction": "United Kingdom", "category": "GENERAL", "topic": "Perinatal mental health",
+  "publication_date": "2014-12-17",
+  "version_note": "NICE clinical guideline CG192; last updated 2020-02-11 (valproate and anticonvulsant advice amended); replaces CG45.",
+  "source_url": "https://www.nice.org.uk/guidance/cg192", "document_url": "https://www.nice.org.uk/guidance/cg192/resources/antenatal-and-postnatal-mental-health-clinical-management-and-service-guidance-pdf-35109869806789", "section": "NICE guideline CG192",
+  "rights": "NICE UK Open Content Licence applies in the UK only. Outside the UK, reproduction needs NICE's written agreement (NICE Notice of Rights, clause 18). Link and own-words summary only.",
+  "summary": "Covers recognising, assessing and treating mental health problems in women planning a baby, who are pregnant, or who have given birth in the past year, including depression, anxiety, eating disorders, substance use and severe mental illness.",
+  "passage_search": false
+ },
+ {
+  "id": "sign-171", "title": "Management of diabetes in pregnancy (SIGN 171)", "issuer": "SIGN (Scottish Intercollegiate Guidelines Network)", "jurisdiction": "Scotland", "category": "HIGH_RISK", "topic": "Diabetes in pregnancy",
+  "publication_date": "2024-05",
+  "version_note": "SIGN 171, May 2024; replaces the pregnancy section of SIGN 116. Reviewed in three years.",
+  "source_url": "https://www.sign.ac.uk/guidelines/management-of-diabetes-in-pregnancy/", "document_url": "https://www.sign.ac.uk/media/2205/sign-171-management-of-diabetes-in-pregnancy.pdf", "section": "SIGN 171",
+  "rights": "Licensed under Creative Commons Attribution-Noncommercial-NoDerivatives 4.0 International. Attribution required, no adaptation. Link only.",
+  "summary": "Gives recommendations on preconception care for women with known diabetes, antenatal care for all women with diabetes in pregnancy, the risk factors, diagnosis and treatment of gestational diabetes, and detecting glucose intolerance after pregnancy.",
+  "passage_search": false
+ },
+ {
+  "id": "sign-169", "title": "Perinatal mental health conditions (SIGN 169)", "issuer": "SIGN (Scottish Intercollegiate Guidelines Network)", "jurisdiction": "Scotland", "category": "GENERAL", "topic": "Perinatal mental health",
+  "publication_date": "2023-12",
+  "version_note": "SIGN 169, December 2023; supersedes SIGN 127. Based on the 2023 COPE Australian guideline.",
+  "source_url": "https://www.sign.ac.uk/guidelines/perinatal-mental-health-conditions/", "document_url": "https://www.sign.ac.uk/media/2172/sign-169-perinatal.pdf", "section": "SIGN 169",
+  "rights": "Licensed under Creative Commons Attribution-Noncommercial-NoDerivatives 4.0 International. Attribution required, no adaptation. Link only.",
+  "summary": "Covers screening and treatment for women and birthing parents at risk of, or experiencing, a mental health condition in pregnancy or the year after birth, including screening tools, care planning, psychological therapies and medication safety.",
+  "passage_search": false
+ }
+]

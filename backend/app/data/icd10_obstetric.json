@@ -1,0 +1,764 @@
+{
+ "source": "WHO ICD-10, 2019 version (English)",
+ "source_url": "https://icdcdn.who.int/icd10/index.html",
+ "browse_url": "https://icd.who.int/browse10/2019/en",
+ "note": "Codes and titles are copied from the WHO 2019 tabular list. The matching phrases are clinic-language suggestions, not WHO text, and must be reviewed by a doctor before the set is approved.",
+ "codes": [
+  {
+   "code": "D50.9",
+   "title": "Iron deficiency anaemia, unspecified",
+   "phrases": [
+    "iron deficiency anaemia",
+    "iron deficiency anemia",
+    "iron-deficiency anaemia"
+   ]
+  },
+  {
+   "code": "E03.9",
+   "title": "Hypothyroidism, unspecified",
+   "phrases": [
+    "hypothyroidism",
+    "hypothyroid",
+    "on levothyroxine"
+   ]
+  },
+  {
+   "code": "E05.9",
+   "title": "Thyrotoxicosis, unspecified",
+   "phrases": [
+    "hyperthyroidism",
+    "hyperthyroid",
+    "thyrotoxicosis"
+   ]
+  },
+  {
+   "code": "O02.1",
+   "title": "Missed abortion",
+   "phrases": [
+    "missed abortion",
+    "missed miscarriage",
+    "silent miscarriage",
+    "early fetal death"
+   ]
+  },
+  {
+   "code": "O03.4",
+   "title": "Spontaneous abortion: Incomplete, without complication",
+   "phrases": [
+    "incomplete abortion",
+    "incomplete miscarriage",
+    "incomplete spontaneous abortion"
+   ]
+  },
+  {
+   "code": "O03.9",
+   "title": "Spontaneous abortion: Complete or unspecified, without complication",
+   "phrases": [
+    "complete abortion",
+    "complete miscarriage",
+    "spontaneous abortion",
+    "spontaneous miscarriage"
+   ]
+  },
+  {
+   "code": "O10.0",
+   "title": "Pre-existing essential hypertension complicating pregnancy, childbirth and the puerperium",
+   "phrases": [
+    "chronic hypertension in pregnancy",
+    "pre-existing hypertension",
+    "essential hypertension in pregnancy",
+    "known hypertensive"
+   ]
+  },
+  {
+   "code": "O10.9",
+   "title": "Unspecified pre-existing hypertension complicating pregnancy, childbirth and the puerperium",
+   "phrases": [
+    "chronic htn in pregnancy",
+    "hypertension before pregnancy",
+    "pre-existing htn"
+   ]
+  },
+  {
+   "code": "O11",
+   "title": "Pre-eclampsia superimposed on chronic hypertension",
+   "phrases": [
+    "superimposed pre-eclampsia",
+    "superimposed preeclampsia",
+    "pre-eclampsia superimposed on chronic hypertension",
+    "chronic hypertension with pre-eclampsia"
+   ]
+  },
+  {
+   "code": "O13",
+   "title": "Gestational [pregnancy-induced] hypertension",
+   "phrases": [
+    "gestational hypertension",
+    "pregnancy-induced hypertension",
+    "pih",
+    "gestational htn"
+   ]
+  },
+  {
+   "code": "O14.0",
+   "title": "Mild to moderate pre-eclampsia",
+   "phrases": [
+    "mild pre-eclampsia",
+    "moderate pre-eclampsia",
+    "mild preeclampsia",
+    "pre-eclampsia without severe features"
+   ]
+  },
+  {
+   "code": "O14.1",
+   "title": "Severe pre-eclampsia",
+   "phrases": [
+    "severe pre-eclampsia",
+    "severe preeclampsia",
+    "pre-eclampsia with severe features"
+   ]
+  },
+  {
+   "code": "O14.2",
+   "title": "HELLP syndrome",
+   "phrases": [
+    "hellp syndrome",
+    "hellp"
+   ]
+  },
+  {
+   "code": "O15.0",
+   "title": "Eclampsia in pregnancy",
+   "phrases": [
+    "antepartum eclampsia",
+    "antenatal eclampsia",
+    "eclamptic fit in pregnancy"
+   ]
+  },
+  {
+   "code": "O15.9",
+   "title": "Eclampsia, unspecified as to time period",
+   "phrases": [
+    "eclamptic seizure",
+    "eclamptic fits",
+    "eclamptic convulsions",
+    "had eclampsia"
+   ]
+  },
+  {
+   "code": "O20.0",
+   "title": "Threatened abortion",
+   "phrases": [
+    "threatened abortion",
+    "threatened miscarriage"
+   ]
+  },
+  {
+   "code": "O20.9",
+   "title": "Haemorrhage in early pregnancy, unspecified",
+   "phrases": [
+    "bleeding in early pregnancy",
+    "first trimester bleeding",
+    "early pregnancy bleeding",
+    "first trimester spotting"
+   ]
+  },
+  {
+   "code": "O21.0",
+   "title": "Mild hyperemesis gravidarum",
+   "phrases": [
+    "hyperemesis gravidarum",
+    "mild hyperemesis",
+    "excessive vomiting in pregnancy"
+   ]
+  },
+  {
+   "code": "O21.1",
+   "title": "Hyperemesis gravidarum with metabolic disturbance",
+   "phrases": [
+    "hyperemesis with dehydration",
+    "hyperemesis with ketosis",
+    "hyperemesis with electrolyte imbalance"
+   ]
+  },
+  {
+   "code": "O23.0",
+   "title": "Infections of kidney in pregnancy",
+   "phrases": [
+    "pyelonephritis in pregnancy",
+    "acute pyelonephritis pregnancy",
+    "kidney infection in pregnancy"
+   ]
+  },
+  {
+   "code": "O23.1",
+   "title": "Infections of bladder in pregnancy",
+   "phrases": [
+    "cystitis in pregnancy",
+    "bladder infection in pregnancy",
+    "acute cystitis in pregnancy"
+   ]
+  },
+  {
+   "code": "O23.4",
+   "title": "Unspecified infection of urinary tract in pregnancy",
+   "phrases": [
+    "uti in pregnancy",
+    "urinary tract infection in pregnancy",
+    "urinary infection in pregnancy"
+   ]
+  },
+  {
+   "code": "O24.0",
+   "title": "Diabetes mellitus in pregnancy: Pre-existing diabetes mellitus, insulin-dependent",
+   "phrases": [
+    "type 1 diabetes in pregnancy",
+    "pre-existing type 1 diabetes",
+    "t1dm in pregnancy",
+    "insulin dependent diabetes in pregnancy"
+   ]
+  },
+  {
+   "code": "O24.1",
+   "title": "Diabetes mellitus in pregnancy: Pre-existing diabetes mellitus, non-insulin-dependent",
+   "phrases": [
+    "type 2 diabetes in pregnancy",
+    "pre-existing type 2 diabetes",
+    "t2dm in pregnancy",
+    "non insulin dependent diabetes pregnancy"
+   ]
+  },
+  {
+   "code": "O24.3",
+   "title": "Diabetes mellitus in pregnancy: Pre-existing diabetes mellitus, unspecified",
+   "phrases": [
+    "pre-existing diabetes in pregnancy",
+    "pregestational diabetes",
+    "known diabetic pregnancy"
+   ]
+  },
+  {
+   "code": "O24.4",
+   "title": "Diabetes mellitus arising in pregnancy",
+   "phrases": [
+    "gestational diabetes",
+    "gdm",
+    "gestational diabetes mellitus",
+    "diabetes arising in pregnancy"
+   ]
+  },
+  {
+   "code": "O24.9",
+   "title": "Diabetes mellitus in pregnancy, unspecified",
+   "phrases": [
+    "diabetes mellitus in pregnancy",
+    "diabetes complicating pregnancy",
+    "diabetic pregnancy"
+   ]
+  },
+  {
+   "code": "O26.6",
+   "title": "Liver disorders in pregnancy, childbirth and the puerperium",
+   "phrases": [
+    "intrahepatic cholestasis of pregnancy",
+    "obstetric cholestasis",
+    "cholestasis of pregnancy"
+   ]
+  },
+  {
+   "code": "O30.0",
+   "title": "Twin pregnancy",
+   "phrases": [
+    "twin pregnancy",
+    "twin gestation",
+    "dichorionic diamniotic twins",
+    "monochorionic twins"
+   ]
+  },
+  {
+   "code": "O32.1",
+   "title": "Maternal care for breech presentation",
+   "phrases": [
+    "breech presentation",
+    "breech lie",
+    "frank breech",
+    "footling breech"
+   ]
+  },
+  {
+   "code": "O32.2",
+   "title": "Maternal care for transverse and oblique lie",
+   "phrases": [
+    "transverse lie",
+    "oblique lie",
+    "transverse presentation"
+   ]
+  },
+  {
+   "code": "O34.2",
+   "title": "Maternal care due to uterine scar from previous surgery",
+   "phrases": [
+    "previous caesarean section",
+    "previous cesarean section",
+    "previous lscs",
+    "scarred uterus"
+   ]
+  },
+  {
+   "code": "O36.0",
+   "title": "Maternal care for rhesus isoimmunization",
+   "phrases": [
+    "rh isoimmunization",
+    "rhesus isoimmunisation",
+    "anti-d antibodies",
+    "rh incompatibility"
+   ]
+  },
+  {
+   "code": "O36.3",
+   "title": "Maternal care for signs of fetal hypoxia",
+   "phrases": [
+    "signs of fetal hypoxia",
+    "fetal hypoxia antenatal",
+    "antenatal fetal compromise"
+   ]
+  },
+  {
+   "code": "O36.5",
+   "title": "Maternal care for poor fetal growth",
+   "phrases": [
+    "poor fetal growth",
+    "fetal growth restriction",
+    "intrauterine growth restriction",
+    "iugr"
+   ]
+  },
+  {
+   "code": "O40",
+   "title": "Polyhydramnios",
+   "phrases": [
+    "polyhydramnios",
+    "hydramnios",
+    "excess liquor"
+   ]
+  },
+  {
+   "code": "O41.0",
+   "title": "Oligohydramnios",
+   "phrases": [
+    "oligohydramnios",
+    "reduced liquor",
+    "low afi"
+   ]
+  },
+  {
+   "code": "O42.0",
+   "title": "Premature rupture of membranes, onset of labour within 24 hours",
+   "phrases": [
+    "premature rupture of membranes",
+    "pprom",
+    "leaking liquor"
+   ]
+  },
+  {
+   "code": "O42.1",
+   "title": "Premature rupture of membranes, onset of labour after 24 hours",
+   "phrases": [
+    "prelabour rupture of membranes",
+    "prelabor rupture of membranes",
+    "prom more than 24 hours"
+   ]
+  },
+  {
+   "code": "O44.0",
+   "title": "Placenta praevia specified as without haemorrhage",
+   "phrases": [
+    "placenta praevia without haemorrhage",
+    "placenta previa without bleeding",
+    "asymptomatic placenta praevia"
+   ]
+  },
+  {
+   "code": "O44.1",
+   "title": "Placenta praevia with haemorrhage",
+   "phrases": [
+    "placenta praevia",
+    "placenta previa",
+    "placenta praevia with bleeding",
+    "major placenta praevia"
+   ]
+  },
+  {
+   "code": "O45.9",
+   "title": "Premature separation of placenta, unspecified",
+   "phrases": [
+    "abruptio placentae",
+    "placental abruption",
+    "abruption",
+    "accidental haemorrhage"
+   ]
+  },
+  {
+   "code": "O46.9",
+   "title": "Antepartum haemorrhage, unspecified",
+   "phrases": [
+    "antepartum haemorrhage",
+    "antepartum hemorrhage",
+    "third trimester bleeding"
+   ]
+  },
+  {
+   "code": "O48",
+   "title": "Prolonged pregnancy",
+   "phrases": [
+    "post-term pregnancy",
+    "postdated pregnancy",
+    "post dates",
+    "prolonged pregnancy"
+   ]
+  },
+  {
+   "code": "O60.0",
+   "title": "Preterm labour without delivery",
+   "phrases": [
+    "preterm labour",
+    "preterm labor",
+    "threatened preterm labour",
+    "preterm contractions"
+   ]
+  },
+  {
+   "code": "O60.1",
+   "title": "Preterm spontaneous labour with preterm delivery",
+   "phrases": [
+    "preterm delivery",
+    "preterm birth",
+    "preterm labour with preterm delivery",
+    "spontaneous preterm delivery"
+   ]
+  },
+  {
+   "code": "O61.0",
+   "title": "Failed medical induction of labour",
+   "phrases": [
+    "failed induction",
+    "failed medical induction",
+    "failed induction of labour",
+    "induction failure"
+   ]
+  },
+  {
+   "code": "O62.1",
+   "title": "Secondary uterine inertia",
+   "phrases": [
+    "secondary uterine inertia",
+    "arrested active phase of labour",
+    "hypotonic uterine dysfunction",
+    "uterine inertia"
+   ]
+  },
+  {
+   "code": "O63.0",
+   "title": "Prolonged first stage (of labour)",
+   "phrases": [
+    "prolonged first stage of labour",
+    "prolonged first stage"
+   ]
+  },
+  {
+   "code": "O65.4",
+   "title": "Obstructed labour due to fetopelvic disproportion, unspecified",
+   "phrases": [
+    "cephalopelvic disproportion",
+    "cpd",
+    "fetopelvic disproportion",
+    "obstructed labour due to disproportion"
+   ]
+  },
+  {
+   "code": "O66.9",
+   "title": "Obstructed labour, unspecified",
+   "phrases": [
+    "obstructed labour",
+    "obstructed labor",
+    "dystocia"
+   ]
+  },
+  {
+   "code": "O68.0",
+   "title": "Labour and delivery complicated by fetal heart rate anomaly",
+   "phrases": [
+    "fetal heart rate abnormality in labour",
+    "fetal bradycardia in labour",
+    "fetal tachycardia in labour",
+    "abnormal ctg in labour"
+   ]
+  },
+  {
+   "code": "O68.9",
+   "title": "Labour and delivery complicated by fetal stress, unspecified",
+   "phrases": [
+    "fetal distress",
+    "foetal distress",
+    "fetal stress in labour"
+   ]
+  },
+  {
+   "code": "O70.0",
+   "title": "First degree perineal laceration during delivery",
+   "phrases": [
+    "first degree tear",
+    "first degree perineal tear",
+    "1st degree perineal tear"
+   ]
+  },
+  {
+   "code": "O70.1",
+   "title": "Second degree perineal laceration during delivery",
+   "phrases": [
+    "second degree tear",
+    "second degree perineal tear",
+    "2nd degree perineal tear"
+   ]
+  },
+  {
+   "code": "O70.2",
+   "title": "Third degree perineal laceration during delivery",
+   "phrases": [
+    "third degree tear",
+    "third degree perineal tear",
+    "obstetric anal sphincter injury",
+    "anal sphincter injury"
+   ]
+  },
+  {
+   "code": "O70.3",
+   "title": "Fourth degree perineal laceration during delivery",
+   "phrases": [
+    "fourth degree tear",
+    "fourth degree perineal tear",
+    "4th degree perineal tear"
+   ]
+  },
+  {
+   "code": "O72.0",
+   "title": "Third-stage haemorrhage",
+   "phrases": [
+    "third stage haemorrhage",
+    "third stage hemorrhage",
+    "bleeding in third stage of labour"
+   ]
+  },
+  {
+   "code": "O72.1",
+   "title": "Other immediate postpartum haemorrhage",
+   "phrases": [
+    "postpartum haemorrhage",
+    "postpartum hemorrhage",
+    "pph",
+    "atonic pph"
+   ]
+  },
+  {
+   "code": "O72.2",
+   "title": "Delayed and secondary postpartum haemorrhage",
+   "phrases": [
+    "secondary postpartum haemorrhage",
+    "delayed postpartum haemorrhage",
+    "secondary pph"
+   ]
+  },
+  {
+   "code": "O75.7",
+   "title": "Vaginal delivery following previous caesarean section",
+   "phrases": [
+    "vaginal birth after caesarean",
+    "vbac",
+    "trial of labour after caesarean",
+    "tolac"
+   ]
+  },
+  {
+   "code": "O80.0",
+   "title": "Spontaneous vertex delivery",
+   "phrases": [
+    "spontaneous vertex delivery",
+    "normal vaginal delivery",
+    "spontaneous vaginal delivery",
+    "svd"
+   ]
+  },
+  {
+   "code": "O82.0",
+   "title": "Delivery by elective caesarean section",
+   "phrases": [
+    "elective caesarean section",
+    "elective lscs",
+    "elective cesarean section",
+    "repeat caesarean section"
+   ]
+  },
+  {
+   "code": "O82.1",
+   "title": "Delivery by emergency caesarean section",
+   "phrases": [
+    "emergency caesarean section",
+    "emergency lscs",
+    "emergency cesarean section"
+   ]
+  },
+  {
+   "code": "O82.9",
+   "title": "Delivery by caesarean section, unspecified",
+   "phrases": [
+    "delivery by caesarean section",
+    "caesarean delivery",
+    "lower segment caesarean section",
+    "lscs done"
+   ]
+  },
+  {
+   "code": "O85",
+   "title": "Puerperal sepsis",
+   "phrases": [
+    "puerperal sepsis",
+    "puerperal endometritis",
+    "puerperal fever",
+    "postpartum sepsis"
+   ]
+  },
+  {
+   "code": "O86.1",
+   "title": "Other infection of genital tract following delivery",
+   "phrases": [
+    "cervicitis following delivery",
+    "vaginitis following delivery",
+    "postpartum genital tract infection"
+   ]
+  },
+  {
+   "code": "O86.2",
+   "title": "Urinary tract infection following delivery",
+   "phrases": [
+    "urinary tract infection following delivery",
+    "postpartum uti",
+    "puerperal uti"
+   ]
+  },
+  {
+   "code": "O91.1",
+   "title": "Abscess of breast associated with childbirth",
+   "phrases": [
+    "breast abscess",
+    "mammary abscess",
+    "puerperal breast abscess"
+   ]
+  },
+  {
+   "code": "O91.2",
+   "title": "Nonpurulent mastitis associated with childbirth",
+   "phrases": [
+    "puerperal mastitis",
+    "lactational mastitis",
+    "nonpurulent mastitis",
+    "mastitis"
+   ]
+  },
+  {
+   "code": "O92.1",
+   "title": "Cracked nipple associated with childbirth",
+   "phrases": [
+    "cracked nipple",
+    "fissure of nipple",
+    "nipple fissure",
+    "sore cracked nipples"
+   ]
+  },
+  {
+   "code": "O92.4",
+   "title": "Hypogalactia",
+   "phrases": [
+    "hypogalactia",
+    "low milk supply",
+    "insufficient breast milk",
+    "poor lactation"
+   ]
+  },
+  {
+   "code": "O99.0",
+   "title": "Anaemia complicating pregnancy, childbirth and the puerperium",
+   "phrases": [
+    "anaemia in pregnancy",
+    "anemia in pregnancy",
+    "anaemia complicating pregnancy",
+    "antenatal anaemia"
+   ]
+  },
+  {
+   "code": "O99.2",
+   "title": "Endocrine, nutritional and metabolic diseases complicating pregnancy, childbirth and the puerperium",
+   "phrases": [
+    "thyroid disorder in pregnancy",
+    "hypothyroidism in pregnancy",
+    "hyperthyroidism in pregnancy",
+    "thyroid disease in pregnancy"
+   ]
+  },
+  {
+   "code": "O99.4",
+   "title": "Diseases of the circulatory system complicating pregnancy, childbirth and the puerperium",
+   "phrases": [
+    "heart disease in pregnancy",
+    "cardiac disease in pregnancy",
+    "rheumatic heart disease in pregnancy",
+    "valvular heart disease in pregnancy"
+   ]
+  },
+  {
+   "code": "Z34.0",
+   "title": "Supervision of normal first pregnancy",
+   "phrases": [
+    "normal first pregnancy",
+    "uncomplicated first pregnancy",
+    "primigravida routine antenatal"
+   ]
+  },
+  {
+   "code": "Z34.8",
+   "title": "Supervision of other normal pregnancy",
+   "phrases": [
+    "normal pregnancy multigravida",
+    "uncomplicated second pregnancy",
+    "routine antenatal multigravida"
+   ]
+  },
+  {
+   "code": "Z34.9",
+   "title": "Supervision of normal pregnancy, unspecified",
+   "phrases": [
+    "supervision of normal pregnancy",
+    "routine antenatal care",
+    "low risk pregnancy",
+    "uncomplicated pregnancy"
+   ]
+  },
+  {
+   "code": "Z35.9",
+   "title": "Supervision of high-risk pregnancy, unspecified",
+   "phrases": [
+    "high risk pregnancy",
+    "high-risk pregnancy",
+    "high risk antenatal care"
+   ]
+  },
+  {
+   "code": "Z39.2",
+   "title": "Routine postpartum follow-up",
+   "phrases": [
+    "routine postpartum follow-up",
+    "postnatal check",
+    "postnatal visit"
+   ]
+  }
+ ]
+}

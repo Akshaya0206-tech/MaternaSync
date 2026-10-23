@@ -22,6 +22,7 @@ const kinds = {
   pathway: "Care pathways",
   rule: "Review rules",
   coding: "ICD-10 code sets",
+  interaction: "Drug safety checks",
 };
 
 export function LibraryPage() {
@@ -42,6 +43,8 @@ export function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [targetType, setTargetType] = useState("note");
   const [targetId, setTargetId] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [bulkConfirmed, setBulkConfirmed] = useState(false);
   const reload = async () => {
     const result = await getLibrary();
     setItems(result);
@@ -69,12 +72,15 @@ export function LibraryPage() {
       (!issuer || r.issuer === issuer) &&
       (!jurisdiction || r.jurisdiction === jurisdiction) &&
       (!topic || r.topic === topic) &&
-      (!status || r.status === status) &&
+      (status ? r.status === status : r.status !== "RETIRED") &&
       (!date || (r.publicationDate && r.publicationDate >= date)) &&
       `${r.title} ${r.topic} ${r.content} ${r.issuer}`
         .toLowerCase()
         .includes(query.toLowerCase()),
   );
+  const drafts = results.filter((r) => r.status === "DRAFT");
+  // Only what is on screen can be approved, even if filters changed after ticking.
+  const chosen = picked.filter((id) => drafts.some((d) => d.id === id));
   const targets =
     targetType === "note"
       ? w.data?.outputs.map((o) => ({ id: o.id, title: o.title }))
@@ -101,6 +107,8 @@ export function LibraryPage() {
               setSelected(null);
               setIssuer("");
               setTopic("");
+              setPicked([]);
+              setBulkConfirmed(false);
             }}
           >
             {label}
@@ -225,13 +233,78 @@ export function LibraryPage() {
               No matching resources. Clear filters or add a reviewed source.
             </Empty>
           )}
+          {doctor && drafts.length > 0 && (
+            <div className="continuity-note">
+              <label className="continuity-check">
+                <input
+                  type="checkbox"
+                  checked={chosen.length === drafts.length}
+                  onChange={(e) =>
+                    setPicked(e.target.checked ? drafts.map((d) => d.id) : [])
+                  }
+                />
+                Select all {drafts.length} drafts in this view
+              </label>
+              <label className="continuity-check">
+                <input
+                  type="checkbox"
+                  checked={bulkConfirmed}
+                  onChange={(e) => setBulkConfirmed(e.target.checked)}
+                />
+                I read each selected resource, its source and its review date,
+                and approve it with my professional signature.
+              </label>
+              <button
+                className="btn-primary"
+                disabled={action.busy || !chosen.length || !bulkConfirmed}
+                onClick={() =>
+                  action.run(async () => {
+                    const result = await api.post<{
+                      approved: string[];
+                      failed: { id: string; reason: string }[];
+                    }>("/api/v2/library/approve-batch", {
+                      ids: chosen,
+                      confirmed: true,
+                    });
+                    setPicked([]);
+                    setBulkConfirmed(false);
+                    setSelected(null);
+                    await reload();
+                    if (result.failed.length)
+                      throw new Error(
+                        `${result.approved.length} approved. ${result.failed.length} could not be approved: ${[...new Set(result.failed.map((f) => f.reason))].join("; ")}`,
+                      );
+                  }, `Approved ${chosen.length} resources. Each approval records you as the reviewer.`)
+                }
+              >
+                Approve {chosen.length} selected
+              </button>
+            </div>
+          )}
           {results.map((r) => (
             <article className="continuity-item" key={r.id}>
               <h3>{r.title}</h3>
               <p className="continuity-muted">
                 {r.issuer} · {r.jurisdiction} · v{r.version} ·{" "}
                 {r.publicationDate || "Publication date unverified"}
+                {r.kind === "education" && ` · ${languages[r.language]}`}
               </p>
+              {doctor && r.status === "DRAFT" && (
+                <label className="continuity-check">
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(r.id)}
+                    onChange={(e) =>
+                      setPicked((old) =>
+                        e.target.checked
+                          ? [...old, r.id]
+                          : old.filter((id) => id !== r.id),
+                      )
+                    }
+                  />
+                  Select for approval
+                </label>
+              )}
               <Badge>
                 {r.status}
                 {r.status === "APPROVED" && !r.usable
@@ -261,6 +334,19 @@ export function LibraryPage() {
                 Open official source ↗
               </a>
             )}
+            {typeof selected.configuration.documentUrl === "string" &&
+              selected.configuration.documentUrl && (
+                <>
+                  {" · "}
+                  <a
+                    href={selected.configuration.documentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open the document ↗
+                  </a>
+                </>
+              )}
             <p className="continuity-muted">
               Review: {selected.status} ·{" "}
               {selected.approvedByName || "No reviewer yet"}
@@ -286,6 +372,60 @@ export function LibraryPage() {
               <p className="continuity-muted">
                 Fields: {selected.configuration.fields?.join(" · ")}
               </p>
+            )}
+            {selected.kind === "rule" && (
+              <p className="continuity-muted">
+                Flags when {String(selected.configuration.metric).replaceAll("_", " ")}{" "}
+                {selected.configuration.operator === "gt" ? ">" : "<"}{" "}
+                {String(selected.configuration.threshold)} · Review priority:{" "}
+                {String(selected.configuration.tier ?? "routine")}
+                {selected.configuration.nextAction
+                  ? ` · Next action: ${selected.configuration.nextAction}`
+                  : ""}
+              </p>
+            )}
+            {selected.kind === "coding" && (
+              <p className="continuity-muted">
+                {(selected.configuration.entries as unknown[] | undefined)?.length ?? 0}{" "}
+                phrase-to-code entries. Review the phrases before approving; a
+                phrase only suggests a candidate and never assigns a code.
+              </p>
+            )}
+            {selected.kind === "interaction" && (
+              <div>
+                <p className="continuity-muted">
+                  Every entry cites the product label it came from. This is a
+                  limited reviewed list, not a complete interaction database.
+                </p>
+                {(
+                  (selected.configuration.pairs as
+                    | { a: { name: string }; b: { name: string }; severity: string; effect: string; sourceUrl: string }[]
+                    | undefined) ?? []
+                ).map((p, i) => (
+                  <p key={`p${i}`}>
+                    <strong>
+                      {p.a.name} + {p.b.name}
+                    </strong>{" "}
+                    · {p.severity} · {p.effect}{" "}
+                    <a href={p.sourceUrl} target="_blank" rel="noreferrer">
+                      label
+                    </a>
+                  </p>
+                ))}
+                {(
+                  (selected.configuration.cautions as
+                    | { name: string; severity: string; statement: string; sourceUrl: string }[]
+                    | undefined) ?? []
+                ).map((c, i) => (
+                  <p key={`c${i}`}>
+                    <strong>{c.name}</strong> · pregnancy · {c.severity} ·{" "}
+                    {c.statement}{" "}
+                    <a href={c.sourceUrl} target="_blank" rel="noreferrer">
+                      label
+                    </a>
+                  </p>
+                ))}
+              </div>
             )}
             <div className="continuity-actions">
               {selected.hasFile && (
@@ -498,6 +638,20 @@ function ResourceEditor({
   const [threshold, setThreshold] = useState(
     String(initial?.configuration.threshold ?? ""),
   );
+  const [tier, setTier] = useState(String(initial?.configuration.tier || "routine"));
+  const [nextAction, setNextAction] = useState(
+    String(initial?.configuration.nextAction || ""),
+  );
+  const [interactionJson, setInteractionJson] = useState(
+    JSON.stringify(
+      {
+        pairs: initial?.configuration.pairs ?? [],
+        cautions: initial?.configuration.cautions ?? [],
+      },
+      null,
+      2,
+    ),
+  );
   const [codes, setCodes] = useState(
     (
       initial?.configuration.entries as
@@ -528,8 +682,10 @@ function ResourceEditor({
                 : type === "pathway"
                   ? { steps }
                   : type === "rule"
-                    ? { metric, operator, threshold: Number(threshold) }
-                    : type === "coding"
+                    ? { metric, operator, threshold: Number(threshold), tier, nextAction }
+                    : type === "interaction"
+                      ? JSON.parse(interactionJson)
+                      : type === "coding"
                       ? {
                           entries: lines(codes).map((s) => {
                             const [code, label, match] = s
@@ -747,9 +903,10 @@ function ResourceEditor({
         {type === "rule" && (
           <>
             <div className="continuity-note">
-              No default clinical thresholds are supplied. Document a validated
-              protocol and approve this rule before any flags are shown. Flags
-              require professional interpretation.
+              Thresholds must come from a protocol your clinic validated. A rule
+              shows flags only after a doctor approves it, and a flag asks a
+              clinician to look; it does not diagnose, message the patient or
+              assign work by itself.
             </div>
             <div className="continuity-fields">
               <Field label="Recorded metric">
@@ -788,7 +945,40 @@ function ResourceEditor({
                   onChange={(e) => setThreshold(e.target.value)}
                 />
               </Field>
+              <Field label="Review priority when it flags">
+                <select value={tier} onChange={(e) => setTier(e.target.value)}>
+                  <option value="urgent">Urgent review</option>
+                  <option value="soon">Review soon</option>
+                  <option value="routine">Routine review</option>
+                </select>
+              </Field>
             </div>
+            <Field label="Next action shown to the doctor (administrative wording, up to 300 characters)">
+              <input
+                maxLength={300}
+                value={nextAction}
+                onChange={(e) => setNextAction(e.target.value)}
+              />
+            </Field>
+          </>
+        )}
+        {type === "interaction" && (
+          <>
+            <div className="continuity-note">
+              Only statements you can see in the official product label belong
+              here. Each pair needs two named drugs (with aliases), a severity,
+              the effect and an https source URL; each pregnancy caution needs a
+              drug name, a severity, the label statement and a source URL.
+            </div>
+            <Field label="Interaction pairs and pregnancy cautions (JSON)">
+              <textarea
+                rows={12}
+                required
+                value={interactionJson}
+                onChange={(e) => setInteractionJson(e.target.value)}
+                style={{ fontFamily: "monospace" }}
+              />
+            </Field>
           </>
         )}
         {type === "coding" && (

@@ -122,6 +122,10 @@ export function approveSource(sourceId: string, notes?: string): Promise<Guideli
   return api.post<GuidelineSource>(`/api/v2/guidelines/sources/${sourceId}/approve`, { notes: notes ?? null });
 }
 
+export function approveSourcesBatch(ids: string[]): Promise<{ approved: string[]; failed: { id: string; reason: string }[] }> {
+  return api.post(`/api/v2/guidelines/sources/approve-batch`, { ids, confirmed: true });
+}
+
 export function rejectSource(sourceId: string, notes?: string): Promise<GuidelineSource> {
   return api.post<GuidelineSource>(`/api/v2/guidelines/sources/${sourceId}/reject`, { notes: notes ?? null });
 }

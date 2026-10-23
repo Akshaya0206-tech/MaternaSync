@@ -279,6 +279,12 @@ class ReviewNoteIn(CamelModel):
     notes: str | None = None
 
 
+class BatchSourceApprovalIn(CamelModel):
+    ids: list[str]
+    confirmed: bool = False
+    notes: str | None = None
+
+
 # ---------- Questions ----------
 
 class CareTeamQuestionOut(CamelModel):

@@ -8,6 +8,7 @@ import { formatFriendlyDate, formatFriendlyTime, friendlyAppointmentStatus } fro
 import { Link } from 'react-router-dom';
 import { useWorkspace, Panel } from '../../components/continuity/shared';
 import { SummaryList } from './SupportPages';
+import { tx, useLanguage } from '../../i18n';
 
 const STATUS_TONE: Record<string, BadgeTone> = {
   scheduled: 'blue',
@@ -16,6 +17,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 };
 
 export function AppointmentsPage() {
+  const { t } = useLanguage();
   const workspace = useWorkspace();
   const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,26 +26,26 @@ export function AppointmentsPage() {
   useEffect(() => {
     fetchMyAppointments()
       .then(setAppointments)
-      .catch(() => setError("We couldn't load your appointments. Please try again."))
+      .catch(() => setError(tx("We couldn't load your appointments. Please try again.")))
       .finally(() => setIsLoading(false));
   }, []);
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>Appointments</h1>
-      <Link to="/patient/care-plan" className="btn-secondary" style={{ marginBottom: 16 }}>Request an appointment / view reminders</Link>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('Appointments')}</h1>
+      <Link to="/patient/care-plan" className="btn-secondary" style={{ marginBottom: 16 }}>{t('Request an appointment / view reminders')}</Link>
 
       {isLoading && (
-        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading your appointments…</div>
+        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading your appointments…')}</div>
       )}
 
       {error && !isLoading && (
-        <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{error}</div>
+        <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>
       )}
 
       {!isLoading && !error && appointments.length === 0 && (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          No upcoming appointment has been recorded.
+          {t('No upcoming appointment has been recorded.')}
         </div>
       )}
 
@@ -76,7 +78,7 @@ export function AppointmentsPage() {
           ))}
         </div>
       )}
-      {workspace.data && <Panel title="Approved visit summaries"><SummaryList data={{ ...workspace.data, outputs: workspace.data.outputs.filter(o => !!o.appointmentId) }} /></Panel>}
+      {workspace.data && <Panel title={t('Approved visit summaries')}><SummaryList data={{ ...workspace.data, outputs: workspace.data.outputs.filter(o => !!o.appointmentId) }} /></Panel>}
     </main>
   );
 }

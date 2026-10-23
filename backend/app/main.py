@@ -11,10 +11,10 @@ from .migrations import backfill_handover_versions, run_additive_migrations
 from .reminders import check_reminders
 from .routers import auth, care_team_portal, clinical_guidelines, doctor_portal, episodes, external_simulator, patient_portal, patients, records, workflow
 from .seed_data import run_seed
-from .routers import continuity, clinical_library
+from .routers import continuity, clinical_library, companion, whatsapp_webhook
 from .seed_continuity import run_seed_continuity
 from .config import DEMO_ENABLED
-from .seed_guidelines import ensure_demo_guideline_sources
+from .reference_library import sync_reference_library
 from .seed_role_data import ensure_additional_demo_accounts, ensure_patient_portal_demo_data, run_seed_role_data
 
 Base.metadata.create_all(bind=engine)
@@ -42,6 +42,8 @@ app.include_router(doctor_portal.router)
 app.include_router(external_simulator.router)
 app.include_router(continuity.router)
 app.include_router(clinical_library.router)
+app.include_router(companion.router)
+app.include_router(whatsapp_webhook.router)
 app.include_router(clinical_guidelines.router)
 
 
@@ -65,8 +67,9 @@ def on_startup():
             run_seed_role_data(db)
             ensure_patient_portal_demo_data(db)
             ensure_additional_demo_accounts(db)
-            ensure_demo_guideline_sources(db)
             run_seed_continuity(db)
+        # Real reference documents belong to every deployment, not only the demo.
+        sync_reference_library(db)
     finally:
         db.close()
 

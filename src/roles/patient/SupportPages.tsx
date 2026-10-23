@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { api } from "../../api/client";
 import {
   ROOT,
@@ -7,7 +6,8 @@ import {
   formatTime,
   localDateTime,
 } from "../../api/continuity";
-import type { Language, Resource, Workspace } from "../../api/continuity";
+import type { Workspace } from "../../api/continuity";
+import { tx, useLanguage } from "../../i18n";
 import {
   Badge,
   Empty,
@@ -19,7 +19,34 @@ import {
   useWorkspace,
 } from "../../components/continuity/shared";
 
+const PURPOSES: Record<string, string> = {
+  reminders: tx("Care reminders"),
+  approved_documents: tx("Approved document notifications"),
+};
+const REMINDER_STATUS: Record<string, string> = {
+  pending: tx("Pending"),
+  done: tx("Done"),
+  skipped: tx("Skipped"),
+  needs_help: tx("I need help"),
+};
+const REMINDER_KIND: Record<string, string> = {
+  medicine: tx("Medicine"),
+  vaccine: tx("Vaccine"),
+  appointment: tx("Appointment"),
+  follow_up: tx("Follow-up"),
+};
+// What each part of a plain-language summary or report explanation is, so patients can tell
+// confirmed instructions from general information at a glance.
+const SECTION_NOTES: Record<string, string> = {
+  next: tx("Confirmed by your doctor"),
+  about: tx("General information, not specific to you"),
+  measure: tx("General information, not specific to you"),
+  results: tx("Read from your report"),
+  means: tx("Written by your doctor"),
+};
+
 export function ConsentPage() {
+  const { t } = useLanguage();
   const w = useWorkspace();
   const action = useAction();
   const [recipient, setRecipient] = useState("");
@@ -31,18 +58,20 @@ export function ConsentPage() {
   >([]);
   return (
     <Page
-      title="Sharing & consent"
-      subtitle="Choose who may receive a minimal WhatsApp notification, for what purpose, and for how long."
+      title={t("Sharing & consent")}
+      subtitle={t(
+        "Choose who may receive a minimal WhatsApp notification, for what purpose, and for how long.",
+      )}
     >
       <Feedback error={w.error || action.error} message={action.message} />
       <div className="continuity-note">
-        Messages contain only a prompt to sign in. Your records, medicines and
-        health details are not included. Revoking permission stops future
-        sharing; it cannot retract a message already sent outside MaternaSync.
+        {t(
+          "Messages contain only a prompt to sign in. Your records, medicines and health details are not included. Revoking permission stops future sharing; it cannot retract a message already sent outside MaternaSync.",
+        )}
       </div>
       {w.data && (
         <>
-          <Panel title="Give sharing permission">
+          <Panel title={t("Give sharing permission")}>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -54,11 +83,11 @@ export function ConsentPage() {
                   });
                   setConfirmed(false);
                   await w.reload();
-                }, "Sharing permission recorded.");
+                }, t("Sharing permission recorded."));
               }}
             >
               <div className="continuity-fields">
-                <Field label="Recipient phone with country code">
+                <Field label={t("Recipient phone with country code")}>
                   <input
                     required
                     type="tel"
@@ -68,18 +97,19 @@ export function ConsentPage() {
                     onChange={(e) => setRecipient(e.target.value)}
                   />
                 </Field>
-                <Field label="Purpose">
+                <Field label={t("Purpose")}>
                   <select
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
                   >
-                    <option value="reminders">Care reminders</option>
-                    <option value="approved_documents">
-                      Approved document notifications
-                    </option>
+                    {Object.entries(PURPOSES).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {t(label)}
+                      </option>
+                    ))}
                   </select>
                 </Field>
-                <Field label="Permission expires">
+                <Field label={t("Permission expires")}>
                   <input
                     required
                     type="datetime-local"
@@ -96,45 +126,53 @@ export function ConsentPage() {
                   onChange={(e) => setConfirmed(e.target.checked)}
                   required
                 />
-                I confirm this recipient and permit notifications for the
-                selected purpose until the expiry date.
+                {t(
+                  "I confirm this recipient and permit notifications for the selected purpose until the expiry date.",
+                )}
               </label>
               <button
                 className="btn-primary"
                 disabled={action.busy || !confirmed}
               >
-                Save permission
+                {t("Save permission")}
               </button>
             </form>
           </Panel>
-          <Panel title="Your permissions">
+          <Panel title={t("Your permissions")}>
             {!w.data.consents.length && (
-              <Empty>No external sharing permissions granted.</Empty>
+              <Empty>{t("No external sharing permissions granted.")}</Empty>
             )}
             {w.data.consents.map((c) => (
               <div key={c.id} className="continuity-item">
                 <h3>
                   {c.recipient}{" "}
                   <Badge>
-                    {c.revokedAt ? "Revoked" : c.active ? "Active" : "Expired"}
+                    {c.revokedAt
+                      ? t("Revoked")
+                      : c.active
+                        ? t("Active")
+                        : t("Expired")}
                   </Badge>
                 </h3>
                 <p>
-                  {c.purpose.replaceAll("_", " ")} · Expires{" "}
-                  {formatTime(c.expiresAt)}
+                  {t(PURPOSES[c.purpose] ?? c.purpose.replaceAll("_", " "))} ·{" "}
+                  {t("Expires {time}", { time: formatTime(c.expiresAt) })}
                 </p>
                 {c.active && (
                   <button
                     className="btn-secondary"
                     disabled={action.busy}
                     onClick={() =>
-                      action.run(async () => {
-                        await api.post(`${ROOT}/consents/${c.id}/revoke`);
-                        await w.reload();
-                      }, "Permission revoked. Future sharing is blocked.")
+                      action.run(
+                        async () => {
+                          await api.post(`${ROOT}/consents/${c.id}/revoke`);
+                          await w.reload();
+                        },
+                        t("Permission revoked. Future sharing is blocked."),
+                      )
                     }
                   >
-                    Revoke / opt out
+                    {t("Revoke / opt out")}
                   </button>
                 )}
               </div>
@@ -154,12 +192,12 @@ export function ConsentPage() {
                   )
                 }
               >
-                View consent history
+                {t("View consent history")}
               </button>
             </div>
             {history.map((h) => (
               <p key={h.id} className="continuity-muted">
-                {formatTime(h.timestamp)} · {h.title}
+                {formatTime(h.timestamp)} · {t(h.title)}
               </p>
             ))}
           </Panel>
@@ -176,6 +214,7 @@ export function SummaryList({
   data: Workspace;
   appointmentId?: string;
 }) {
+  const { t } = useLanguage();
   const outputs = data.outputs.filter(
     (o) => !appointmentId || o.appointmentId === appointmentId,
   );
@@ -183,67 +222,91 @@ export function SummaryList({
     <>
       {!outputs.length && (
         <Empty>
-          No approved summaries or documents have been released yet.
+          {t("No approved summaries or documents have been released yet.")}
         </Empty>
       )}
-      {outputs.map((o) => (
-        <article key={o.id} className="continuity-item">
-          <h3>
-            {o.title} <Badge>Approved</Badge>
-          </h3>
-          <p className="continuity-muted">
-            Reviewed by {o.approvedByName} · {formatTime(o.approvedAt)} ·{" "}
-            {languages[o.language]}
-          </p>
-          {o.appointmentId && (
+      {outputs.map((o) => {
+        const sectioned = !!o.sectionKinds;
+        return (
+          <article key={o.id} className="continuity-item">
+            <h3>
+              {o.title} <Badge>{t("Approved")}</Badge>
+            </h3>
             <p className="continuity-muted">
-              Visit:{" "}
-              {formatTime(
-                data.appointments.find((a) => a.id === o.appointmentId)
-                  ?.scheduledAt ?? null,
-              )}
+              {t("Reviewed by {name}", { name: o.approvedByName ?? "" })} ·{" "}
+              {formatTime(o.approvedAt)} · {languages[o.language]}
             </p>
-          )}
-          <div className="continuity-copy" lang={o.language}>
-            {o.content}
-          </div>
-          {o.structuredData &&
-            Object.entries(o.structuredData).map(([key, value]) => (
-              <p key={key}>
-                <strong>{key}:</strong> {value}
+            {o.appointmentId && (
+              <p className="continuity-muted">
+                {t("Visit")}:{" "}
+                {formatTime(
+                  data.appointments.find((a) => a.id === o.appointmentId)
+                    ?.scheduledAt ?? null,
+                )}
               </p>
-            ))}
-        </article>
-      ))}
+            )}
+            <div className="continuity-copy" lang={o.language}>
+              {o.content}
+            </div>
+            {o.structuredData &&
+              Object.entries(o.structuredData)
+                .filter(([, value]) => !sectioned || value.trim())
+                .map(([key, value]) =>
+                  sectioned ? (
+                    <section
+                      key={key}
+                      className={`continuity-section continuity-section-${o.sectionKinds?.[key] ?? "plain"}`}
+                      lang={o.language}
+                    >
+                      <h4>{key}</h4>
+                      {SECTION_NOTES[o.sectionKinds?.[key] ?? ""] && (
+                        <p className="continuity-section-note">
+                          {t(SECTION_NOTES[o.sectionKinds?.[key] ?? ""])}
+                        </p>
+                      )}
+                      <div className="continuity-copy">{value}</div>
+                    </section>
+                  ) : (
+                    <p key={key}>
+                      <strong>{key}:</strong> {value}
+                    </p>
+                  ),
+                )}
+          </article>
+        );
+      })}
     </>
   );
 }
 
 export function CarePlanPage() {
+  const { t } = useLanguage();
   const w = useWorkspace();
   const action = useAction();
   const [filter, setFilter] = useState("pending");
   const [time, setTime] = useState("");
-  const [reason, setReason] = useState("Consultation");
+  const [reason, setReason] = useState("Consultation"); // stored as typed; staff read it as-is
   const [notes, setNotes] = useState("");
   return (
     <Page
-      title="My care plan"
-      subtitle="Follow the reminders your care team has approved, request a visit, and read your released summaries."
+      title={t("My care plan")}
+      subtitle={t(
+        "Follow the reminders your care team has approved, request a visit, and read your released summaries.",
+      )}
     >
       <Feedback error={w.error || action.error} message={action.message} />
       {w.data && (
         <>
           <Panel
-            title="Medicine, vaccine & visit reminders"
+            title={t("Medicine, vaccine & visit reminders")}
             aside={
               <select
-                aria-label="Reminder status"
+                aria-label={t("Reminder status")}
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
               >
-                <option value="pending">Pending</option>
-                <option value="all">All reminders</option>
+                <option value="pending">{t("Pending")}</option>
+                <option value="all">{t("All reminders")}</option>
               </select>
             }
           >
@@ -251,8 +314,9 @@ export function CarePlanPage() {
               (r) => filter === "all" || r.status === filter,
             ).length && (
               <Empty>
-                No reminders in this view. Schedules are entered by your care
-                team.
+                {t(
+                  "No reminders in this view. Schedules are entered by your care team.",
+                )}
               </Empty>
             )}
             {w.data.reminders
@@ -260,22 +324,28 @@ export function CarePlanPage() {
               .map((r) => (
                 <article key={r.id} className="continuity-item">
                   <h3>
-                    {r.title} <Badge>{r.status.replaceAll("_", " ")}</Badge>
+                    {r.title}{" "}
+                    <Badge>
+                      {t(REMINDER_STATUS[r.status] ?? r.status.replaceAll("_", " "))}
+                    </Badge>
                   </h3>
                   <p>
-                    {formatTime(r.scheduledAt)} · {r.kind.replaceAll("_", " ")}
+                    {formatTime(r.scheduledAt)} ·{" "}
+                    {t(REMINDER_KIND[r.kind] ?? r.kind.replaceAll("_", " "))}
                   </p>
                   <div className="continuity-copy">{r.instructions}</div>
                   <p className="continuity-muted">
-                    Approved by {r.approvedByName}
+                    {t("Approved by {name}", { name: r.approvedByName })}
                   </p>
                   {r.status === "pending" && (
                     <div className="continuity-actions">
-                      {[
-                        ["done", "Done"],
-                        ["skipped", "Skipped"],
-                        ["needs_help", "I need help"],
-                      ].map(([status, label]) => (
+                      {(
+                        [
+                          ["done", t("Done")],
+                          ["skipped", t("Skipped")],
+                          ["needs_help", t("I need help")],
+                        ] as const
+                      ).map(([status, label]) => (
                         <button
                           key={status}
                           className="btn-secondary"
@@ -290,8 +360,8 @@ export function CarePlanPage() {
                                 await w.reload();
                               },
                               status === "needs_help"
-                                ? "Your care team has been asked to follow up."
-                                : "Response saved.",
+                                ? t("Your care team has been asked to follow up.")
+                                : t("Response saved."),
                             )
                           }
                         >
@@ -303,7 +373,7 @@ export function CarePlanPage() {
                 </article>
               ))}
           </Panel>
-          <Panel title="Request an appointment">
+          <Panel title={t("Request an appointment")}>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -318,11 +388,11 @@ export function CarePlanPage() {
                   );
                   setNotes("");
                   await w.reload();
-                }, "Request sent. Your care team will confirm the time.");
+                }, t("Request sent. Your care team will confirm the time."));
               }}
             >
               <div className="continuity-fields">
-                <Field label="Preferred date and time">
+                <Field label={t("Preferred date and time")}>
                   <input
                     required
                     type="datetime-local"
@@ -331,7 +401,7 @@ export function CarePlanPage() {
                     onChange={(e) => setTime(e.target.value)}
                   />
                 </Field>
-                <Field label="Visit type">
+                <Field label={t("Visit type")}>
                   <input
                     required
                     value={reason}
@@ -339,7 +409,7 @@ export function CarePlanPage() {
                   />
                 </Field>
               </div>
-              <Field label="Notes for your care team">
+              <Field label={t("Notes for your care team")}>
                 <textarea
                   rows={2}
                   value={notes}
@@ -347,186 +417,23 @@ export function CarePlanPage() {
                 />
               </Field>
               <button className="btn-primary" disabled={action.busy}>
-                Request visit
+                {t("Request visit")}
               </button>
             </form>
             {w.data.appointments
               .filter((a) => a.status === "requested")
               .map((a) => (
                 <p key={a.id} className="continuity-muted">
-                  Requested: {formatTime(a.scheduledAt)} · {a.appointmentType} ·
-                  Waiting for confirmation
+                  {t("Requested")}: {formatTime(a.scheduledAt)} ·{" "}
+                  {a.appointmentType} · {t("Waiting for confirmation")}
                 </p>
               ))}
           </Panel>
-          <Panel title="Approved summaries & instructions">
+          <Panel title={t("Approved summaries & instructions")}>
             <SummaryList data={w.data} />
           </Panel>
         </>
       )}
-    </Page>
-  );
-}
-
-const navigation = {
-  en: {
-    title: "Care companion",
-    description:
-      "Find your way, learn from reviewed information, and ask your care team.",
-    questions: "Ask my care team",
-    records: "My records",
-    log: "Daily check-in",
-    plan: "My care plan",
-    prompt:
-      "Medical questions go to your care team for review. This companion does not diagnose or recommend treatment.",
-  },
-  hi: {
-    title: "देखभाल साथी",
-    description: "स्वीकृत जानकारी पढ़ें और अपनी देखभाल टीम से प्रश्न पूछें।",
-    questions: "मेरी देखभाल टीम से पूछें",
-    records: "मेरे रिकॉर्ड",
-    log: "दैनिक जानकारी",
-    plan: "मेरी देखभाल योजना",
-    prompt:
-      "चिकित्सा प्रश्न समीक्षा के लिए आपकी देखभाल टीम को भेजे जाते हैं। यह साथी निदान या उपचार की सलाह नहीं देता।",
-  },
-  ta: {
-    title: "பராமரிப்புத் துணை",
-    description:
-      "மதிப்பாய்வு செய்யப்பட்ட தகவல்களைப் படித்து, உங்கள் பராமரிப்புக் குழுவிடம் கேளுங்கள்.",
-    questions: "எனது பராமரிப்புக் குழுவிடம் கேளுங்கள்",
-    records: "எனது பதிவுகள்",
-    log: "தினசரிப் பதிவு",
-    plan: "எனது பராமரிப்புத் திட்டம்",
-    prompt:
-      "மருத்துவக் கேள்விகள் உங்கள் பராமரிப்புக் குழுவின் மதிப்பாய்விற்கு அனுப்பப்படும். இந்தத் துணை நோயறிதலோ சிகிச்சைப் பரிந்துரையோ வழங்காது.",
-  },
-  te: {
-    title: "సంరక్షణ తోడు",
-    description:
-      "సమీక్షించిన సమాచారాన్ని చదవండి, మీ సంరక్షణ బృందాన్ని ప్రశ్నలు అడగండి.",
-    questions: "నా సంరక్షణ బృందాన్ని అడగండి",
-    records: "నా రికార్డులు",
-    log: "రోజువారీ నమోదు",
-    plan: "నా సంరక్షణ ప్రణాళిక",
-    prompt:
-      "వైద్య ప్రశ్నలు సమీక్ష కోసం మీ సంరక్షణ బృందానికి పంపబడతాయి. ఈ తోడు రోగ నిర్ధారణ లేదా చికిత్స సలహా ఇవ్వదు.",
-  },
-};
-export function CompanionPage() {
-  const w = useWorkspace();
-  const action = useAction();
-  const [language, setLanguage] = useState<Language>("en");
-  const [stage, setStage] = useState("all");
-  const [modules, setModules] = useState<Resource[]>([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    if (w.context) setLanguage(w.context.language);
-  }, [w.context]);
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError("");
-    api
-      .get<Resource[]>(
-        `/api/v2/library/education?language=${language}&stage=${stage}`,
-      )
-      .then((r) => {
-        if (active) setModules(r);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [language, stage]);
-  const t = navigation[language];
-  return (
-    <Page title={t.title} subtitle={t.description}>
-      <Feedback
-        error={w.error || action.error || error}
-        message={action.message}
-      />
-      <div className="continuity-fields">
-        <Field label="Language / भाषा / மொழி / భాష">
-          <select
-            value={language}
-            onChange={(e) => {
-              const next = e.target.value as Language;
-              void action.run(async () => {
-                await api.patch(`${ROOT}/preferences`, { language: next });
-                setLanguage(next);
-              }, "");
-            }}
-          >
-            {Object.entries(languages).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Pregnancy stage">
-          <select value={stage} onChange={(e) => setStage(e.target.value)}>
-            {["all", "first", "second", "third", "postpartum"].map((s) => (
-              <option key={s} value={s}>
-                {s === "all"
-                  ? "All stages"
-                  : s === "postpartum"
-                    ? "Postpartum"
-                    : `${s} trimester`}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-      <div lang={language}>
-        <div className="continuity-note">{t.prompt}</div>
-        <div className="continuity-actions">
-          <Link className="btn-primary" to="/patient/questions">
-            {t.questions}
-          </Link>
-          <Link className="btn-secondary" to="/patient/records">
-            {t.records}
-          </Link>
-          <Link className="btn-secondary" to="/patient/daily-log">
-            {t.log}
-          </Link>
-          <Link className="btn-secondary" to="/patient/care-plan">
-            {t.plan}
-          </Link>
-        </div>
-        <Panel title="Reviewed education">
-          {loading ? (
-            <p role="status">Loading…</p>
-          ) : !modules.length ? (
-            <Empty>
-              No current reviewed modules are available in this language and
-              stage. Ask your care team for information in your preferred
-              language.
-            </Empty>
-          ) : (
-            modules.map((m) => (
-              <article key={m.id} className="continuity-item">
-                <h3>{m.title}</h3>
-                <div className="continuity-copy">{m.content}</div>
-                <p className="continuity-muted">
-                  {m.issuer} · v{m.version} · Reviewed by {m.approvedByName} ·{" "}
-                  {formatTime(m.lastCheckedAt)} · Review due {m.reviewDue}
-                </p>
-                <a href={m.sourceUrl} target="_blank" rel="noreferrer">
-                  Original source · {m.section}
-                </a>
-              </article>
-            ))
-          )}
-        </Panel>
-      </div>
     </Page>
   );
 }

@@ -4,10 +4,12 @@ import { fetchMyProfile, updateMyProfile } from '../../api/patientPortal';
 import type { PatientProfile } from '../../api/patientPortal';
 import { ApiError } from '../../api/client';
 import { Field, inputStyle } from '../../components/auth/AuthField';
+import { tx, useLanguage } from '../../i18n';
 
 const readOnlyInputStyle = { ...inputStyle, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', cursor: 'not-allowed' };
 
 export function ProfilePage() {
+  const { t } = useLanguage();
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -25,7 +27,7 @@ export function ProfilePage() {
         setPhone(p.phone ?? '');
         setDateOfBirth(p.dateOfBirth ?? '');
       })
-      .catch(() => setError("We couldn't load your profile. Please try again."))
+      .catch(() => setError(tx("We couldn't load your profile. Please try again.")))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -40,7 +42,7 @@ export function ProfilePage() {
       setSaved(true);
       window.setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save your profile. Please try again.');
+      setError(err instanceof ApiError ? err.message : t('Could not save your profile. Please try again.'));
     } finally {
       setIsSaving(false);
     }
@@ -48,39 +50,39 @@ export function ProfilePage() {
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '520px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>Profile</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('Profile')}</h1>
 
       {isLoading && (
-        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading your profile…</div>
+        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading your profile…')}</div>
       )}
 
       {!isLoading && profile && (
         <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <Field label="Full Name">
+          <Field label={t('Full Name')}>
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} style={inputStyle} />
           </Field>
-          <Field label="Email">
+          <Field label={t('Email')}>
             <input value={profile.email} disabled style={readOnlyInputStyle} />
           </Field>
-          <Field label="Date of Birth">
+          <Field label={t('Date of Birth')}>
             <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} style={inputStyle} />
           </Field>
-          <Field label="Medical Record Number">
-            <input value={profile.mrn ?? 'Not yet assigned'} disabled style={readOnlyInputStyle} />
+          <Field label={t('Medical Record Number')}>
+            <input value={profile.mrn ?? t('Not yet assigned')} disabled style={readOnlyInputStyle} />
           </Field>
-          <Field label="Phone">
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Not provided" style={inputStyle} />
+          <Field label={t('Phone')}>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('Not provided')} style={inputStyle} />
           </Field>
 
-          {error && <div style={{ fontSize: '0.82rem', color: 'var(--rose-urgent)' }}>{error}</div>}
+          {error && <div style={{ fontSize: '0.82rem', color: 'var(--rose-urgent)' }}>{t(error)}</div>}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button type="submit" disabled={isSaving} className="btn-primary">
-              {isSaving ? 'Saving…' : 'Save Changes'}
+              {isSaving ? t('Saving…') : t('Save Changes')}
             </button>
             {saved && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.82rem', color: 'var(--emerald-raw)', fontWeight: 600 }}>
-                <CheckCircle2 size={15} /> Saved
+                <CheckCircle2 size={15} /> {t('Saved')}
               </span>
             )}
           </div>

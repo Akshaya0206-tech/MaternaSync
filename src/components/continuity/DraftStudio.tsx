@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import { ROOT, languages, formatTime } from "../../api/continuity";
 import type {
+  Appointment,
   ClinicalOutput,
   Language,
   Resource,
+  SafetyCheck,
   Workspace,
 } from "../../api/continuity";
 import { Badge, Empty, Feedback, Field, Panel, useAction } from "./shared";
@@ -167,11 +169,43 @@ export function DraftStudio({
             translated. Administrative reply starters are available in all four
             languages.
           </p>
+          {kind === "lab_explanation" && (
+            <div className="continuity-note">
+              The draft lists the results read from the verified report, a
+              general “what this test measures” note for each, and where each
+              value sits against the range printed on the report. What the
+              results mean for this patient, and the next steps, are left for
+              you to write. Nothing is released until you do and sign.
+            </div>
+          )}
+          {kind === "visit_summary" && (
+            <div className="continuity-note">
+              The draft is pre-filled from the approved consultation: plain
+              wording with abbreviations explained once, reviewed general
+              information in the chosen language, the next appointment and the
+              patient’s open questions. Confirm every statement, and write the
+              next steps if none were documented. Nothing is released until you
+              sign.
+            </div>
+          )}
+          {kind === "explanation" && (
+            <div className="continuity-note">
+              The draft finds the conditions this note actually discusses
+              (gestational diabetes, high blood pressure, anaemia, scans) and
+              adds the clinic-approved plain-language explanation of each, in the
+              chosen language, next to what you recorded. A condition with no
+              approved explanation is flagged, not invented. Nothing is released
+              until you sign.
+            </div>
+          )}
           {kind === "prescription" && (
             <div className="continuity-note">
-              Enter the medicine, dose, route, frequency and duration yourself.
-              Drug interactions are unchecked: no verified drug database is
-              connected. Review independently before signing.
+              Enter the medicine, dose, route, frequency and duration yourself;
+              nothing is suggested. After you save, a drug safety check runs
+              against the patient&apos;s recorded allergies and the reviewed,
+              label-sourced lists a doctor approved in the Reference Library.
+              It is not a complete interaction database, so review
+              independently before signing.
             </div>
           )}
           <button className="btn-primary" disabled={action.busy || !source}>
@@ -183,6 +217,7 @@ export function DraftStudio({
         <OutputEditor
           key={selected.id}
           output={selected}
+          appointments={data.appointments}
           doctor={doctor}
           onChange={async (updated) => {
             setSelected(updated);
@@ -216,13 +251,22 @@ export function DraftStudio({
   );
 }
 
+const positionLabels: Record<string, string> = {
+  within: "Within printed range",
+  below: "Below printed range",
+  above: "Above printed range",
+  none: "No printed range",
+};
+
 function OutputEditor({
   output,
+  appointments,
   doctor,
   onChange,
   close,
 }: {
   output: ClinicalOutput;
+  appointments: Appointment[];
   doctor: boolean;
   onChange: (o: ClinicalOutput) => Promise<void>;
   close: () => void;
@@ -230,6 +274,32 @@ function OutputEditor({
   const action = useAction();
   const [content, setContent] = useState(output.content);
   const [structured, setStructured] = useState(output.structuredData || {});
+  const [appointmentId, setAppointmentId] = useState(output.appointmentId ?? "");
+  const parsed = output.sourceSnapshot?.parsedResults ?? [];
+  const [safety, setSafety] = useState<SafetyCheck | null>(null);
+  const [safetyError, setSafetyError] = useState("");
+  const [acknowledged, setAcknowledged] = useState<string[]>([]);
+  const checking = doctor && output.kind === "prescription" && output.status === "DRAFT";
+  // Re-run the check whenever the saved medicines change (every save bumps the revision).
+  useEffect(() => {
+    if (!checking) return;
+    let active = true;
+    api
+      .get<SafetyCheck>(`${ROOT}/outputs/${output.id}/safety-check`)
+      .then((r) => {
+        if (!active) return;
+        setSafety(r);
+        setSafetyError("");
+        setAcknowledged((old) => old.filter((key) => r.alerts.some((a) => a.key === key)));
+      })
+      .catch((e) => {
+        if (active) setSafetyError(e.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [checking, output.id, output.revision]);
+  const unacknowledged = safety?.alerts.filter((a) => !acknowledged.includes(a.key)) ?? [];
   const [publish, setPublish] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
   const [codes, setCodes] = useState<
@@ -246,6 +316,7 @@ function OutputEditor({
       content,
       structuredData: structured,
       selectedCodes,
+      appointmentId,
       revision: output.revision,
     });
   }
@@ -265,6 +336,57 @@ function OutputEditor({
           ? `Signed by ${output.approvedByName} on ${formatTime(output.approvedAt)}`
           : "Not released to the patient"}
       </p>
+      {draft && !!output.reviewNotes?.length && (
+        <ul className="continuity-review" aria-label="Review checklist">
+          {output.reviewNotes.map((note, index) => (
+            <li key={index} className={note.level}>
+              <strong>
+                {note.level === "blocker"
+                  ? "Must fix before approval: "
+                  : note.level === "warning"
+                    ? "Check: "
+                    : "Note: "}
+              </strong>
+              {note.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      {parsed.length > 0 && (
+        <div className="continuity-table-wrap">
+          <table className="continuity-table">
+            <caption className="continuity-muted">
+              Values read automatically from the verified report. Compare each
+              row with the original line before approving.
+            </caption>
+            <thead>
+              <tr>
+                <th>Test (as printed)</th>
+                <th>Value</th>
+                <th>Printed range</th>
+                <th>Position</th>
+                <th>Original line</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parsed.map((row, index) => (
+                <tr key={index}>
+                  <td>{row.name}</td>
+                  <td>
+                    {row.valueText} {row.unit ?? ""}
+                  </td>
+                  <td>{row.rangeText || "—"}</td>
+                  <td className={`continuity-pos-${row.position}`}>
+                    {positionLabels[row.position]}
+                    {row.printedFlag ? ` (report flag: ${row.printedFlag})` : ""}
+                  </td>
+                  <td>{row.originalLine}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <details>
         <summary>Source preserved with this draft</summary>
         <div className="continuity-copy">{output.sourceSnapshot?.text}</div>
@@ -278,11 +400,29 @@ function OutputEditor({
           lang={output.language}
         />
       </Field>
-      <div className="continuity-fields">
+      {draft && canEdit && (
+        <Field label="Linked visit (shown with the summary in the patient's Appointments)">
+          <select
+            value={appointmentId}
+            onChange={(e) => setAppointmentId(e.target.value)}
+          >
+            <option value="">Not linked to a visit</option>
+            {appointments.map((a) => (
+              <option key={a.id} value={a.id}>
+                {formatTime(a.scheduledAt)} · {a.appointmentType}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      <div
+        className={`continuity-fields${output.sectionKinds ? " continuity-fields-wide" : ""}`}
+      >
         {Object.entries(structured).map(([key, value]) => (
           <Field label={key} key={key}>
             <textarea
-              rows={3}
+              rows={output.sectionKinds ? 5 : 3}
+              lang={output.language}
               value={value}
               readOnly={!draft || !canEdit}
               onChange={(e) =>
@@ -301,6 +441,76 @@ function OutputEditor({
           · {r.issuer} · v{r.version} · {r.section}
         </p>
       ))}
+      {checking && (
+        <section className="continuity-section continuity-section-results" aria-label="Drug safety check">
+          <h4>Drug safety check</h4>
+          <p className="continuity-muted">
+            Runs on the medicines you have saved in this draft. Save your edits
+            to re-check.
+          </p>
+          {safetyError && <p role="alert" className="continuity-alert">{safetyError}</p>}
+          {safety && (
+            <>
+              <p className="continuity-section-note">
+                {safety.status === "checked"
+                  ? `Checked against: ${safety.checkedAgainst.map((s) => `${s.title} v${s.version} (${s.pairs} interaction pairs, ${s.cautions} pregnancy cautions, approved by ${s.approvedBy})`).join("; ")}.`
+                  : "No drug-safety list is approved yet, so interactions and pregnancy cautions are UNCHECKED. A doctor can approve the label-sourced list under Reference Library → Drug safety checks."}
+                {" "}
+                Allergies recorded for this patient:{" "}
+                {safety.allergiesRecorded.length
+                  ? safety.allergiesRecorded.join(", ")
+                  : "none recorded"}
+                .
+              </p>
+              <p className="continuity-muted">{safety.limitation}</p>
+              {!safety.medicines.length && (
+                <p className="continuity-muted">Enter a medicine and save to run the check.</p>
+              )}
+              {safety.medicines.length > 0 && !safety.alerts.length && (
+                <p className="continuity-success">
+                  No alert for: {safety.medicines.join(", ")}. This is not a statement that the
+                  combination is safe.
+                </p>
+              )}
+              {safety.alerts.map((a) => (
+                <div key={a.key} className="continuity-note" style={{ borderLeftColor: a.severity === "major" ? "var(--rose-urgent)" : "var(--amber-pending)" }}>
+                  <strong>
+                    {a.kind === "allergy" ? "Allergy" : a.kind === "pregnancy" ? "Pregnancy caution" : "Interaction"} ·{" "}
+                    {a.severity.toUpperCase()} · {a.drugs.join(" + ")}
+                    {a.withEarlier ? " (with an earlier prescription)" : ""}
+                  </strong>
+                  <p>{a.message}</p>
+                  {a.management && <p className="continuity-muted">{a.management}</p>}
+                  {a.quote && <p className="continuity-muted">Label wording: “{a.quote}”</p>}
+                  <p className="continuity-muted">
+                    {a.setTitle}
+                    {a.sourceUrl && (
+                      <>
+                        {" · "}
+                        <a href={a.sourceUrl} target="_blank" rel="noreferrer">
+                          Product label
+                        </a>
+                      </>
+                    )}
+                  </p>
+                  <label className="continuity-check">
+                    <input
+                      type="checkbox"
+                      checked={acknowledged.includes(a.key)}
+                      onChange={(e) =>
+                        setAcknowledged((old) =>
+                          e.target.checked ? [...old, a.key] : old.filter((k) => k !== a.key),
+                        )
+                      }
+                    />
+                    I have read this alert and decided how to proceed.
+                  </label>
+                </div>
+              ))}
+            </>
+          )}
+        </section>
+      )}
       {doctor && draft && (
         <>
           <button
@@ -378,7 +588,8 @@ function OutputEditor({
             {(doctor || output.kind === "reply") && (
               <button
                 className="btn-primary"
-                disabled={action.busy || !confirmed}
+                disabled={action.busy || !confirmed || unacknowledged.length > 0}
+                title={unacknowledged.length ? "Acknowledge every drug-safety alert first" : undefined}
                 onClick={() =>
                   action.run(
                     async () => {
@@ -390,6 +601,7 @@ function OutputEditor({
                             confirmed: true,
                             visibleToPatient: publish,
                             revision: saved.revision,
+                            acknowledgedAlerts: acknowledged,
                           },
                         );
                         await onChange(approved);

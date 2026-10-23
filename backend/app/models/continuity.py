@@ -155,8 +155,14 @@ class Outreach(Base):
     source_type = Column(String, nullable=False)
     source_id = Column(String, nullable=False)
     message = Column(Text, nullable=False)
+    # PREPARED | COMPOSER_LINK_READY | MANUALLY_SENT | SENT | DELIVERED | READ | FAILED | CANCELLED
     status = Column(String, default="PREPARED")
     provider_reference = Column(String)
+    provider = Column(String)  # cloud_api | simulator | manual
+    sent_at = Column(DateTime)
+    delivered_at = Column(DateTime)
+    read_at = Column(DateTime)
+    failed_reason = Column(String)
     created_by_user_id = Column(String, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=now)
     updated_at = Column(DateTime, default=now)

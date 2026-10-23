@@ -3,6 +3,7 @@ import { X, UploadCloud, FileUp, CheckCircle2, AlertTriangle, Loader2 } from 'lu
 import { uploadMyDocument } from '../../api/patientPortal';
 import { ApiError } from '../../api/client';
 import { inputStyle } from '../../components/auth/AuthField';
+import { useLanguage } from '../../i18n';
 
 type Stage = 'pick' | 'uploading' | 'done' | 'error';
 
@@ -12,6 +13,7 @@ interface UploadDocumentModalProps {
 }
 
 export function UploadDocumentModal({ onClose, onUploaded }: UploadDocumentModalProps) {
+  const { t } = useLanguage();
   const [stage, setStage] = useState<Stage>('pick');
   const [isDragOver, setIsDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -40,7 +42,7 @@ export function UploadDocumentModal({ onClose, onUploaded }: UploadDocumentModal
       setSuccessMessage(result.message);
       setStage('done');
     } catch (err) {
-      setErrorMessage(err instanceof ApiError ? err.message : "We couldn't upload this document. Please try again.");
+      setErrorMessage(err instanceof ApiError ? err.message : t("We couldn't upload this document. Please try again."));
       setStage('error');
     }
   };
@@ -56,9 +58,9 @@ export function UploadDocumentModal({ onClose, onUploaded }: UploadDocumentModal
     >
       <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '480px', background: 'var(--bg-card)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <strong style={{ fontSize: '1.02rem', color: 'var(--text-primary)' }}>Upload Medical Record</strong>
+          <strong style={{ fontSize: '1.02rem', color: 'var(--text-primary)' }}>{t('Upload Medical Record')}</strong>
           {stage !== 'uploading' && (
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
+            <button onClick={onClose} aria-label={t('Close')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
           )}
         </div>
 
@@ -84,14 +86,14 @@ export function UploadDocumentModal({ onClose, onUploaded }: UploadDocumentModal
                   <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>{file.name}</div>
                 ) : (
                   <>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>Drag & drop your file here</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '4px 0' }}>or</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t('Drag & drop your file here')}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '4px 0' }}>{t('or')}</div>
                     <span className="btn-secondary" style={{ display: 'inline-flex', fontSize: '0.8rem' }}>
-                      <FileUp size={14} /> Browse Files
+                      <FileUp size={14} /> {t('Browse Files')}
                     </span>
                   </>
                 )}
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '10px' }}>Supported: PDF, JPG, PNG</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '10px' }}>{t('Supported: PDF, JPG, PNG')}</div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -103,25 +105,25 @@ export function UploadDocumentModal({ onClose, onUploaded }: UploadDocumentModal
 
               <div>
                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                  What is this document? (optional)
+                  {t('What is this document? (optional)')}
                 </label>
                 <input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Ultrasound report from last visit"
+                  placeholder={t('e.g. Ultrasound report from last visit')}
                   style={inputStyle}
                 />
               </div>
 
               <div>
                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                  Document date (optional)
+                  {t('Document date (optional)')}
                 </label>
                 <input type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} style={inputStyle} />
               </div>
 
               <button onClick={handleSubmit} disabled={!file} className="btn-primary" style={{ width: '100%', padding: '11px' }}>
-                Upload
+                {t('Upload')}
               </button>
             </div>
           )}
@@ -129,7 +131,7 @@ export function UploadDocumentModal({ onClose, onUploaded }: UploadDocumentModal
           {stage === 'uploading' && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '24px 0' }}>
               <Loader2 size={28} className="spin-slow" style={{ color: 'var(--teal-primary)' }} />
-              <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>Uploading your document…</strong>
+              <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{t('Uploading your document…')}</strong>
               {file && <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{file.name}</span>}
             </div>
           )}
@@ -137,8 +139,8 @@ export function UploadDocumentModal({ onClose, onUploaded }: UploadDocumentModal
           {stage === 'done' && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '20px 0', textAlign: 'center' }}>
               <CheckCircle2 size={30} style={{ color: 'var(--emerald-raw)' }} />
-              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>{successMessage}</strong>
-              <button onClick={handleDone} className="btn-primary">Done</button>
+              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>{t(successMessage)}</strong>
+              <button onClick={handleDone} className="btn-primary">{t('Done')}</button>
             </div>
           )}
 
@@ -146,7 +148,7 @@ export function UploadDocumentModal({ onClose, onUploaded }: UploadDocumentModal
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '20px 0', textAlign: 'center' }}>
               <AlertTriangle size={26} style={{ color: 'var(--rose-urgent)' }} />
               <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{errorMessage}</strong>
-              <button onClick={() => setStage('pick')} className="btn-secondary">Try Again</button>
+              <button onClick={() => setStage('pick')} className="btn-secondary">{t('Try Again')}</button>
             </div>
           )}
         </div>

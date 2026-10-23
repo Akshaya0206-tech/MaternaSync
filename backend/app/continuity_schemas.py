@@ -86,12 +86,13 @@ class ReminderResponse(Input):
 
 
 class ResourceIn(Input):
-    kind: Literal["guideline", "template", "education", "pathway", "rule", "coding"]
+    kind: Literal["guideline", "template", "education", "pathway", "rule", "coding", "interaction"]
     title: str = Field(min_length=3, max_length=250)
     topic: str = Field("", max_length=150)
     issuer: str = Field("", max_length=150)
     jurisdiction: str = Field("India", max_length=100)
-    publication_date: date | None = None
+    # Publishers often give only a year or a month, so a partial date (2019, 2025-12) is kept as printed.
+    publication_date: str | None = Field(None, pattern=r"^\d{4}(-\d{2}(-\d{2})?)?$")
     source_url: str = Field("", max_length=2000)
     section: str = Field("", max_length=200)
     content: str = Field("", max_length=1000000)
@@ -126,6 +127,10 @@ class ResourceIn(Input):
                 raise ValueError("Rules need a gt/lt comparison and numeric threshold.")
             if not math.isfinite(config["threshold"]):
                 raise ValueError("Rule thresholds must be finite.")
+            if config.get("tier", "routine") not in ("urgent", "soon", "routine"):
+                raise ValueError("A rule's review priority must be urgent, soon or routine.")
+            if not isinstance(config.get("nextAction", ""), str) or len(config.get("nextAction", "")) > 300:
+                raise ValueError("The next action must be text of up to 300 characters.")
         if self.kind == "template":
             fields = config.get("fields", [])
             if not isinstance(fields, list) or not 1 <= len(fields) <= 30 or any(not isinstance(f, str) or not f.strip() or len(f) > 120 for f in fields) or len(set(fields)) != len(fields):
@@ -134,6 +139,22 @@ class ResourceIn(Input):
                 raise ValueError("Required fields must be present in the template.")
             if "default" in config and not isinstance(config["default"], bool):
                 raise ValueError("Template default must be true or false.")
+        if self.kind == "interaction":
+            pairs, cautions = config.get("pairs", []), config.get("cautions", [])
+            if not isinstance(pairs, list) or not isinstance(cautions, list) or not (pairs or cautions) or len(pairs) > 200 or len(cautions) > 200:
+                raise ValueError("Provide 1–200 reviewed interaction pairs and/or pregnancy cautions.")
+
+            def named(entry):
+                return isinstance(entry, dict) and isinstance(entry.get("name"), str) and entry["name"].strip() and isinstance(entry.get("aliases", []), list) and all(isinstance(a, str) for a in entry.get("aliases", []))
+
+            for pair in pairs:
+                if not (isinstance(pair, dict) and named(pair.get("a")) and named(pair.get("b")) and pair.get("severity") in ("major", "moderate", "minor")
+                        and isinstance(pair.get("effect"), str) and pair["effect"].strip() and str(pair.get("sourceUrl", "")).startswith("https://")):
+                    raise ValueError("Each interaction needs two named drugs, a severity, an effect and an https source URL.")
+            for caution in cautions:
+                if not (named(caution) and caution.get("severity") in ("major", "moderate") and isinstance(caution.get("statement"), str) and caution["statement"].strip()
+                        and str(caution.get("sourceUrl", "")).startswith("https://")):
+                    raise ValueError("Each pregnancy caution needs a drug name, a severity, a statement and an https source URL.")
         if self.kind == "coding":
             entries = config.get("entries", [])
             if not isinstance(entries, list) or not 1 <= len(entries) <= 200:
@@ -146,6 +167,10 @@ class ResourceIn(Input):
 
 class ApprovalIn(Input):
     confirmed: Literal[True]
+
+
+class BatchApprovalIn(ApprovalIn):
+    ids: list[str] = Field(min_length=1, max_length=100)
 
 
 class OutputIn(Input):
@@ -161,12 +186,14 @@ class OutputEdit(Input):
     content: str = Field(min_length=1, max_length=30000)
     structured_data: dict[str, str] = Field(default_factory=dict)
     selected_codes: list[str] = Field(default_factory=list, max_length=30)
+    appointment_id: str | None = None  # None keeps the link, "" removes it
     revision: int = Field(ge=1)
 
 
 class PublishIn(ApprovalIn):
     visible_to_patient: bool = True
     revision: int = Field(ge=1)
+    acknowledged_alerts: list[str] = Field(default_factory=list, max_length=100)  # drug-safety alert keys the doctor has read
 
 
 class AttachmentIn(Input):
@@ -186,6 +213,21 @@ class MonitorIn(Input):
     interval_days: int = Field(1, ge=1, le=90)
     owner_user_id: str
     patient_agreed: Literal[True]
+
+
+class RiskConfirmIn(ApprovalIn):
+    flag_id: str = Field(min_length=3, max_length=200)
+    decision: Literal["create_task", "no_action_needed"]
+    owner_user_id: str | None = None
+    note: str = Field("", max_length=1000)
+
+    @model_validator(mode="after")
+    def decision_needs_detail(self):
+        if self.decision == "create_task" and not self.owner_user_id:
+            raise ValueError("Choose who will own the follow-up task.")
+        if self.decision == "no_action_needed" and len(self.note) < 3:
+            raise ValueError("Record why no action is needed.")
+        return self
 
 
 class OutreachIn(ApprovalIn):

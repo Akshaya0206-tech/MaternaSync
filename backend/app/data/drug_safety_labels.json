@@ -1,0 +1,872 @@
+{
+ "pairs": [
+  {
+   "a": {
+    "name": "levothyroxine",
+    "aliases": [
+     "thyroxine",
+     "synthroid"
+    ]
+   },
+   "b": {
+    "name": "calcium carbonate",
+    "aliases": [
+     "calcium",
+     "ferrous sulfate",
+     "ferrous sulphate",
+     "ferrous fumarate",
+     "ferrous gluconate",
+     "ferrous ascorbate",
+     "iron and folic acid",
+     "ifa",
+     "sevelamer",
+     "lanthanum"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Calcium carbonate, ferrous sulfate and other phosphate binders can bind levothyroxine in the gut, reducing its absorption and possibly causing hypothyroidism.",
+   "management": "Give levothyroxine at least 4 hours apart from these agents.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=1e11ad30-1041-4520-10b0-8f9d30d30fcc",
+   "quote": "Phosphate binders may bind to levothyroxine. Administer SYNTHROID at least 4 hours apart from these agents.",
+   "sourceDrug": "Synthroid (levothyroxine sodium), AbbVie; SPL version effective 2024-02-20"
+  },
+  {
+   "a": {
+    "name": "methyldopa",
+    "aliases": []
+   },
+   "b": {
+    "name": "ferrous sulfate",
+    "aliases": [
+     "ferrous sulphate",
+     "ferrous gluconate"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Taking iron salts with methyldopa lowers methyldopa bioavailability and may worsen blood pressure control.",
+   "management": "Label says coadministration of methyldopa with ferrous sulfate or ferrous gluconate is not recommended.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=9e22e1d8-04ec-4b67-92ea-b09c706f2703",
+   "quote": "Coadministration of methyldopa with ferrous sulfate or ferrous gluconate is not recommended.",
+   "sourceDrug": "Methyldopa tablets USP, Rising Pharma Holdings; SPL version effective 2025-03-28"
+  },
+  {
+   "a": {
+    "name": "ibuprofen",
+    "aliases": []
+   },
+   "b": {
+    "name": "aspirin",
+    "aliases": [
+     "acetylsalicylic acid"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Ibuprofen can interfere with the antiplatelet action of low-dose aspirin, even with once-daily ibuprofen 400 mg, particularly when ibuprofen is taken before aspirin; this may raise cardiovascular risk. Label also says concomitant ibuprofen and aspirin is not generally recommended.",
+   "management": "Label: the interaction is lessened if immediate-release low-dose aspirin is taken at least 2 hours before once-daily ibuprofen; this does not extend to enteric-coated aspirin. For patients on low-dose aspirin for cardioprotection, consider an analgesic that does not interfere. Only ibuprofen's label was verified; other NSAIDs not confirmed.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8804564c-9e1b-43c1-8b58-fd6ace645f00",
+   "quote": "Pharmacodynamic studies have demonstrated interference with the antiplatelet activity of aspirin",
+   "sourceDrug": "Ibuprofen Rx tablets, Granules India; SPL version effective 2026-10-07"
+  },
+  {
+   "a": {
+    "name": "warfarin",
+    "aliases": [
+     "Jantoven",
+     "warfarin sodium"
+    ]
+   },
+   "b": {
+    "name": "aspirin and other antiplatelet agents",
+    "aliases": [
+     "aspirin",
+     "cilostazol",
+     "clopidogrel",
+     "dipyridamole",
+     "prasugrel",
+     "ticlopidine"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Aspirin and other antiplatelet agents increase bleeding risk when used with warfarin (listed in the label's bleeding-risk table).",
+   "management": "Closely monitor patients taking any such drug with warfarin.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=19a69a72-ac5d-45d5-a94d-a5aaecbe4730",
+   "quote": "Because bleeding risk is increased when these drugs are used concomitantly with warfarin, closely monitor patients receiving any such drug with warfarin.",
+   "sourceDrug": "Jantoven (warfarin sodium) tablets, Upsher-Smith; SPL version effective 2025-07-08 (label text rev. 9/2017)"
+  },
+  {
+   "a": {
+    "name": "warfarin",
+    "aliases": [
+     "Jantoven",
+     "warfarin sodium"
+    ]
+   },
+   "b": {
+    "name": "NSAIDs",
+    "aliases": [
+     "ibuprofen",
+     "naproxen",
+     "diclofenac",
+     "celecoxib",
+     "indomethacin",
+     "ketorolac",
+     "mefenamic acid",
+     "piroxicam",
+     "sulindac",
+     "diflunisal",
+     "fenoprofen",
+     "ketoprofen",
+     "oxaprozin"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "NSAIDs are listed among drugs that increase bleeding risk with warfarin.",
+   "management": "Closely monitor patients taking any such drug with warfarin.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=19a69a72-ac5d-45d5-a94d-a5aaecbe4730",
+   "quote": "Because bleeding risk is increased when these drugs are used concomitantly with warfarin, closely monitor patients receiving any such drug with warfarin.",
+   "sourceDrug": "Jantoven (warfarin sodium) tablets, Upsher-Smith; SPL version effective 2025-07-08 (label text rev. 9/2017)"
+  },
+  {
+   "a": {
+    "name": "warfarin",
+    "aliases": [
+     "Jantoven",
+     "warfarin sodium"
+    ]
+   },
+   "b": {
+    "name": "heparin and other anticoagulants",
+    "aliases": [
+     "heparin",
+     "argatroban",
+     "dabigatran",
+     "bivalirudin",
+     "desirudin",
+     "lepirudin"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Heparin and other anticoagulants are listed among drugs that increase bleeding risk with warfarin.",
+   "management": "Closely monitor patients taking any such drug with warfarin.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=19a69a72-ac5d-45d5-a94d-a5aaecbe4730",
+   "quote": "Because bleeding risk is increased when these drugs are used concomitantly with warfarin, closely monitor patients receiving any such drug with warfarin.",
+   "sourceDrug": "Jantoven (warfarin sodium) tablets, Upsher-Smith; SPL version effective 2025-07-08 (label text rev. 9/2017)"
+  },
+  {
+   "a": {
+    "name": "enoxaparin",
+    "aliases": [
+     "Lovenox"
+    ]
+   },
+   "b": {
+    "name": "NSAIDs and platelet inhibitors",
+    "aliases": [
+     "aspirin",
+     "acetylsalicylic acid",
+     "salicylate",
+     "dipyridamole",
+     "sulfinpyrazone",
+     "ibuprofen",
+     "naproxen",
+     "diclofenac",
+     "celecoxib",
+     "indomethacin",
+     "ketorolac",
+     "mefenamic acid",
+     "piroxicam",
+     "sulindac",
+     "diflunisal",
+     "fenoprofen",
+     "ketoprofen",
+     "oxaprozin"
+    ]
+   },
+   "severity": "major",
+   "effect": "These agents raise hemorrhage risk and are named in the boxed warning as factors increasing the risk of epidural or spinal hematoma in patients anticoagulated with low molecular weight heparin (relevant to neuraxial anaesthesia in labour).",
+   "management": "Label: whenever possible, discontinue agents that enhance hemorrhage risk before starting enoxaparin; if co-use is essential, monitor closely.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=5017a927-2a24-4f27-89f9-27c805bf7d59",
+   "quote": "Whenever possible, agents which may enhance the risk of hemorrhage should be discontinued prior to initiation of Lovenox therapy.",
+   "sourceDrug": "Lovenox (enoxaparin sodium) injection, Sanofi-Aventis; SPL version effective 2026-05-28"
+  },
+  {
+   "a": {
+    "name": "nifedipine",
+    "aliases": [
+     "Procardia XL"
+    ]
+   },
+   "b": {
+    "name": "beta-blocking agents",
+    "aliases": [
+     "atenolol",
+     "metoprolol",
+     "propranolol",
+     "labetalol",
+     "bisoprolol",
+     "carvedilol",
+     "nebivolol"
+    ]
+   },
+   "severity": "minor",
+   "effect": "Usually well tolerated, but occasional reports suggest the combination may increase heart failure, severe hypotension or angina. The label does not name labetalol specifically.",
+   "management": "Monitor; the label's precautions advise close observation of patients already on blood-pressure-lowering medicines.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8ebcb33c-f43b-4b36-9f94-9774b2a59e06",
+   "quote": "the combination may increase the likelihood of congestive heart failure, severe hypotension, or exacerbation of angina.",
+   "sourceDrug": "Procardia XL (nifedipine) ER tablets, Pfizer; SPL version effective 2026-09-21 (same statement also on Major Pharmaceuticals nifedipine capsule label, setid acb493a3-b8f2-41a9-8ab2-550d97c4592a)"
+  },
+  {
+   "a": {
+    "name": "nifedipine",
+    "aliases": [
+     "Procardia XL"
+    ]
+   },
+   "b": {
+    "name": "phenytoin and other CYP3A4 inducers",
+    "aliases": [
+     "carbamazepine",
+     "phenobarbital",
+     "rifampicin",
+     "rifampin"
+    ]
+   },
+   "severity": "major",
+   "effect": "Phenytoin, a CYP3A4 inducer, lowers nifedipine exposure by approximately 70%, so nifedipine may lose effect.",
+   "management": "Label says avoid co-administration, or consider an alternative antihypertensive therapy.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8ebcb33c-f43b-4b36-9f94-9774b2a59e06",
+   "quote": "Avoid co-administration of nifedipine with phenytoin or any known CYP3A4 inducer or consider an alternative antihypertensive therapy.",
+   "sourceDrug": "Procardia XL (nifedipine) ER tablets, Pfizer; SPL version effective 2026-09-21"
+  },
+  {
+   "a": {
+    "name": "nifedipine",
+    "aliases": [
+     "Procardia XL"
+    ]
+   },
+   "b": {
+    "name": "fluconazole",
+    "aliases": [
+     "itraconazole",
+     "clarithromycin",
+     "erythromycin",
+     "nefazodone",
+     "fluoxetine",
+     "saquinavir",
+     "indinavir",
+     "nelfinavir"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "CYP3A inhibitors may increase nifedipine exposure.",
+   "management": "Careful monitoring and dose adjustment may be needed; consider starting nifedipine at the lowest available dose if given together.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8ebcb33c-f43b-4b36-9f94-9774b2a59e06",
+   "quote": "CYP3A inhibitors such as fluconazole, itraconazole, clarithromycin, erythromycin, nefazodone, fluoxetine, saquinavir, indinavir, and nelfinavir may result in increased exposure to nifedipine",
+   "sourceDrug": "Procardia XL (nifedipine) ER tablets, Pfizer; SPL version effective 2026-09-21"
+  },
+  {
+   "a": {
+    "name": "labetalol",
+    "aliases": []
+   },
+   "b": {
+    "name": "verapamil-type calcium antagonists",
+    "aliases": [
+     "verapamil"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Additive effects on heart rate, AV conduction and blood pressure are implied; the label only advises care. Label names the verapamil type only, not nifedipine.",
+   "management": "Use care when labetalol is combined with verapamil-type calcium antagonists.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=5e31f49d-51a1-c509-e063-6294a90a741c",
+   "quote": "Care should be taken if labetalol is used concomitantly with calcium antagonists of the verapamil type.",
+   "sourceDrug": "Labetalol HCl tablets USP, Coupler LLC; SPL version effective 2026-10-19"
+  },
+  {
+   "a": {
+    "name": "metformin",
+    "aliases": []
+   },
+   "b": {
+    "name": "topiramate",
+    "aliases": [
+     "zonisamide",
+     "acetazolamide",
+     "dichlorphenamide"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Carbonic anhydrase inhibitors lower serum bicarbonate and may increase the risk of lactic acidosis with metformin.",
+   "management": "Consider more frequent monitoring of these patients.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=5073c482-952c-400c-afff-64380f133bc8",
+   "quote": "Concomitant use of these drugs with metformin hydrochloride may increase the risk for lactic acidosis.",
+   "sourceDrug": "Metformin HCl tablets, Preferred Pharmaceuticals (ANDA generic); SPL version effective 2026-10-14"
+  },
+  {
+   "a": {
+    "name": "metformin",
+    "aliases": []
+   },
+   "b": {
+    "name": "dolutegravir",
+    "aliases": [
+     "ranolazine",
+     "vandetanib",
+     "cimetidine"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Drugs that inhibit renal tubular transport (OCT2/MATE) raise systemic metformin exposure and may increase lactic acidosis risk.",
+   "management": "Consider the benefits and risks of concomitant use. The dolutegravir (Tivicay) label also directs prescribers to the metformin label for this combination.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=5073c482-952c-400c-afff-64380f133bc8",
+   "quote": "Examples: Ranolazine, vandetanib, dolutegravir, and cimetidine.",
+   "sourceDrug": "Metformin HCl tablets, Preferred Pharmaceuticals (ANDA generic); SPL version effective 2026-10-14"
+  },
+  {
+   "a": {
+    "name": "dolutegravir",
+    "aliases": [
+     "Tivicay"
+    ]
+   },
+   "b": {
+    "name": "calcium or iron supplements",
+    "aliases": [
+     "calcium",
+     "calcium carbonate",
+     "calcium citrate",
+     "ferrous sulfate",
+     "ferrous sulphate",
+     "ferrous fumarate",
+     "ferrous gluconate",
+     "ferrous ascorbate",
+     "iron and folic acid",
+     "iron folic acid",
+     "ifa"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Calcium/iron supplements reduce dolutegravir levels.",
+   "management": "Under fasting conditions take dolutegravir 2 hours before or 6 hours after the supplement; with food they can be taken at the same time.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=63df5af3-b8ac-4e76-9830-2dbb340af922",
+   "quote": "TIVICAY or TIVICAY PD should be taken 2 hours before or 6 hours after taking supplements containing calcium or iron.",
+   "sourceDrug": "Tivicay / Tivicay PD (dolutegravir), ViiV Healthcare; SPL version effective 2026-08-25"
+  },
+  {
+   "a": {
+    "name": "dolutegravir",
+    "aliases": [
+     "Tivicay"
+    ]
+   },
+   "b": {
+    "name": "medicines containing polyvalent cations",
+    "aliases": [
+     "antacid",
+     "aluminium hydroxide",
+     "aluminum hydroxide",
+     "magnesium hydroxide",
+     "magnesium trisilicate",
+     "sucralfate"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Polyvalent-cation antacids and similar products reduce dolutegravir levels.",
+   "management": "Give dolutegravir 2 hours before or 6 hours after these medications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=63df5af3-b8ac-4e76-9830-2dbb340af922",
+   "quote": "Administer TIVICAY or TIVICAY PD 2 hours before or 6 hours after taking medications containing polyvalent cations.",
+   "sourceDrug": "Tivicay / Tivicay PD (dolutegravir), ViiV Healthcare; SPL version effective 2026-08-25"
+  },
+  {
+   "a": {
+    "name": "magnesium sulfate",
+    "aliases": []
+   },
+   "b": {
+    "name": "neuromuscular blocking agents",
+    "aliases": [
+     "vecuronium",
+     "atracurium",
+     "cisatracurium",
+     "rocuronium",
+     "pancuronium",
+     "succinylcholine",
+     "suxamethonium"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Excessive neuromuscular block has occurred when parenteral magnesium sulfate is given with a neuromuscular blocking agent.",
+   "management": "Administer concomitantly with caution.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=6a5d362b-7aa7-40d3-898d-09407cce0713",
+   "quote": "Excessive neuromuscular block has occurred in patients receiving parenteral magnesium sulfate and a neuromuscular blocking agent; these drugs should be administered concomitantly with caution.",
+   "sourceDrug": "Magnesium sulfate injection USP, Fresenius Kabi (label includes pre-eclampsia/eclampsia indication); SPL version effective 2026-01-08"
+  },
+  {
+   "a": {
+    "name": "misoprostol",
+    "aliases": [
+     "Cytotec"
+    ]
+   },
+   "b": {
+    "name": "oxytocin",
+    "aliases": [
+     "pitocin",
+     "oxytocic"
+    ]
+   },
+   "severity": "major",
+   "effect": "Prostaglandins such as misoprostol may augment the activity of oxytocic agents, especially when given less than 4 hours before starting oxytocin.",
+   "management": "Label states concomitant use is not recommended.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12",
+   "quote": "Prostaglandins such as Cytotec may augment the activity of oxytocic agents, especially when given less than 4 hours prior to initiating oxytocin treatment.",
+   "sourceDrug": "Cytotec (misoprostol), Pfizer; SPL version effective 2026-06-04. Pitocin label does not mention misoprostol."
+  },
+  {
+   "a": {
+    "name": "misoprostol",
+    "aliases": [
+     "Cytotec"
+    ]
+   },
+   "b": {
+    "name": "magnesium-containing antacids",
+    "aliases": [
+     "magnesium hydroxide",
+     "magnesium trisilicate",
+     "magnesium carbonate"
+    ]
+   },
+   "severity": "minor",
+   "effect": "Antacid reduces misoprostol acid availability (not considered clinically important in trials); magnesium antacids add to misoprostol-related diarrhea.",
+   "management": "Avoid co-administration with magnesium-containing antacids to minimize diarrhea; give misoprostol after meals and at bedtime.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12",
+   "quote": "The incidence of diarrhea can be minimized by administering after meals and at bedtime, and by avoiding coadministration of Cytotec with magnesium-containing antacids.",
+   "sourceDrug": "Cytotec (misoprostol), Pfizer; SPL version effective 2026-06-04"
+  },
+  {
+   "a": {
+    "name": "methylergonovine",
+    "aliases": [
+     "Methergine"
+    ]
+   },
+   "b": {
+    "name": "potent CYP 3A4 inhibitors",
+    "aliases": [
+     "erythromycin",
+     "troleandomycin",
+     "clarithromycin",
+     "ritonavir",
+     "indinavir",
+     "nelfinavir",
+     "delavirdine"
+    ]
+   },
+   "severity": "major",
+   "effect": "Serious vasospasm with cerebral or peripheral ischemia has been reported with related ergot alkaloids and potent CYP 3A4 inhibitors; none reported with methylergonovine alone.",
+   "management": "Label says potent CYP 3A4 inhibitors (macrolide antibiotics, HIV protease or reverse transcriptase inhibitors) should not be coadministered. It also advises caution with other vasoconstrictors.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=3f04ca06-fe52-46d6-96cd-2e77ef6fa36f",
+   "quote": "potent CYP 3A4 inhibitors should not be coadministered with methylergonovine",
+   "sourceDrug": "Methergine (methylergonovine) tablets, Lupin; SPL version effective 2024-03-20"
+  },
+  {
+   "a": {
+    "name": "nitrofurantoin",
+    "aliases": [
+     "Macrobid"
+    ]
+   },
+   "b": {
+    "name": "magnesium trisilicate",
+    "aliases": []
+   },
+   "severity": "moderate",
+   "effect": "Magnesium trisilicate antacids reduce the rate and extent of nitrofurantoin absorption (adsorption onto the antacid).",
+   "management": "Label counsels patients not to use antacids containing magnesium trisilicate while taking Macrobid.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8f270a9f-12a1-44d4-bc7e-873613555801",
+   "quote": "Antacids containing magnesium trisilicate, when administered concomitantly with nitrofurantoin, reduce both the rate and extent of absorption.",
+   "sourceDrug": "Macrobid (nitrofurantoin monohydrate/macrocrystals), Almatica; SPL version effective 2025-10-14"
+  },
+  {
+   "a": {
+    "name": "doxycycline",
+    "aliases": [
+     "tetracyclines"
+    ]
+   },
+   "b": {
+    "name": "antacids and iron preparations",
+    "aliases": [
+     "antacid",
+     "aluminium hydroxide",
+     "aluminum hydroxide",
+     "magnesium hydroxide",
+     "calcium carbonate",
+     "ferrous sulfate",
+     "ferrous sulphate",
+     "ferrous fumarate",
+     "ferrous gluconate",
+     "ferrous ascorbate",
+     "iron and folic acid",
+     "iron folic acid",
+     "ifa"
+    ]
+   },
+   "severity": "moderate",
+   "effect": "Absorption of tetracyclines (including doxycycline) is impaired by these antacids and by iron-containing preparations.",
+   "management": "The label states the impairment but gives no spacing interval in the interaction sentence.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=3e7cf78f-3b48-4614-9fa4-c6d1e0c05a35",
+   "quote": "Absorption of tetracyclines is impaired by antacids containing aluminum, calcium, or magnesium, and iron-containing preparations.",
+   "sourceDrug": "Doxycycline hyclate capsules/tablets/powder, Chartwell RX; SPL version effective 2026-10-16"
+  }
+ ],
+ "cautions": [
+  {
+   "name": "lisinopril",
+   "aliases": [
+    "Zestril"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: stop as soon as pregnancy is detected; drugs acting on the renin-angiotensin system can injure or kill the developing fetus. Pregnancy is not listed in the Contraindications section.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8",
+   "quote": "When pregnancy is detected, discontinue ZESTRIL as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2025-01-02"
+  },
+  {
+   "name": "enalapril",
+   "aliases": [
+    "Vasotec"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected; renin-angiotensin system drugs can cause fetal injury and death. Pregnancy is not in Contraindications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=39631f1f-5d19-43c1-b504-bf56d991ed97",
+   "quote": "When pregnancy is detected, discontinue VASOTEC as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-01-23"
+  },
+  {
+   "name": "ramipril",
+   "aliases": [],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected; renin-angiotensin system drugs can cause fetal injury and death. Pregnancy is not in Contraindications. Label checked is a generic (Aurobindo) ramipril capsule; the Altace brand label was not found.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=d6d57158-e8f9-4c91-8317-0374e0c87d33",
+   "quote": "When pregnancy is detected, discontinue ramipril as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-09-18"
+  },
+  {
+   "name": "captopril",
+   "aliases": [],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected; renin-angiotensin system drugs can cause fetal injury and death. Pregnancy is not in Contraindications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=a43a5373-ded9-4912-8c98-edaec8352836",
+   "quote": "When pregnancy is detected, discontinue captopril tablets as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-05-04"
+  },
+  {
+   "name": "losartan",
+   "aliases": [
+    "Cozaar"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected; renin-angiotensin system drugs can cause fetal injury and death. Pregnancy is not in Contraindications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=9949448f-c3b9-44ee-94ed-c1aca8c90f39",
+   "quote": "When pregnancy is detected, discontinue COZAAR as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-01-20"
+  },
+  {
+   "name": "telmisartan",
+   "aliases": [],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected; renin-angiotensin system drugs can cause fetal injury and death. Pregnancy is not in Contraindications. Label checked is a generic telmisartan tablet label (Preferred Pharmaceuticals); the brand Micardis label was not fetched.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=d45da80a-58c3-4461-adf6-a85531c09eb8",
+   "quote": "When pregnancy is detected, discontinue telmisartan tablets as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-09-28"
+  },
+  {
+   "name": "valsartan",
+   "aliases": [
+    "Diovan"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected. Pregnancy is not in Contraindications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=5ddba454-f3e6-43c2-a7a6-58365d297213",
+   "quote": "When pregnancy is detected, discontinue Diovan as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-08-11"
+  },
+  {
+   "name": "olmesartan",
+   "aliases": [
+    "Benicar"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected. Pregnancy is not in Contraindications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=dc3f1fd4-5578-4c5d-be7b-12e3f8f3e7df",
+   "quote": "When pregnancy is detected, discontinue Benicar as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2025-09-23"
+  },
+  {
+   "name": "candesartan",
+   "aliases": [
+    "Atacand"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected. Pregnancy is not in Contraindications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=94a59260-d2b6-464a-b5b9-bbc599e57e10",
+   "quote": "When pregnancy is detected, discontinue ATACAND as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2025-12-22"
+  },
+  {
+   "name": "irbesartan",
+   "aliases": [
+    "Avapro"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning on fetal toxicity: discontinue as soon as pregnancy is detected. Pregnancy is not in Contraindications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=7885b2a8-be4e-48ab-8113-4e6ab791eb98",
+   "quote": "When pregnancy is detected, discontinue AVAPRO as soon as possible",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-08-24"
+  },
+  {
+   "name": "warfarin",
+   "aliases": [
+    "Jantoven",
+    "warfarin sodium"
+   ],
+   "severity": "major",
+   "statement": "Contraindicated in pregnancy except in pregnant women with mechanical heart valves at high risk of thromboembolism. Exposure in pregnancy causes a recognized pattern of major congenital malformations (warfarin embryopathy), fatal fetal hemorrhage, spontaneous abortion and fetal mortality. The boxed warning itself is about bleeding, not pregnancy.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=19a69a72-ac5d-45d5-a94d-a5aaecbe4730",
+   "quote": "JANTOVEN is contraindicated in women who are pregnant except in pregnant women with mechanical heart valves",
+   "labelSection": "Contraindications",
+   "labelDate": "2025-07-08"
+  },
+  {
+   "name": "methotrexate",
+   "aliases": [
+    "Trexall"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning: can cause embryo-fetal toxicity including fetal death; for non-neoplastic diseases it is contraindicated in pregnancy. Contraindications section lists pregnant women treated for non-neoplastic diseases. Oral tablet label (Trexall) checked.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=e942f8db-510f-44d6-acb5-b822196f5e8c",
+   "quote": "For non-neoplastic diseases, methotrexate tablets are contraindicated in pregnancy.",
+   "labelSection": "Boxed Warning; Contraindications",
+   "labelDate": "2026-06-17"
+  },
+  {
+   "name": "isotretinoin",
+   "aliases": [
+    "Amnesteem"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning: causes life-threatening birth defects and is contraindicated in pregnancy; if pregnancy occurs, discontinue immediately and refer to an obstetrician-gynaecologist experienced in reproductive toxicity. Available only through a restricted REMS program.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=b2cb63c9-f825-4991-9a2c-6260f1bbcc2c",
+   "quote": "Amnesteem can cause life-threatening birth defects and is contraindicated in pregnancy.",
+   "labelSection": "Boxed Warning; Contraindications",
+   "labelDate": "2026-08-15"
+  },
+  {
+   "name": "valproic acid",
+   "aliases": [
+    "valproate",
+    "sodium valproate",
+    "divalproex",
+    "divalproex sodium",
+    "depakote"
+   ],
+   "severity": "major",
+   "statement": "Same boxed fetal-risk warning as divalproex: major congenital malformations, particularly neural tube defects. Contraindicated in women who are pregnant (and women of childbearing potential without effective contraception) for migraine prophylaxis.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=ec41025a-ed7d-48c8-9005-08e3a9417f30",
+   "quote": "Valproate can cause major congenital malformations, particularly neural tube defects",
+   "labelSection": "Boxed Warning; Contraindications",
+   "labelDate": "2026-09-21"
+  },
+  {
+   "name": "misoprostol",
+   "aliases": [
+    "Cytotec"
+   ],
+   "severity": "major",
+   "statement": "Boxed text: administration to pregnant women can cause birth defects, abortion, premature birth or uterine rupture; uterine rupture reported when given to induce labour or abortion, with risk rising with gestational age and prior uterine surgery incl. caesarean. Contraindications: pregnant women taking it to reduce NSAID-induced ulcer risk. Note the US label's indication is NSAID ulcer prevention; obstetric uses are outside that label.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12",
+   "quote": "CYTOTEC (MISOPROSTOL) ADMINISTRATION TO WOMEN WHO ARE PREGNANT CAN CAUSE BIRTH DEFECTS, ABORTION, PREMATURE BIRTH",
+   "labelSection": "Boxed Warning; Contraindications",
+   "labelDate": "2026-06-04"
+  },
+  {
+   "name": "mycophenolate mofetil",
+   "aliases": [
+    "mycophenolate",
+    "mmf",
+    "cellcept"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning (embryofetal toxicity): use in pregnancy is associated with increased risk of first-trimester pregnancy loss and congenital malformations; avoid if safer options exist; females of reproductive potential must be counselled on pregnancy prevention and planning. Pregnancy is not in the Contraindications section (hypersensitivity only).",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=37241e87-4af4-4dc3-a1aa-ea6f20d8dc40",
+   "quote": "Use during pregnancy is associated with increased risks of first trimester pregnancy loss and congenital malformations.",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-08-05"
+  },
+  {
+   "name": "mycophenolic acid",
+   "aliases": [
+    "mycophenolate sodium",
+    "myfortic"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning (embryo-fetal toxicity): pregnancy loss and congenital malformations; avoid if safer options exist; counsel females of reproductive potential. Pregnancy not in Contraindications.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=eed26501-890d-4ff6-88e7-6dbea4726e53",
+   "quote": "Use during pregnancy is associated with increased risks of pregnancy loss and congenital malformations.",
+   "labelSection": "Boxed Warning",
+   "labelDate": "2026-07-29"
+  },
+  {
+   "name": "leflunomide",
+   "aliases": [
+    "Arava"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning (embryo-fetal toxicity) and Contraindication: contraindicated in pregnant women; exclude pregnancy before starting; if pregnancy occurs stop and use an accelerated drug elimination procedure.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=320f63f2-fac3-4aee-aff8-85724e00ef52",
+   "quote": "ARAVA is contraindicated for use in pregnant women because of the potential for fetal harm.",
+   "labelSection": "Boxed Warning; Contraindications",
+   "labelDate": "2025-06-04"
+  },
+  {
+   "name": "ribavirin",
+   "aliases": [],
+   "severity": "major",
+   "statement": "Boxed warning: significant teratogenic and embryocidal effects in all animal species; contraindicated in women who are pregnant and in male partners of pregnant women; extreme care to avoid pregnancy during therapy and for 6 months after. Contraindications repeat this. Label checked: Aurobindo ribavirin tablets.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=eee304d0-c2ea-44f4-97d9-92a414d31b6c",
+   "quote": "ribavirin, including ribavirin tablets, are contraindicated in women who are pregnant",
+   "labelSection": "Boxed Warning; Contraindications",
+   "labelDate": "2024-02-06"
+  },
+  {
+   "name": "thalidomide",
+   "aliases": [
+    "Thalomid"
+   ],
+   "severity": "major",
+   "statement": "Boxed warning: severe birth defects or embryo-fetal death; never to be used by females who are pregnant or could become pregnant; even a single dose can cause severe birth defects. Contraindicated in pregnant females.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=2eda833b-1357-4ed4-a093-194524fcb061",
+   "quote": "THALOMID is contraindicated in females who are pregnant.",
+   "labelSection": "Boxed Warning; Contraindications",
+   "labelDate": "2023-03-24"
+  },
+  {
+   "name": "atorvastatin",
+   "aliases": [
+    "Lipitor"
+   ],
+   "severity": "moderate",
+   "statement": "CURRENT label: no boxed warning and pregnancy is NOT a contraindication (contraindications are acute liver failure/decompensated cirrhosis and hypersensitivity). Section 8.1 says discontinue when pregnancy is recognized (alternatively consider the patient's ongoing therapeutic needs), may cause fetal harm by mechanism of action, and treating hyperlipidemia is not generally necessary in pregnancy.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=a60cc18b-0631-4cf0-b021-9f52224ece65",
+   "quote": "Discontinue LIPITOR when pregnancy is recognized.",
+   "labelSection": "Use in Specific Populations (8.1 Pregnancy); not in Boxed Warning or Contraindications",
+   "labelDate": "2024-04-15"
+  },
+  {
+   "name": "simvastatin",
+   "aliases": [
+    "Zocor"
+   ],
+   "severity": "moderate",
+   "statement": "CURRENT label: pregnancy is NOT a contraindication (contraindications: strong CYP3A4 inhibitors, cyclosporine/danazol/gemfibrozil, acute liver failure/decompensated cirrhosis, hypersensitivity). Section 8.1: discontinue when pregnancy is recognized (alternatively consider ongoing therapeutic needs); may cause fetal harm by mechanism of action.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8f55d5de-5a4f-4a39-8c84-c53976dd6af9",
+   "quote": "Discontinue ZOCOR when pregnancy is recognized.",
+   "labelSection": "Use in Specific Populations (8.1 Pregnancy); not in Boxed Warning or Contraindications",
+   "labelDate": "2025-03-28"
+  },
+  {
+   "name": "rosuvastatin",
+   "aliases": [
+    "Crestor"
+   ],
+   "severity": "moderate",
+   "statement": "CURRENT label: pregnancy is NOT a contraindication (contraindications: acute liver failure/decompensated cirrhosis, hypersensitivity). Section 8.1: discontinue when pregnancy is recognized (alternatively consider ongoing therapeutic needs); may cause fetal harm by mechanism of action.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=325a5d0e-9a72-4015-9fcd-1655fb504cee",
+   "quote": "Discontinue CRESTOR when pregnancy is recognized.",
+   "labelSection": "Use in Specific Populations (8.1 Pregnancy); not in Boxed Warning or Contraindications",
+   "labelDate": "2026-09-23"
+  },
+  {
+   "name": "topiramate",
+   "aliases": [
+    "Topamax"
+   ],
+   "severity": "moderate",
+   "statement": "Warnings and Precautions 5.7 Fetal Toxicity: can cause fetal harm; pregnancy-registry data link in-utero exposure to major congenital malformations (including oral clefts) and small-for-gestational-age infants. Not a boxed warning or contraindication.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=21628112-0c47-11df-95b3-498d55d89593",
+   "quote": "TOPAMAX can cause fetal harm when administered to a pregnant woman.",
+   "labelSection": "Warnings (5.7 Fetal Toxicity)",
+   "labelDate": "2026-03-12"
+  },
+  {
+   "name": "doxycycline",
+   "aliases": [
+    "tetracyclines",
+    "doxycycline hyclate"
+   ],
+   "severity": "moderate",
+   "statement": "Warnings: tetracycline-class drugs used during tooth development (last half of pregnancy, infancy, childhood to age 8) may cause permanent tooth discoloration; animal studies show tetracyclines cross the placenta and can have toxic effects on the fetus. Contraindication is only hypersensitivity to tetracyclines.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=3e7cf78f-3b48-4614-9fa4-c6d1e0c05a35",
+   "quote": "tetracyclines cross the placenta, are found in fetal tissues, and can have toxic effects on the developing fetus",
+   "labelSection": "Warnings",
+   "labelDate": "2026-10-16"
+  },
+  {
+   "name": "methylergonovine",
+   "aliases": [
+    "Methergine"
+   ],
+   "severity": "major",
+   "statement": "Contraindicated in hypertension, toxemia, pregnancy and hypersensitivity (i.e. antepartum; the label's use is postpartum uterine atony and hemorrhage and control of bleeding in the second stage of labour after delivery of the anterior shoulder).",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=3f04ca06-fe52-46d6-96cd-2e77ef6fa36f",
+   "quote": "Hypertension; toxemia; pregnancy; and hypersensitivity.",
+   "labelSection": "Contraindications",
+   "labelDate": "2024-03-20"
+  },
+  {
+   "name": "magnesium sulfate",
+   "aliases": [],
+   "severity": "moderate",
+   "statement": "Warnings (fetal harm): continuous administration beyond 5 to 7 days in pregnancy can cause fetal hypocalcemia and bone abnormalities (skeletal demineralization, osteopenia; neonatal fractures reported); shortest harmful duration unknown; use in pregnancy only if clearly needed. Label also notes efficacy and safety for preterm labour are not established.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=6a5d362b-7aa7-40d3-898d-09407cce0713",
+   "quote": "Continuous administration of magnesium sulfate beyond 5 to 7 days to pregnant women can lead to hypocalcemia and bone abnormalities in the developing fetus.",
+   "labelSection": "Warnings",
+   "labelDate": "2026-01-08"
+  },
+  {
+   "name": "ibuprofen",
+   "aliases": [],
+   "severity": "major",
+   "statement": "Warnings (fetal toxicity): avoid at about 30 weeks gestation and later (risk of premature closure of the fetal ductus arteriosus); from about 20 weeks NSAID use can cause fetal renal dysfunction and oligohydramnios, so limit to lowest effective dose and shortest duration and consider ultrasound monitoring of amniotic fluid if treatment exceeds 48 hours. Not a boxed warning or contraindication.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8804564c-9e1b-43c1-8b58-fd6ace645f00",
+   "quote": "Avoid use of NSAIDs, including ibuprofen tablets, in pregnant women at about 30 weeks gestation and later.",
+   "labelSection": "Warnings",
+   "labelDate": "2026-10-07"
+  },
+  {
+   "name": "nitrofurantoin",
+   "aliases": [
+    "Macrobid"
+   ],
+   "severity": "major",
+   "statement": "Contraindicated in pregnant patients at term (38 to 42 weeks), during labour and delivery or when labour is imminent, and in neonates under one month of age.",
+   "sourceUrl": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8f270a9f-12a1-44d4-bc7e-873613555801",
+   "quote": "contraindicated in pregnant patients at term (38 to 42 weeks gestation)",
+   "labelSection": "Contraindications",
+   "labelDate": "2025-10-14"
+  }
+ ]
+}

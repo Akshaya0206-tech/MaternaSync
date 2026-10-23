@@ -1,6 +1,9 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.db
 uploads/*
 !uploads/.gitkeep
+# Publisher PDFs downloaded by fetch_reference_documents.py (not redistributed through git)
+reference_documents/

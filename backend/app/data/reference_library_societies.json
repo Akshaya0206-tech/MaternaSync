@@ -1,0 +1,263 @@
+[
+ {
+  "id": "figo-gdm-2015", "title": "The International Federation of Gynecology and Obstetrics (FIGO) Initiative on gestational diabetes mellitus: A pragmatic guide for diagnosis, management, and care",
+  "issuer": "FIGO", "jurisdiction": "International", "category": "HIGH_RISK", "topic": "Gestational diabetes", "publication_date": "2015",
+  "version_note": "Int J Gynaecol Obstet 2015;131(Suppl 3); DOI 10.1016/S0020-7292(15)30033-3. No newer FIGO replacement found.",
+  "source_url": "https://www.figo.org/global-framework-action-gdm", "document_url": null, "section": "IJGO supplement",
+  "rights": "Journal copyright. Link only.",
+  "summary": "FIGO's resource-sensitive guide to diagnosing, managing and following up hyperglycaemia in pregnancy, published as a supplement of the International Journal of Gynecology & Obstetrics.",
+  "passage_search": false
+ },
+ {
+  "id": "figo-pe-first-trimester-2019", "title": "The International Federation of Gynecology and Obstetrics (FIGO) Initiative on Pre-eclampsia: A Pragmatic Guide for First-Trimester Screening and Prevention",
+  "issuer": "FIGO", "jurisdiction": "International", "category": "SCREENING", "topic": "Pre-eclampsia screening and prevention", "publication_date": "2019-05",
+  "version_note": "Int J Gynaecol Obstet 2019;145(Suppl 1):1-33; DOI 10.1002/ijgo.12802; cite the version with the 2019 erratum. Partly superseded by the 2021 FIGO second and third trimester paper.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6944283/", "document_url": null, "section": "IJGO supplement (author manuscript)",
+  "rights": "Author manuscript in PubMed Central. Link only.",
+  "summary": "A consensus guide for first-trimester screening and prevention of preterm pre-eclampsia, recommending combined first-trimester screening for every pregnant woman, low-dose aspirin for those screened as high risk and calcium where dietary intake is low, with region-specific suggestions.",
+  "passage_search": false
+ },
+ {
+  "id": "figo-pe-second-third-2021", "title": "A literature review and best practice advice for second and third trimester risk stratification, monitoring, and management of pre-eclampsia: Compiled by the Pregnancy and Non-Communicable Diseases Committee of FIGO",
+  "issuer": "FIGO", "jurisdiction": "International", "category": "HIGH_RISK", "topic": "Hypertensive disorders (pre-eclampsia)", "publication_date": "2021-07",
+  "version_note": "Int J Gynaecol Obstet 2021;154(Suppl 1):3-31; PMID 34327714.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9290930", "document_url": null, "section": "IJGO supplement",
+  "rights": "Open access under CC BY 4.0 (as stated on the article page). Link only.",
+  "summary": "A FIGO consensus review with practical advice on predicting, monitoring and managing pre-eclampsia in the second and third trimesters, tailored to different resource settings.",
+  "passage_search": false
+ },
+ {
+  "id": "figo-pph-2022", "title": "FIGO recommendations on the management of postpartum hemorrhage 2022",
+  "issuer": "FIGO", "jurisdiction": "International", "category": "POSTPARTUM", "topic": "Postpartum haemorrhage", "publication_date": "2022-03-17",
+  "version_note": "Int J Gynaecol Obstet 2022;157(Suppl 1):3-50; DOI 10.1002/ijgo.14116. FIGO's own recommendation set; the WHO, FIGO and ICM 2025 consolidated guideline (listed under WHO) is the newer joint document.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9313855/", "document_url": null, "section": "IJGO supplement",
+  "rights": "Open access under CC BY-NC 4.0 (as stated on the article page): non-commercial use with attribution. Link only.",
+  "summary": "FIGO's update on preventing and treating postpartum haemorrhage, aimed mainly at health workers in low- and middle-income settings, covering uterotonics, tranexamic acid, balloon tamponade, surgical options, shock index and resuscitation.",
+  "passage_search": false
+ },
+ {
+  "id": "figo-anaemia-2025", "title": "FIGO good practice recommendations on anemia in pregnancy, to reduce the incidence and impact of postpartum hemorrhage (PPH)",
+  "issuer": "FIGO", "jurisdiction": "International", "category": "ANTENATAL_CARE", "topic": "Anaemia in pregnancy", "publication_date": "2025-10-01",
+  "version_note": "Int J Gynaecol Obstet 2025;171(3):993-1007; DOI 10.1002/ijgo.70529; FIGO Committee on Childbirth and Postpartum Haemorrhage.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12640178/", "document_url": null, "section": "IJGO article",
+  "rights": "Open access under CC BY 4.0 (as stated on the article page). Link only.",
+  "summary": "Reviews the burden of anaemia in pregnancy and its link to postpartum haemorrhage, recommending screening at booking and again at 28 weeks, a single haemoglobin cut-off, and routine iron and folic acid, with notes on malaria and helminth prophylaxis and haemoglobinopathies.",
+  "passage_search": false
+ },
+ {
+  "id": "figo-blood-loss-2025", "title": "FIGO recommendations on objective measurement of blood loss after birth for early detection of postpartum hemorrhage",
+  "issuer": "FIGO", "jurisdiction": "International", "category": "POSTPARTUM", "topic": "Postpartum haemorrhage detection", "publication_date": "2025-09-23",
+  "version_note": "Int J Gynaecol Obstet 2025;171(3):933-950; DOI 10.1002/ijgo.70523; FIGO Committee on Childbirth and PPH.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12640184/", "document_url": null, "section": "IJGO article",
+  "rights": "Open access under CC BY 4.0 (as stated on the article page). Link only.",
+  "summary": "Argues that visual estimation of blood loss is unreliable and delays treatment, and recommends routine objective, cumulative measurement using calibrated drapes, weighing or graduated containers combined with early-warning triggers.",
+  "passage_search": false
+ },
+ {
+  "id": "rcog-gtg52-pph", "title": "Prevention and Management of Postpartum Haemorrhage",
+  "issuer": "RCOG", "jurisdiction": "United Kingdom", "category": "POSTPARTUM", "topic": "Postpartum haemorrhage", "publication_date": "2017",
+  "version_note": "Green-top Guideline No. 52, second edition (2017). Reviewed 2023; an update split into No. 52a (prevention) and No. 52b (management) is in development. Still the current edition.",
+  "source_url": "https://www.rcog.org.uk/guidance/browse-all-guidance/green-top-guidelines/prevention-and-management-of-postpartum-haemorrhage-green-top-guideline-no-52/", "document_url": null, "section": "Green-top Guideline No. 52",
+  "rights": "RCOG copyright. Link only.",
+  "summary": "UK guideline on primary postpartum haemorrhage, defined as 500 ml or more lost within 24 hours of birth, grading it as minor or major and covering prevention and management.",
+  "passage_search": false
+ },
+ {
+  "id": "rcog-gtg43-icp", "title": "Intrahepatic cholestasis of pregnancy",
+  "issuer": "RCOG", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Intrahepatic cholestasis of pregnancy", "publication_date": "2022-08-09",
+  "version_note": "Green-top Guideline No. 43, third edition; BJOG 2022;129(13):e95-e114. The RCOG page gives 2026 as the next review, so check for a newer edition.",
+  "source_url": "https://www.rcog.org.uk/guidance/browse-all-guidance/green-top-guidelines/intrahepatic-cholestasis-of-pregnancy-green-top-guideline-no-43/", "document_url": null, "section": "Green-top Guideline No. 43",
+  "rights": "RCOG copyright. Link only.",
+  "summary": "Reviews how intrahepatic cholestasis of pregnancy is diagnosed and its risks for mother and fetus, grading severity by peak bile acids and setting out care options to weigh with the woman's preferences.",
+  "passage_search": false
+ },
+ {
+  "id": "rcog-gtg57-rfm", "title": "Reduced Fetal Movements",
+  "issuer": "RCOG", "jurisdiction": "United Kingdom", "category": "ANTENATAL_CARE", "topic": "Reduced fetal movements", "publication_date": "2026",
+  "version_note": "Green-top Guideline No. 57, second edition (supersedes the 2011 first edition); next review 2029.",
+  "source_url": "https://www.rcog.org.uk/guidance/browse-all-guidance/green-top-guidelines/reduced-fetal-movements-green-top-guideline-no-57/", "document_url": null, "section": "Green-top Guideline No. 57",
+  "rights": "RCOG copyright. Link only.",
+  "summary": "Practical guidance for midwives and obstetricians on women who report reduced fetal movements, in community and hospital settings, reviewing risk factors and what shapes a mother's perception of movement.",
+  "passage_search": false
+ },
+ {
+  "id": "rcog-gtg64-sepsis", "title": "Identification and management of maternal sepsis during and following pregnancy",
+  "issuer": "RCOG", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Maternal sepsis", "publication_date": "2024-12-19",
+  "version_note": "Green-top Guideline No. 64, second edition; replaces GTG 64a and 64b (2012); next review 2027.",
+  "source_url": "https://www.rcog.org.uk/guidance/browse-all-guidance/green-top-guidelines/identification-and-management-of-maternal-sepsis-during-and-following-pregnancy-green-top-guideline-no-64/", "document_url": null, "section": "Green-top Guideline No. 64",
+  "rights": "RCOG copyright. Link only.",
+  "summary": "Covers recognising and treating sepsis in the antenatal, intrapartum and postpartum periods, including after abortion, with emphasis on early diagnosis, prompt broad-spectrum antibiotics, senior review and early involvement of infection and critical-care teams.",
+  "passage_search": false
+ },
+ {
+  "id": "rcog-gtg31-sga", "title": "Small-for-Gestational-Age Fetus and a Growth Restricted Fetus, Investigation and Care",
+  "issuer": "RCOG", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Fetal growth restriction / SGA", "publication_date": "2024",
+  "version_note": "Green-top Guideline No. 31, third edition (2024). The RCOG page carries a July 2026 update notice and a correction after NHS England stopped using Intergrowth-21 charts; cite the correction too. Next review 2027.",
+  "source_url": "https://www.rcog.org.uk/guidance/browse-all-guidance/green-top-guidelines/small-for-gestational-age-fetus-and-a-growth-restricted-fetus-investigation-and-care-green-top-guideline-no-31/", "document_url": null, "section": "Green-top Guideline No. 31",
+  "rights": "RCOG copyright. Link only.",
+  "summary": "Evidence-based advice on investigating and caring for small-for-gestational-age and growth-restricted fetuses, covering definitions, risk factors, surveillance, diagnosis, fetal monitoring and timing of birth.",
+  "passage_search": false
+ },
+ {
+  "id": "rcog-gtg76-thyroid", "title": "Management of Thyroid Disorders in Pregnancy",
+  "issuer": "RCOG", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Thyroid disease in pregnancy", "publication_date": "2025",
+  "version_note": "Green-top Guideline No. 76, first edition; next review 2028.",
+  "source_url": "https://www.rcog.org.uk/guidance/browse-all-guidance/green-top-guidelines/management-of-thyroid-disorders-in-pregnancy-no-76/", "document_url": null, "section": "Green-top Guideline No. 76",
+  "rights": "RCOG copyright. Link only.",
+  "summary": "Guidance on thyroid disorders from before conception through pregnancy and after birth, noting practice variation linked to differing population iodine status and advising care by clinicians with obstetric and endocrine experience.",
+  "passage_search": false
+ },
+ {
+  "id": "rcog-gtg37a-vte", "title": "Reducing the Risk of Thrombosis and Embolism during Pregnancy and the Puerperium",
+  "issuer": "RCOG", "jurisdiction": "United Kingdom", "category": "HIGH_RISK", "topic": "Venous thromboembolism prophylaxis", "publication_date": "2015-04",
+  "version_note": "Green-top Guideline No. 37a, third edition (April 2015; the PDF is the 2023 amended version). An update is in development; acute management is GTG 37b.",
+  "source_url": "https://www.rcog.org.uk/guidance/browse-all-guidance/green-top-guidelines/reducing-the-risk-of-thrombosis-and-embolism-during-pregnancy-and-the-puerperium-green-top-guideline-no-37a/", "document_url": "https://www.rcog.org.uk/media/m4mbpjwi/gtg-no37a-2015_amended-2023.pdf", "section": "Green-top Guideline No. 37a",
+  "rights": "RCOG copyright. Link only.",
+  "summary": "Advice on preventing venous thromboembolism in pregnancy, at birth and after delivery, based on clinical evidence where available; diagnosis and treatment of acute thromboembolism are in the separate GTG 37b.",
+  "passage_search": false
+ },
+ {
+  "id": "acog-pb222-hypertension", "title": "Gestational Hypertension and Preeclampsia",
+  "issuer": "ACOG", "jurisdiction": "United States", "category": "HIGH_RISK", "topic": "Hypertensive disorders", "publication_date": "2020-06",
+  "version_note": "Practice Bulletin No. 222, June 2020, reaffirmed 2026; replaces PB 202. A June 2024 Clinical Practice Update covers biomarker prediction of preeclampsia with severe features.",
+  "source_url": "https://www.acog.org/clinical/clinical-guidance/practice-bulletin/articles/2020/06/gestational-hypertension-and-preeclampsia", "document_url": null, "section": "Practice Bulletin No. 222",
+  "rights": "ACOG copyright; full text is a member benefit. Link only.",
+  "summary": "Practice bulletin on hypertensive disorders of pregnancy covering diagnostic criteria, with separate criteria for preeclampsia and for preeclampsia with severe features, and management.",
+  "passage_search": false
+ },
+ {
+  "id": "acog-pb190-gdm", "title": "Gestational Diabetes Mellitus",
+  "issuer": "ACOG", "jurisdiction": "United States", "category": "HIGH_RISK", "topic": "Gestational diabetes", "publication_date": "2018-02",
+  "version_note": "Practice Bulletin No. 190, February 2018, reaffirmed 2026; replaces PB 180. A July 2024 Clinical Practice Update on screening amends parts of it.",
+  "source_url": "https://www.acog.org/clinical/clinical-guidance/practice-bulletin/articles/2018/02/gestational-diabetes-mellitus", "document_url": null, "section": "Practice Bulletin No. 190",
+  "rights": "ACOG copyright; full text is a member benefit. Link only.",
+  "summary": "Overview of what is known about gestational diabetes, a review of management approaches backed by sound clinical research, and identification of knowledge gaps.",
+  "passage_search": false
+ },
+ {
+  "id": "acog-pb183-pph", "title": "Postpartum Hemorrhage",
+  "issuer": "ACOG", "jurisdiction": "United States", "category": "POSTPARTUM", "topic": "Postpartum haemorrhage", "publication_date": "2017-10",
+  "version_note": "Practice Bulletin No. 183, October 2017, reaffirmed 2024; replaces PB 76. A July 2025 Clinical Practice Update on nonsurgical hemorrhage-control devices amends it.",
+  "source_url": "https://www.acog.org/clinical/clinical-guidance/practice-bulletin/articles/2017/10/postpartum-hemorrhage", "document_url": null, "section": "Practice Bulletin No. 183",
+  "rights": "ACOG copyright; full text is a member benefit. Link only.",
+  "summary": "Defines obstetric haemorrhage by cumulative blood loss or signs of hypovolaemia within 24 hours of birth and covers risk, prevention and management.",
+  "passage_search": false
+ },
+ {
+  "id": "acog-pb233-anaemia", "title": "Anemia in Pregnancy",
+  "issuer": "ACOG", "jurisdiction": "United States", "category": "ANTENATAL_CARE", "topic": "Anaemia in pregnancy", "publication_date": "2021-08",
+  "version_note": "Practice Bulletin No. 233, August 2021, reaffirmed 2024; replaces PB 95; interim update on screening, intravenous iron and cell salvage.",
+  "source_url": "https://www.acog.org/clinical/clinical-guidance/practice-bulletin/articles/2021/08/anemia-in-pregnancy", "document_url": null, "section": "Practice Bulletin No. 233",
+  "rights": "ACOG copyright. Link only.",
+  "summary": "Explains the causes of anaemia in pregnancy and the puerperium, mainly iron deficiency and acute blood loss, why iron needs rise in pregnancy, and reviews screening and management.",
+  "passage_search": false
+ },
+ {
+  "id": "acog-cpg8-labor", "title": "First and Second Stage Labor Management",
+  "issuer": "ACOG", "jurisdiction": "United States", "category": "LABOR_DELIVERY", "topic": "Labour progress and dystocia", "publication_date": "2024-01",
+  "version_note": "Clinical Practice Guideline No. 8, January 2024; replaces Obstetric Care Consensus No. 1 (March 2014).",
+  "source_url": "https://www.acog.org/clinical/clinical-guidance/clinical-practice-guideline/articles/2024/01/first-and-second-stage-labor-management", "document_url": null, "section": "Clinical Practice Guideline No. 8",
+  "rights": "ACOG copyright. Link only.",
+  "summary": "Defines labour and labour arrest and gives recommendations for managing dystocia in the first and second stages of labour, using a systematic evidence review with an adapted GRADE process.",
+  "passage_search": false
+ },
+ {
+  "id": "acog-cpg9-ripening", "title": "Cervical Ripening in Pregnancy",
+  "issuer": "ACOG", "jurisdiction": "United States", "category": "LABOR_DELIVERY", "topic": "Cervical ripening and induction of labour", "publication_date": "2025-07",
+  "version_note": "Clinical Practice Guideline No. 9, July 2025; replaces Practice Bulletin 107 (August 2009).",
+  "source_url": "https://www.acog.org/clinical/guidance/clinical-practice-guideline/2025/06/cervical-ripening-in-pregnancy", "document_url": null, "section": "Clinical Practice Guideline No. 9",
+  "rights": "ACOG copyright; full text is a member benefit. Link only.",
+  "summary": "Reviews current cervical ripening methods and how well each works, focusing on term, singleton, vertex pregnancies with intact membranes.",
+  "passage_search": false
+ },
+ {
+  "id": "smfm-consult52-fgr", "title": "Society for Maternal-Fetal Medicine Consult Series #52: Diagnosis and management of fetal growth restriction",
+  "issuer": "SMFM", "jurisdiction": "United States", "category": "HIGH_RISK", "topic": "Fetal growth restriction", "publication_date": "2020",
+  "version_note": "Consult Series #52; replaces Clinical Guideline #3 (2012); reaffirmed 2024; AJOG 2020;223(4):B2-B17.",
+  "source_url": "https://publications.smfm.org/publications/289-society-for-maternal-fetal-medicine-consult-series-52/", "document_url": "https://s3.amazonaws.com/cdn.smfm.org/attachments/784/6714d2faa2c68e4e8155225f6de2162b.pdf", "section": "Consult Series #52",
+  "rights": "Copyright Society for Maternal-Fetal Medicine. Link only.",
+  "summary": "Gives recommendations on diagnosing and managing fetal growth restriction, including genetic and anatomic evaluation, umbilical artery Doppler surveillance and timing of delivery.",
+  "passage_search": false
+ },
+ {
+  "id": "smfm-consult70-cervix", "title": "Society for Maternal Fetal Medicine Consult Series #70: Management of short cervix in individuals without a history of spontaneous preterm birth",
+  "issuer": "SMFM", "jurisdiction": "United States", "category": "HIGH_RISK", "topic": "Short cervix and preterm birth prevention", "publication_date": "2024",
+  "version_note": "Consult Series #70; SMFM Publications Committee.",
+  "source_url": "https://publications.smfm.org/publications/560-society-for-maternal-fetal-medicine-consult-series-70/", "document_url": "https://assets.noviams.com/novi-file-uploads/smfm/Publications_and_Guidelines/Consults/Short_Cervix_FINAL_PDF_AJOG.pdf", "section": "Consult Series #70",
+  "rights": "Copyright Society for Maternal-Fetal Medicine. Link only.",
+  "summary": "Recommendations on short cervix in singleton pregnancies without prior spontaneous preterm birth, using transvaginal cervical length measurement and addressing progesterone, cerclage and pessary.",
+  "passage_search": false
+ },
+ {
+  "id": "smfm-consult69-hepb", "title": "Society for Maternal-Fetal Medicine Consult Series #69: Hepatitis B in pregnancy: updated guidelines",
+  "issuer": "SMFM", "jurisdiction": "United States", "category": "SCREENING", "topic": "Hepatitis B in pregnancy", "publication_date": "2024",
+  "version_note": "Consult Series #69; replaces Consult #38; ACOG-endorsed.",
+  "source_url": "https://publications.smfm.org/publications/553-society-for-maternal-fetal-medicine-consult-series-69/", "document_url": "https://assets.noviams.com/novi-file-uploads/smfm/Publications_and_Guidelines/Consults/Consult_Series_69_Hepatitis_B_in_pregnancy_updated_guidelines.pdf", "section": "Consult Series #69",
+  "rights": "Copyright Society for Maternal-Fetal Medicine. Link only.",
+  "summary": "Updates guidance on screening, perinatal transmission risk, treatment and vaccination for hepatitis B in pregnancy, including testing at the first prenatal visit, antiviral treatment for high viral loads and newborn immunisation.",
+  "passage_search": false
+ },
+ {
+  "id": "smfm-consult74-cfdna", "title": "Society for Maternal-Fetal Medicine Consult Series #74: Cell-free DNA screening for aneuploidies: Updated guidance",
+  "issuer": "SMFM", "jurisdiction": "United States", "category": "SCREENING", "topic": "Prenatal aneuploidy screening (cfDNA)", "publication_date": "2025",
+  "version_note": "Consult Series #74; replaces Consult #36; ACOG-endorsed.",
+  "source_url": "https://publications.smfm.org/publications/620-society-for-maternal-fetal-medicine-consult-series-74cell/", "document_url": "https://assets.noviams.com/novi-file-uploads/smfm/Publications_and_Guidelines/Consults/SMFM_Consult_Series_74_Cell_free_DNA_screening_for_aneuploidies_Updated_guidance.pdf", "section": "Consult Series #74",
+  "rights": "Copyright Society for Maternal-Fetal Medicine. Link only.",
+  "summary": "Updated cell-free DNA guidance covering trisomies 21, 18 and 13, sex chromosome aneuploidies, microdeletions and twin pregnancies.",
+  "passage_search": false
+ },
+ {
+  "id": "smfm-aspirin-checklist-2026", "title": "Society for Maternal-Fetal Medicine Special Statement: Updated checklists for preeclampsia risk-factor screening to guide recommendations for prophylactic low-dose aspirin",
+  "issuer": "SMFM", "jurisdiction": "United States", "category": "SCREENING", "topic": "Pre-eclampsia risk screening and aspirin prophylaxis", "publication_date": "2026",
+  "version_note": "Special Statement (not a numbered Consult); replaces the 2020 checklist statement.",
+  "source_url": "https://publications.smfm.org/publications/623-society-for-maternal-fetal-medicine-special-statement-updated/", "document_url": "https://assets.noviams.com/novi-file-uploads/smfm/Publications_and_Guidelines/Special_Statements/SMFM_Special_Statement_Updated_checklists_for_preeclampsia_risk-factor_screening_to_guide_recommendations_for_prophylactic_low-dose_aspirin.pdf", "section": "Special Statement",
+  "rights": "Copyright Society for Maternal-Fetal Medicine. Link only.",
+  "summary": "Presents revised provider and patient checklists of preeclampsia risk factors to prompt low-dose aspirin prophylaxis, and suggests how to embed the checklist in routine care.",
+  "passage_search": false
+ },
+ {
+  "id": "ranzcog-cobs3b-antenatal", "title": "Routine antenatal assessment in the absence of pregnancy complications",
+  "issuer": "RANZCOG", "jurisdiction": "Australia and New Zealand", "category": "ANTENATAL_CARE", "topic": "Routine antenatal care", "publication_date": "2022-03",
+  "version_note": "C-Obs 3b (best practice statement); current March 2022; review due March 2027.",
+  "source_url": "https://ranzcog.edu.au/wp-content/uploads/Routine-Antenatal-Assessment.pdf", "document_url": "https://ranzcog.edu.au/wp-content/uploads/Routine-Antenatal-Assessment.pdf", "section": "C-Obs 3b",
+  "rights": "RANZCOG copyright; states it is general advice to practitioners. Link only.",
+  "summary": "Advises on the assessment and care to offer during uncomplicated pregnancy, including dating, clinical and psychosocial assessment and a visit schedule.",
+  "passage_search": false
+ },
+ {
+  "id": "ranzcog-cobs43-pph", "title": "Management of Postpartum Haemorrhage (PPH)",
+  "issuer": "RANZCOG", "jurisdiction": "Australia and New Zealand", "category": "POSTPARTUM", "topic": "Postpartum haemorrhage", "publication_date": "2021-11",
+  "version_note": "C-Obs 43 (clinical guidance statement); current November 2021; review due November 2026, so check for a newer version.",
+  "source_url": "https://ranzcog.edu.au/wp-content/uploads/Management-Postpartum-Haemorrhage.pdf", "document_url": "https://ranzcog.edu.au/wp-content/uploads/Management-Postpartum-Haemorrhage.pdf", "section": "C-Obs 43",
+  "rights": "RANZCOG copyright; states it is general advice to practitioners. Link only.",
+  "summary": "Covers preventing and managing postpartum haemorrhage, including secondary haemorrhage, recommending active management of the third stage and prompt, skilled, resourced responses to bleeding.",
+  "passage_search": false
+ },
+ {
+  "id": "ranzcog-cobs61-preeclampsia", "title": "Early pregnancy screening and prevention of preterm preeclampsia and related complications",
+  "issuer": "RANZCOG", "jurisdiction": "Australia and New Zealand", "category": "SCREENING", "topic": "Pre-eclampsia screening and prevention", "publication_date": "2024",
+  "version_note": "C-Obs 61 (clinical guideline); reviewed by the Women's Health Committee in April 2024. The PDF front page still carries draft approval wording.",
+  "source_url": "https://ranzcog.edu.au/wp-content/uploads/Screening-Prevention-Preterm-PET.pdf", "document_url": "https://ranzcog.edu.au/wp-content/uploads/Screening-Prevention-Preterm-PET.pdf", "section": "C-Obs 61",
+  "rights": "RANZCOG copyright; states it is general advice to practitioners. Link only.",
+  "summary": "Guideline on early-pregnancy screening for preterm pre-eclampsia and on prevention with aspirin and similar measures for those at higher risk.",
+  "passage_search": false
+ },
+ {
+  "id": "ranzcog-cobs38-vbac", "title": "Birth After Caesarean",
+  "issuer": "RANZCOG", "jurisdiction": "Australia and New Zealand", "category": "LABOR_DELIVERY", "topic": "Vaginal birth after caesarean", "publication_date": "2025-08",
+  "version_note": "C-Obs 38 (clinical guideline), version 4.1, August 2025; supersedes earlier statements.",
+  "source_url": "https://ranzcog.edu.au/wp-content/uploads/Birth-After-Caesarean.pdf", "document_url": "https://ranzcog.edu.au/wp-content/uploads/Birth-After-Caesarean.pdf", "section": "C-Obs 38",
+  "rights": "RANZCOG copyright; states it is general advice to practitioners. Link only.",
+  "summary": "Clinical guidance for care of women who have previously had a caesarean birth, comparing planned vaginal birth after caesarean with elective repeat caesarean and setting out recommendations on informed decision-making.",
+  "passage_search": false
+ },
+ {
+  "id": "ranzcog-cobs22-prostaglandins", "title": "Use of prostaglandins for Induction of Labour",
+  "issuer": "RANZCOG", "jurisdiction": "Australia and New Zealand", "category": "LABOR_DELIVERY", "topic": "Induction of labour", "publication_date": "2019-03",
+  "version_note": "C-Obs 22 (clinical guidance statement); March 2019 with an interim update in February 2023. Its review date (March 2024) has passed, so check for a newer version.",
+  "source_url": "https://ranzcog.edu.au/wp-content/uploads/Prostaglandins-lnduction-of-Labour.pdf", "document_url": "https://ranzcog.edu.au/wp-content/uploads/Prostaglandins-lnduction-of-Labour.pdf", "section": "C-Obs 22",
+  "rights": "RANZCOG copyright; states it is general advice to practitioners. Link only.",
+  "summary": "Advice on the use of prostaglandins for induction of labour in term women, with a February 2023 interim update covering a newly approved oral prostaglandin.",
+  "passage_search": false
+ }
+]

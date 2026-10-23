@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { BadgeTone } from '../../components/StatusBadge';
 import { formatFriendlyDate, friendlyQuestionStatus } from './format';
+import { useLanguage } from '../../i18n';
 
 const STATUS_TONE: Record<PatientQuestion['status'], BadgeTone> = {
   NEW: 'blue',
@@ -16,6 +17,7 @@ const STATUS_TONE: Record<PatientQuestion['status'], BadgeTone> = {
 };
 
 export function MyQuestionsPage() {
+  const { t } = useLanguage();
   const [questions, setQuestions] = useState<PatientQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export function MyQuestionsPage() {
     setIsLoading(true);
     fetchMyQuestions()
       .then(setQuestions)
-      .catch(() => setError("We couldn't load your questions. Please try again."))
+      .catch(() => setError(t("We couldn't load your questions. Please try again.")))
       .finally(() => setIsLoading(false));
   };
 
@@ -44,7 +46,7 @@ export function MyQuestionsPage() {
       setDraft('');
       loadQuestions();
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : 'Could not submit your question. Please try again.');
+      setSubmitError(err instanceof ApiError ? err.message : t('Could not submit your question. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -52,15 +54,15 @@ export function MyQuestionsPage() {
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>My Questions</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('My Questions')}</h1>
 
       <div className="glass-panel" style={{ padding: '20px 22px', marginBottom: '20px' }}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Question</label>
+          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{t('Question')}</label>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Write your question…"
+            placeholder={t('Write your question…')}
             rows={3}
             style={{
               background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)',
@@ -70,14 +72,14 @@ export function MyQuestionsPage() {
           {submitError && <div style={{ fontSize: '0.8rem', color: 'var(--rose-urgent)' }}>{submitError}</div>}
           <div>
             <button type="submit" disabled={isSubmitting || !draft.trim()} className="btn-primary">
-              {isSubmitting ? 'Submitting…' : 'Submit Question'}
+              {isSubmitting ? t('Submitting…') : t('Submit Question')}
             </button>
           </div>
         </form>
       </div>
 
       {isLoading && (
-        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading your questions…</div>
+        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading your questions…')}</div>
       )}
 
       {error && !isLoading && (
@@ -86,7 +88,7 @@ export function MyQuestionsPage() {
 
       {!isLoading && !error && questions.length === 0 && (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          You haven't asked any questions yet.
+          {t("You haven't asked any questions yet.")}
         </div>
       )}
 

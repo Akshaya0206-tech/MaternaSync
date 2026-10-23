@@ -239,6 +239,29 @@ def list_filter_options(current_user: models.User = Depends(require_role("doctor
     )
 
 
+@router.post("/sources/approve-batch")
+def approve_sources_batch(payload: schemas_v2.BatchSourceApprovalIn, current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
+    """A doctor approves several sources they have reviewed. Each is checked on its own and failures are reported."""
+    if not payload.confirmed or not payload.ids or len(payload.ids) > 100:
+        raise HTTPException(status_code=422, detail="Confirm that you reviewed the selected sources (1 to 100).")
+    approved, failed = [], []
+    for source_id in dict.fromkeys(payload.ids):
+        source = db.query(models.GuidelineSource).filter(models.GuidelineSource.id == source_id).first()
+        if source is None:
+            failed.append({"id": source_id, "reason": "Guideline source not found."})
+        elif source.status not in ("AWAITING_REVIEW", "REJECTED"):
+            failed.append({"id": source_id, "reason": f"Cannot approve a source in status {source.status}."})
+        else:
+            source.status = "APPROVED"
+            db.add(models.GuidelineReview(source_id=source.id, reviewer_user_id=current_user.id, reviewer_role=current_user.role,
+                                           action="APPROVE", notes=payload.notes))
+            _audit(db, current_user.id, current_user.role, current_user.full_name, "guideline_source_approved",
+                   f"{current_user.full_name} approved \"{source.title}\"", payload.notes or "", source.id)
+            approved.append(source_id)
+    db.commit()
+    return {"approved": approved, "failed": failed}
+
+
 @router.post("/sources/{source_id}/approve", response_model=schemas_v2.GuidelineSourceOut)
 def approve_source(source_id: str, payload: schemas_v2.ReviewNoteIn = schemas_v2.ReviewNoteIn(),
                     current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):

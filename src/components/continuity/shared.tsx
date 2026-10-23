@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getContext, getWorkspace } from "../../api/continuity";
 import type { Context, Workspace } from "../../api/continuity";
+import { useLanguage } from "../../i18n";
 import "./continuity.css";
 
 export function useAction() {
@@ -124,10 +125,11 @@ export function Page({
   subtitle?: string;
   children: ReactNode;
 }) {
+  const { t } = useLanguage();
   return (
     <main className="continuity-page">
       <header className="continuity-heading">
-        <div className="eyebrow">MATERNASYNC · CONNECTED CARE</div>
+        <div className="eyebrow">{t("MATERNASYNC · CONNECTED CARE")}</div>
         <h1 className="page-title">{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </header>
