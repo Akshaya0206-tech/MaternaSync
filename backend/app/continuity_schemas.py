@@ -32,6 +32,12 @@ class LogIn(Input):
     movement_minutes: int | None = Field(None, ge=1, le=1440)
     skipped: bool = False
     correction_reason: str = Field("", max_length=1000)
+    entered_with_help: str | None = Field(None, max_length=120)
+
+    @field_validator("entered_with_help")
+    @classmethod
+    def helper_or_nothing(cls, value):
+        return value or None
 
     @model_validator(mode="after")
     def validate_log(self):
@@ -194,12 +200,6 @@ class PublishIn(ApprovalIn):
     visible_to_patient: bool = True
     revision: int = Field(ge=1)
     acknowledged_alerts: list[str] = Field(default_factory=list, max_length=100)  # drug-safety alert keys the doctor has read
-
-
-class AttachmentIn(Input):
-    resource_id: str
-    target_type: Literal["note", "handover", "discussion"]
-    target_id: str
 
 
 class EnrollIn(ApprovalIn):

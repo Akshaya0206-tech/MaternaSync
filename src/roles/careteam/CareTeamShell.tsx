@@ -2,19 +2,19 @@ import { Outlet } from 'react-router-dom';
 import { LayoutDashboard, Users, FileCheck2, MessageCircle, ListTodo, Route, ArrowRightLeft, Bell, UserCircle } from 'lucide-react';
 import { RoleSidebar } from '../../components/shared/RoleSidebar';
 import { useAuth } from '../../auth/AuthContext';
+import { TextSizeControl } from '../../accessibility/TextSizeControl';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/care-team/dashboard', icon: <LayoutDashboard size={18} /> },
   { label: 'Clinic Overview', to: '/care-team/clinic', icon: <LayoutDashboard size={18} /> },
   { label: 'Connected Care', to: '/care-team/care-workspace', icon: <ListTodo size={18} /> },
   { label: 'Document Studio', to: '/care-team/draft-studio', icon: <FileCheck2 size={18} /> },
-  { label: 'Clinical Guidelines', to: '/care-team/guidelines', icon: <FileCheck2 size={18} /> },
   { label: 'Patients', to: '/care-team/patients', icon: <Users size={18} /> },
   { label: 'Documents', to: '/care-team/documents', icon: <FileCheck2 size={18} /> },
   { label: 'Patient Questions', to: '/care-team/questions', icon: <MessageCircle size={18} /> },
   { label: 'Tasks & Follow-ups', to: '/care-team/tasks', icon: <ListTodo size={18} /> },
   { label: 'Referrals', to: '/care-team/referrals', icon: <Route size={18} /> },
-  { label: 'Handover', to: '/care-team/handover', icon: <ArrowRightLeft size={18} /> },
+  { label: 'Handover', to: '/care-team/handover', icon: <ArrowRightLeft size={18} />, badge: 'Paused' },
   { label: 'Updates', to: '/care-team/updates', icon: <Bell size={18} /> },
   { label: 'Profile', to: '/care-team/profile', icon: <UserCircle size={18} /> },
 ];
@@ -30,8 +30,9 @@ export function CareTeamShell() {
         userName={user?.fullName ?? ''}
         roleLabel="Care Team"
         onLogout={logout}
+        footerExtra={<TextSizeControl />}
       />
-      <div className="app-main-column">
+      <div className="app-main-column" id="main-content" tabIndex={-1}>
         <Outlet />
       </div>
     </div>

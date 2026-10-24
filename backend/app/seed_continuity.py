@@ -125,6 +125,28 @@ def drug_safety_set():
         configuration=config)
 
 
+# A home location for each demonstration patient, so Profile and Emergency help show a saved location. They are
+# neighbourhood centres, marked "(demo)". A patient's own entry is never overwritten.
+DEMO_LOCATIONS = {
+    "sarah.jenkins@maternasync.app": ("Anna Nagar, Chennai (demo)", 13.0850, 80.2101),
+    "priya.sharma@maternasync.app": ("Lajpat Nagar, New Delhi (demo)", 28.5677, 77.2433),
+    "ananya.kumar@maternasync.app": ("Indiranagar, Bengaluru (demo)", 12.9719, 77.6412),
+    "meera.raj@maternasync.app": ("Banjara Hills, Hyderabad (demo)", 17.4156, 78.4347),
+}
+
+
+def ensure_demo_locations(db):
+    added = 0
+    for email, (label, lat, lon) in DEMO_LOCATIONS.items():
+        user = db.query(models.User).filter_by(email=email).first()
+        if user and not db.get(models.PatientEmergencyProfile, user.id):
+            db.add(models.PatientEmergencyProfile(user_id=user.id, home_label=label, home_lat=lat, home_lon=lon, live_location=False))
+            added += 1
+    if added:
+        db.commit()
+        print(f"Added a demonstration location for {added} demo patient(s).")
+
+
 def run_seed_continuity(db):
     doctor = db.query(models.User).filter_by(email="demo@maternasync.app").first()
     if not doctor:

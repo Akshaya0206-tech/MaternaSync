@@ -33,6 +33,8 @@ export interface DailyLog {
   skipped: boolean;
   revision: number;
   correctionReason: string;
+  /** Who sat with the patient and helped fill this in, if anyone (for example "ASHA worker: Rekha"). */
+  enteredWithHelp: string | null;
 }
 export interface Consent {
   id: string;
@@ -147,7 +149,6 @@ export interface ClinicalOutput {
   visibleToPatient: boolean;
   approvedByName: string | null;
   approvedAt: string | null;
-  references?: Resource[];
 }
 export type Tier = "urgent" | "soon" | "routine";
 export interface Flag {
@@ -264,12 +265,6 @@ export interface Workspace {
     sourceDocumentId: string;
   }[];
   handovers?: { id: string; title: string }[];
-  references?: {
-    id: string;
-    targetType: string;
-    targetId: string;
-    resource: Resource;
-  }[];
 }
 export interface Clinic {
   patients: {

@@ -1,7 +1,7 @@
 """Prescription safety check: documented allergies, pregnancy cautions and drug-drug interactions.
 
 This is NOT a complete drug-interaction database. It checks only against reviewed lists that a doctor has
-approved in the Reference Library ("Drug safety checks"), each entry citing the product label it came from, plus
+approved in Clinical Settings ("Drug safety checks"), each entry citing the product label it came from, plus
 the allergies recorded for the patient. Medicines are matched by generic name or alias (no brand lookup). The screen
 says so every time, and a doctor must acknowledge each alert before signing. Nothing here suggests a dose or a drug.
 """

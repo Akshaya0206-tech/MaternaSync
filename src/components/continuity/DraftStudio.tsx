@@ -203,7 +203,7 @@ export function DraftStudio({
               Enter the medicine, dose, route, frequency and duration yourself;
               nothing is suggested. After you save, a drug safety check runs
               against the patient&apos;s recorded allergies and the reviewed,
-              label-sourced lists a doctor approved in the Reference Library.
+              label-sourced lists a doctor approved in Clinical Settings.
               It is not a complete interaction database, so review
               independently before signing.
             </div>
@@ -432,15 +432,6 @@ function OutputEditor({
           </Field>
         ))}
       </div>
-      {output.references?.map((r) => (
-        <p key={r.id} className="continuity-muted">
-          Reference:{" "}
-          <a href={r.sourceUrl} target="_blank" rel="noreferrer">
-            {r.title}
-          </a>{" "}
-          · {r.issuer} · v{r.version} · {r.section}
-        </p>
-      ))}
       {checking && (
         <section className="continuity-section continuity-section-results" aria-label="Drug safety check">
           <h4>Drug safety check</h4>
@@ -454,7 +445,7 @@ function OutputEditor({
               <p className="continuity-section-note">
                 {safety.status === "checked"
                   ? `Checked against: ${safety.checkedAgainst.map((s) => `${s.title} v${s.version} (${s.pairs} interaction pairs, ${s.cautions} pregnancy cautions, approved by ${s.approvedBy})`).join("; ")}.`
-                  : "No drug-safety list is approved yet, so interactions and pregnancy cautions are UNCHECKED. A doctor can approve the label-sourced list under Reference Library → Drug safety checks."}
+                  : "No drug-safety list is approved yet, so interactions and pregnancy cautions are UNCHECKED. A doctor can approve the label-sourced list under Clinical Settings → Drug safety checks."}
                 {" "}
                 Allergies recorded for this patient:{" "}
                 {safety.allergiesRecorded.length
@@ -624,8 +615,8 @@ function OutputEditor({
       )}
       {doctor && (
         <p className="continuity-muted">
-          <Link to="/doctor/library">
-            Attach a guideline or manage templates in the reference library
+          <Link to="/doctor/clinical-settings">
+            Manage note layouts and other lists in Clinical Settings
           </Link>
         </p>
       )}

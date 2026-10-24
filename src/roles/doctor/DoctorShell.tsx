@@ -1,7 +1,10 @@
 import { Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, FileCheck2, Stethoscope, MessageCircle, FileText, ListTodo, ArrowRightLeft, Bell, UserCircle, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Users, FileCheck2, Stethoscope, MessageCircle, FileText, ListTodo, ArrowRightLeft, Bell, UserCircle, BookOpen, SlidersHorizontal } from 'lucide-react';
 import { RoleSidebar } from '../../components/shared/RoleSidebar';
 import { useAuth } from '../../auth/AuthContext';
+import { TourProvider } from '../../tour/TourProvider';
+import { TextSizeControl } from '../../accessibility/TextSizeControl';
+import { doctorTourLabels, doctorTourSteps } from './tour';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/doctor/dashboard', icon: <LayoutDashboard size={18} /> },
@@ -13,10 +16,11 @@ const NAV_ITEMS = [
   { label: 'Document Studio', to: '/doctor/draft-studio', icon: <FileText size={18} /> },
   { label: 'Connected Care', to: '/doctor/care-workspace', icon: <ListTodo size={18} /> },
   { label: 'Reference Library', to: '/doctor/library', icon: <FileCheck2 size={18} /> },
+  { label: 'Clinical Settings', to: '/doctor/clinical-settings', icon: <SlidersHorizontal size={18} /> },
   { label: 'Clinic Overview', to: '/doctor/clinic', icon: <Users size={18} /> },
   { label: 'Follow-ups', to: '/doctor/follow-ups', icon: <ListTodo size={18} /> },
   { label: 'Guidelines', to: '/doctor/guidelines', icon: <BookOpen size={18} /> },
-  { label: 'Handover', to: '/doctor/handover', icon: <ArrowRightLeft size={18} /> },
+  { label: 'Handover', to: '/doctor/handover', icon: <ArrowRightLeft size={18} />, badge: 'Paused' },
   { label: 'Updates', to: '/doctor/updates', icon: <Bell size={18} /> },
   { label: 'Profile', to: '/doctor/profile', icon: <UserCircle size={18} /> },
 ];
@@ -25,17 +29,20 @@ export function DoctorShell() {
   const { user, logout } = useAuth();
 
   return (
-    <div className="app-container">
-      <RoleSidebar
-        brandSubtitle="Clinical context and consultation documentation"
-        navItems={NAV_ITEMS}
-        userName={user?.fullName ?? ''}
-        roleLabel="Doctor"
-        onLogout={logout}
-      />
-      <div className="app-main-column">
-        <Outlet />
+    <TourProvider userId={user?.id ?? ''} steps={doctorTourSteps} labels={doctorTourLabels}>
+      <div className="app-container">
+        <RoleSidebar
+          brandSubtitle="Clinical context and consultation documentation"
+          navItems={NAV_ITEMS}
+          userName={user?.fullName ?? ''}
+          roleLabel="Doctor"
+          onLogout={logout}
+          footerExtra={<TextSizeControl />}
+        />
+        <div className="app-main-column" id="main-content" tabIndex={-1}>
+          <Outlet />
+        </div>
       </div>
-    </div>
+    </TourProvider>
   );
 }

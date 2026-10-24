@@ -20,7 +20,7 @@
 }
 .eyebrow {
   font-size: 0.65rem;
-  color: var(--teal-primary);
+  color: #11695f; /* darker than the brand teal so the small text reads at 5.6:1 */
   letter-spacing: 0.12em;
   font-weight: 800;
 }
@@ -315,6 +315,92 @@
   color: var(--text-primary);
   font-size: 0.8rem;
 }
+
+/* Guided tour for new accounts. */
+.tour-backdrop { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 35, 30, 0.55); }
+.tour-welcome { max-width: 440px; padding: 26px; }
+.tour-welcome h2, .tour-card h2 { margin: 0 0 8px; font-size: 1.15rem; outline: none; }
+.tour-welcome p, .tour-card p { margin: 0 0 14px; line-height: 1.55; font-size: 0.92rem; }
+.tour-card { position: fixed; z-index: 190; right: 20px; bottom: 20px; width: min(380px, calc(100vw - 32px)); padding: 18px 20px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); border: 2px solid var(--teal-primary); }
+.tour-progress { margin-bottom: 4px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.tour-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tour-skip { margin-left: auto; padding: 6px 4px; border: none; background: none; color: var(--text-muted); font: inherit; font-size: 0.82rem; text-decoration: underline; cursor: pointer; }
+.sidebar a[data-tour-highlight] { outline: 3px solid #f3b95f; outline-offset: 1px; animation: tour-pulse 1.4s ease-in-out infinite; }
+@keyframes tour-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(243, 185, 95, 0.55); } 50% { box-shadow: 0 0 0 7px rgba(243, 185, 95, 0); } }
+@media (prefers-reduced-motion: reduce) { .sidebar a[data-tour-highlight] { animation: none; } }
+@media (max-width: 700px) { .tour-card { right: 8px; left: 8px; bottom: 8px; width: auto; } }
+
+/* Emergency help (patient). */
+.emergency-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 12px 0; }
+.emergency-call { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; border: 2px solid var(--border-color); background: var(--bg-tertiary); color: var(--text-primary); text-decoration: none; }
+.emergency-call strong { font-size: 1.6rem; line-height: 1.1; }
+.emergency-call span { font-size: 0.84rem; line-height: 1.4; color: var(--text-secondary, var(--text-muted)); }
+.emergency-call:hover, .emergency-call:focus-visible { border-color: var(--rose-urgent); }
+.emergency-emergency, .emergency-ambulance { border-color: var(--rose-urgent); background: var(--rose-urgent-bg); }
+.emergency-emergency strong, .emergency-ambulance strong { color: var(--rose-urgent); }
+.emergency-contact strong { font-size: 1.05rem; }
+.emergency-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 14px 0; }
+.emergency-people h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 0.95rem; }
+.emergency-details summary { cursor: pointer; }
+.sidebar-emergency { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px 12px; border-radius: var(--radius-md); background: var(--rose-urgent); color: #fff; font-size: 0.9rem; font-weight: 800; text-decoration: none; border: 2px solid transparent; }
+.sidebar-emergency:hover, .sidebar-emergency:focus-visible { border-color: #fff; }
+.away-banner { margin: 14px 24px 0; }
+
+/* References (patient). */
+.reference-topic { margin-bottom: 12px; }
+.reference-topic summary { cursor: pointer; list-style-position: outside; }
+.reference-topic h3 { margin: 16px 0 6px; font-size: 0.95rem; }
+.reference-topic li { margin: 4px 0; line-height: 1.55; }
+.reference-urgent { border: 2px solid var(--rose-urgent); }
+.reference-help { border-left-color: var(--rose-urgent); }
+.reference-sources { padding-left: 18px; }
+
+/* Reference Library (doctor). */
+.reflib-search { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.reflib-search input[type="search"] { flex: 1 1 320px; min-width: 0; padding: 12px 14px; font-size: 1rem; }
+.reflib-examples { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+.reflib-examples .continuity-chip { min-height: 32px; padding: 4px 12px; font-size: 0.8rem; }
+.reflib-quote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--teal-primary); line-height: 1.55; }
+.reflib-quote mark, .reflib-more mark { background: rgba(214, 160, 40, 0.35); color: inherit; padding: 0 2px; border-radius: 3px; }
+.reflib-more { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+.reflib-file { position: relative; cursor: pointer; display: inline-flex; align-items: center; }
+.reflib-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+
+/* Step-by-step check-in: large type and large buttons, one question at a time. */
+.guided-step h2 { margin: 6px 0 8px; font-size: 1.6rem; line-height: 1.25; outline: none; }
+.guided-step p { font-size: 1rem; }
+.guided-progress { height: 8px; border-radius: 999px; background: var(--border-color); overflow: hidden; margin-bottom: 8px; }
+.guided-progress span { display: block; height: 100%; background: var(--teal-primary); transition: width 0.2s ease; }
+.guided-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 16px 0; }
+.guided-option { min-height: 64px; padding: 12px 16px; border-radius: 14px; border: 2px solid var(--border-color); background: var(--bg-tertiary); color: var(--text-primary); font: inherit; font-size: 1.1rem; font-weight: 600; cursor: pointer; text-align: left; }
+.guided-option[aria-pressed="true"] { background: var(--teal-primary); border-color: var(--teal-primary); color: #fff; }
+.guided-fields { display: grid; gap: 14px; margin: 16px 0; max-width: 420px; }
+.guided-fields input { font-size: 1.5rem; padding: 14px 16px; }
+.guided-fields .continuity-field label { font-size: 0.95rem; }
+.guided-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 22px; }
+.guided-actions .btn-primary, .guided-actions .btn-secondary { min-height: 52px; padding: 12px 26px; font-size: 1.05rem; }
+.guided-skip { margin-left: auto; padding: 8px 4px; border: none; background: none; color: var(--text-muted); font: inherit; font-size: 1rem; text-decoration: underline; cursor: pointer; }
+.guided-review { display: grid; grid-template-columns: max-content 1fr; gap: 10px 20px; margin: 16px 0; font-size: 1.1rem; }
+.guided-review dt { font-weight: 700; color: var(--text-muted); }
+.guided-review dd { margin: 0; }
+.guided-done { font-size: 1.2rem; font-weight: 600; }
+.guided-invite { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+
+/* Tap-to-add symptom buttons on the daily check-in. */
+.continuity-chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.continuity-chip {
+  min-height: 38px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.continuity-chip[aria-pressed="true"] { background: var(--teal-primary); border-color: var(--teal-primary); color: #fff; }
+.continuity-chip:focus-visible { outline: 2px solid var(--teal-primary); outline-offset: 2px; }
 
 /* Long plain-language sections read better one per row than in narrow columns. */
 .continuity-fields.continuity-fields-wide { grid-template-columns: 1fr; }

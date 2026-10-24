@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { api } from "../api/client";
 import {
@@ -25,12 +25,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(next);
   }, []);
 
+  // Once the person has picked a language here, the saved one (which may arrive late, on a slow connection) must not undo it.
+  const chosen = useRef(false);
   useEffect(() => {
     let current = true;
     api
       .get<{ language: Language }>("/api/v2/continuity/context")
       .then((context) => {
-        if (current && isLanguage(context.language)) apply(context.language);
+        if (current && !chosen.current && isLanguage(context.language)) apply(context.language);
       })
       .catch(() => {
         /* keep the remembered language when offline */
@@ -55,6 +57,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = useCallback(
     async (next: Language) => {
+      chosen.current = true;
       apply(next);
       await api.patch("/api/v2/continuity/preferences", { language: next });
     },

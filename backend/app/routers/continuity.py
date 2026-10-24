@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import models
+from .. import config, models
 from ..database import get_db
 from ..deps import require_role
 from .. import continuity_schemas as S
@@ -32,6 +32,11 @@ def context(user=Depends(authenticated), db: Session = Depends(get_db)):
         {"id": e.id, "patientName": e.patient_name, "weeks": e.gestational_age_weeks,
          "members": [{"id": uid, "name": name(db, uid)} for uid in member_ids(db, e.id)] if user.role != "patient" else []}
         for e in episodes]}
+
+
+@router.get("/handover-status")
+def handover_status(user=Depends(staff)):
+    return {"paused": config.HANDOVER_PAUSED, "message": config.HANDOVER_PAUSED_MESSAGE}
 
 
 @router.patch("/preferences")
@@ -84,7 +89,6 @@ def workspace(episode_id: str, user=Depends(authenticated), db: Session = Depend
             "outreach": [row(o) for o in outreach_items],
             "outcomes": [row(o) for o in db.query(models.RecordedOutcome).filter_by(episode_id=ep.id).all()],
             "handovers": [{"id": h.id, "title": f"Handover {utc(h.created_at).date()}"} for h in db.query(models.Handover).filter_by(episode_id=ep.id).all()],
-            "references": [{**row(a), "resource": resource_out(db, db.get(models.ClinicalResource, a.resource_id))} for a in db.query(models.ReferenceAttachment).filter_by(episode_id=ep.id).all()],
         })
     audit(db, user, "continuity_viewed", episode_id=ep.id)
     db.commit()
@@ -405,27 +409,6 @@ def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db
             f"{len(safety['alerts'])} alert(s) shown and acknowledged by the signing doctor."))
     db.commit()
     return output_out(db, output)
-
-
-@router.post("/episodes/{episode_id}/references")
-def attach(episode_id: str, payload: S.AttachmentIn, user=Depends(doctor), db: Session = Depends(get_db)):
-    episode(db, user, episode_id)
-    resource = db.get(models.ClinicalResource, payload.resource_id)
-    if not current_resource(resource) or resource.kind != "guideline":
-        raise HTTPException(400, "Only current, reviewed guidelines can be attached.")
-    table = {"note": models.ClinicalOutput, "handover": models.Handover, "discussion": models.PatientQuestion}[payload.target_type]
-    target = get_object(db, user, table, payload.target_id)
-    if target.episode_id != episode_id:
-        raise HTTPException(400, "The target belongs to another episode.")
-    existing = db.query(models.ReferenceAttachment).filter_by(resource_id=resource.id, target_type=payload.target_type, target_id=target.id).first()
-    if existing:
-        return row(existing)
-    attachment = models.ReferenceAttachment(episode_id=episode_id, resource_id=resource.id, target_type=payload.target_type, target_id=target.id, attached_by_user_id=user.id)
-    db.add(attachment)
-    db.flush()
-    audit(db, user, "reference_attached", attachment, details="Internal citation only; no clinical advice inserted.")
-    db.commit()
-    return row(attachment)
 
 
 @router.post("/episodes/{episode_id}/pathways")

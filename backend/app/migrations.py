@@ -61,6 +61,9 @@ ADDITIVE_COLUMNS = {
         ("superseded_by_id", "VARCHAR"),
         ("updated_at", "DATETIME"),
     ],
+    "daily_logs": [
+        ("entered_with_help", "VARCHAR"),
+    ],
     "outreach_messages": [
         ("provider", "VARCHAR"),
         ("sent_at", "DATETIME"),

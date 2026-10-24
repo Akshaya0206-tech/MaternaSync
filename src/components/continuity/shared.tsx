@@ -12,7 +12,7 @@ import { useSearchParams } from "react-router-dom";
 import { getContext, getWorkspace } from "../../api/continuity";
 import type { Context, Workspace } from "../../api/continuity";
 import { useLanguage } from "../../i18n";
-import "./continuity.css";
+// continuity.css is loaded once, from main.tsx: it styles the menu and tour as well as these pages.
 
 export function useAction() {
   const [busy, setBusy] = useState(false);

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { api, fetchBlobWithAuth } from "../../api/client";
-import { getLibrary, languages, formatTime, ROOT } from "../../api/continuity";
+import { getLibrary, languages, formatTime } from "../../api/continuity";
 import type { Language, Resource } from "../../api/continuity";
 import {
   Badge,
@@ -10,28 +11,26 @@ import {
   Field,
   Page,
   Panel,
-  PatientSelect,
   useAction,
-  useWorkspace,
 } from "./shared";
 
+// The lists other parts of the app read from. Each must be approved by a doctor before it is used.
+// (Reference documents are not here: they live on the doctor's own Reference Library page.)
 const kinds = {
-  guideline: "Clinical guidelines",
-  template: "Note templates",
-  education: "Patient education",
-  pathway: "Care pathways",
   rule: "Review rules",
   coding: "ICD-10 code sets",
   interaction: "Drug safety checks",
+  education: "Patient education",
+  pathway: "Care pathways",
+  template: "Note templates",
 };
 
 export function LibraryPage() {
   const { user } = useAuth();
   const doctor = user?.role === "doctor";
   const action = useAction();
-  const w = useWorkspace();
   const [items, setItems] = useState<Resource[]>([]);
-  const [kind, setKind] = useState("guideline");
+  const [kind, setKind] = useState("rule");
   const [query, setQuery] = useState("");
   const [issuer, setIssuer] = useState("");
   const [jurisdiction, setJurisdiction] = useState("");
@@ -41,8 +40,6 @@ export function LibraryPage() {
   const [selected, setSelected] = useState<Resource | null>(null);
   const [editor, setEditor] = useState<Resource | "new" | null>(null);
   const [loading, setLoading] = useState(true);
-  const [targetType, setTargetType] = useState("note");
-  const [targetId, setTargetId] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [bulkConfirmed, setBulkConfirmed] = useState(false);
   const reload = async () => {
@@ -81,20 +78,11 @@ export function LibraryPage() {
   const drafts = results.filter((r) => r.status === "DRAFT");
   // Only what is on screen can be approved, even if filters changed after ticking.
   const chosen = picked.filter((id) => drafts.some((d) => d.id === id));
-  const targets =
-    targetType === "note"
-      ? w.data?.outputs.map((o) => ({ id: o.id, title: o.title }))
-      : targetType === "handover"
-        ? w.data?.handovers
-        : w.data?.sources?.filter((s) => s.type === "question");
-  const choose = (resource: Resource) => {
-    setSelected(resource);
-    setTargetId("");
-  };
+  const choose = (resource: Resource) => setSelected(resource);
   return (
     <Page
-      title="Clinical reference library"
-      subtitle="Source-attributed references, reviewed templates, and governed care resources. Every approval records its reviewer and version."
+      title="Clinical settings"
+      subtitle="The lists other parts of the app read from: review rules, ICD-10 code sets, drug safety checks, patient education, care pathways and note layouts. A doctor approves each one before it is used, and every approval records the reviewer and version."
     >
       <Feedback error={action.error} message={action.message} />
       <div className="continuity-tabs">
@@ -116,9 +104,10 @@ export function LibraryPage() {
         ))}
       </div>
       <div className="continuity-note">
-        Reference material supports professional review. Only current, approved
-        resources can be attached or applied. Starter references require source,
-        version, usage-rights and clinical applicability checks.
+        These lists change what the app flags, suggests or shows to patients, so
+        only a current, approved version is used. Starter entries are drafts: check
+        the source, the wording and whether it applies to your patients before
+        approving. Looking something up? Use the <Link to="/doctor/library">Reference Library</Link>.
       </div>
       <form
         onSubmit={(e) => {
@@ -207,7 +196,7 @@ export function LibraryPage() {
               className="btn-primary"
               onClick={() => setEditor("new")}
             >
-              Add {kind === "guideline" ? "reference" : "resource"}
+              Add resource
             </button>
           )}
         </div>
@@ -480,29 +469,6 @@ export function LibraryPage() {
                 >
                   Confirm review & approve
                 </button>
-                {selected.kind === "guideline" && (
-                  <Field label="Preserve permitted original PDF (up to 15 MB)">
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      disabled={action.busy}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file)
-                          void action.run(async () => {
-                            const form = new FormData();
-                            form.append("file", file);
-                            const updated = await api.upload<Resource>(
-                              `/api/v2/library/${selected.id}/file`,
-                              form,
-                            );
-                            setSelected(updated);
-                            await reload();
-                          }, "PDF preserved. Review the extracted passage before approval.");
-                      }}
-                    />
-                  </Field>
-                )}
               </>
             )}
             {doctor && selected.status === "APPROVED" && (
@@ -534,55 +500,6 @@ export function LibraryPage() {
                   </p>
                 ))}
             </details>
-            {doctor && selected.kind === "guideline" && selected.usable && (
-              <>
-                <h3 style={{ marginTop: 22 }}>Attach an internal reference</h3>
-                <PatientSelect workspace={w} />
-                <Field label="Attach to">
-                  <select
-                    value={targetType}
-                    onChange={(e) => {
-                      setTargetType(e.target.value);
-                      setTargetId("");
-                    }}
-                  >
-                    <option value="note">Document draft / note</option>
-                    <option value="handover">Handover</option>
-                    <option value="discussion">
-                      Internal question discussion
-                    </option>
-                  </select>
-                </Field>
-                <Field label="Target">
-                  <select
-                    value={targetId}
-                    onChange={(e) => setTargetId(e.target.value)}
-                  >
-                    <option value="">Choose an item</option>
-                    {targets?.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.title}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <button
-                  className="btn-primary"
-                  disabled={action.busy || !targetId}
-                  onClick={() =>
-                    action.run(async () => {
-                      await api.post(
-                        `${ROOT}/episodes/${w.episodeId}/references`,
-                        { resourceId: selected.id, targetType, targetId },
-                      );
-                      await w.reload();
-                    }, "Reference attached internally. Patient text has not been changed.")
-                  }
-                >
-                  Attach citation
-                </button>
-              </>
-            )}
           </Panel>
         )}
       </div>

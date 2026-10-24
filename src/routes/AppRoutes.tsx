@@ -6,51 +6,72 @@ import { LandingPage } from '../pages/LandingPage';
 import { NotFound } from '../pages/NotFound';
 import { SignInPage } from './SignInPage';
 import { SignUpPage } from './SignUpPage';
-import { LegacyAppPage } from './LegacyAppPage';
 import { RequireRole } from './RequireRole';
 import { RequireAuth } from './RequireAuth';
-import { PatientShell } from '../roles/patient/PatientShell';
-import { MyCarePage } from '../roles/patient/MyCarePage';
-import { MyRecordsPage } from '../roles/patient/MyRecordsPage';
-import { MyQuestionsPage } from '../roles/patient/MyQuestionsPage';
-import { AppointmentsPage } from '../roles/patient/AppointmentsPage';
-import { UpdatesPage as PatientUpdatesPage } from '../roles/patient/UpdatesPage';
-import { ProfilePage as PatientProfilePage } from '../roles/patient/ProfilePage';
-import { JourneyPage } from '../roles/patient/JourneyPage';
-import { CareTeamShell } from '../roles/careteam/CareTeamShell';
-import { DashboardPage as CareTeamDashboardPage } from '../roles/careteam/DashboardPage';
-import { PatientsListPage } from '../roles/careteam/PatientsListPage';
-import { PatientWorkspacePage } from '../roles/careteam/PatientWorkspacePage';
-import { DocumentsQueuePage } from '../roles/careteam/DocumentsQueuePage';
-import { DocumentReviewPage } from '../roles/careteam/DocumentReviewPage';
-import { QuestionsPage as CareTeamQuestionsPage } from '../roles/careteam/QuestionsPage';
-import { TasksPage } from '../roles/careteam/TasksPage';
-import { ReferralsPage } from '../roles/careteam/ReferralsPage';
-import { ReferralDetailPage as CareTeamReferralDetailPage } from '../roles/careteam/ReferralDetailPage';
-import { HandoverPage } from '../roles/careteam/HandoverPage';
-import { UpdatesPage as CareTeamUpdatesPage } from '../roles/careteam/UpdatesPage';
-import { ProfilePage as CareTeamProfilePage } from '../roles/careteam/ProfilePage';
-import { DoctorShell } from '../roles/doctor/DoctorShell';
-import { DashboardPage as DoctorDashboardPage } from '../roles/doctor/DashboardPage';
-import { PatientsListPage as DoctorPatientsListPage } from '../roles/doctor/PatientsListPage';
-import { PatientWorkspacePage as DoctorPatientWorkspacePage } from '../roles/doctor/PatientWorkspacePage';
-import { TodaysBriefPage } from '../roles/doctor/TodaysBriefPage';
-import { ConsultationsPage } from '../roles/doctor/ConsultationsPage';
-import { DocumentationHistoryPage } from '../roles/doctor/DocumentationHistoryPage';
-import { QuestionsPage as DoctorQuestionsPage } from '../roles/doctor/QuestionsPage';
-import { FollowUpsPage } from '../roles/doctor/FollowUpsPage';
-import { GuidelinesPage } from '../roles/doctor/GuidelinesPage';
-import { ReferralDetailPage as DoctorReferralDetailPage } from '../roles/doctor/ReferralDetailPage';
-import { HandoverPage as DoctorHandoverPage } from '../roles/doctor/HandoverPage';
-import { UpdatesPage as DoctorUpdatesPage } from '../roles/doctor/UpdatesPage';
-import { ProfilePage as DoctorProfilePage } from '../roles/doctor/ProfilePage';
-import { ExternalSimulatorPage } from '../pages/ExternalSimulatorPage';
-import { DailyLogPage } from '../roles/patient/DailyLogPage';
-import { CarePlanPage, ConsentPage } from '../roles/patient/SupportPages';
-import { CompanionPage } from '../roles/patient/CompanionPage';
-import { CareWorkspacePage } from '../components/continuity/CareWorkspacePage';
-import { LibraryPage } from '../components/continuity/LibraryPage';
-import { ClinicPage } from '../components/continuity/ClinicPage';
+import { lazyPage, named } from './lazyPage';
+
+// Only the landing, sign-in and sign-up pages come with the first download. Every other screen, and each role's
+// shell, is downloaded the first time it is opened (see lazyPage), so a patient's phone never fetches the doctor's
+// or the care team's screens.
+const shell = <LoadingScreen />;
+
+const LegacyAppPage = lazyPage(() => import('./LegacyAppPage').then(named('LegacyAppPage')), shell);
+const ExternalSimulatorPage = lazyPage(() => import('../pages/ExternalSimulatorPage').then(named('ExternalSimulatorPage')), shell);
+
+// Patient
+const PatientShell = lazyPage(() => import('../roles/patient/PatientShell').then(named('PatientShell')), shell);
+const MyCarePage = lazyPage(() => import('../roles/patient/MyCarePage').then(named('MyCarePage')));
+const MyRecordsPage = lazyPage(() => import('../roles/patient/MyRecordsPage').then(named('MyRecordsPage')));
+const MyQuestionsPage = lazyPage(() => import('../roles/patient/MyQuestionsPage').then(named('MyQuestionsPage')));
+const AppointmentsPage = lazyPage(() => import('../roles/patient/AppointmentsPage').then(named('AppointmentsPage')));
+const PatientUpdatesPage = lazyPage(() => import('../roles/patient/UpdatesPage').then(named('UpdatesPage')));
+const PatientProfilePage = lazyPage(() => import('../roles/patient/ProfilePage').then(named('ProfilePage')));
+const JourneyPage = lazyPage(() => import('../roles/patient/JourneyPage').then(named('JourneyPage')));
+const DailyLogPage = lazyPage(() => import('../roles/patient/DailyLogPage').then(named('DailyLogPage')));
+const CarePlanPage = lazyPage(() => import('../roles/patient/SupportPages').then(named('CarePlanPage')));
+const ConsentPage = lazyPage(() => import('../roles/patient/SupportPages').then(named('ConsentPage')));
+const CompanionPage = lazyPage(() => import('../roles/patient/CompanionPage').then(named('CompanionPage')));
+const EmergencyPage = lazyPage(() => import('../roles/patient/EmergencyPage').then(named('EmergencyPage')));
+const GuidedCheckInPage = lazyPage(() => import('../roles/patient/GuidedCheckInPage').then(named('GuidedCheckInPage')));
+// The References page carries a lot of text in four languages.
+const ReferencesPage = lazyPage(() => import('../roles/patient/ReferencesPage').then(named('ReferencesPage')));
+
+// Care team
+const CareTeamShell = lazyPage(() => import('../roles/careteam/CareTeamShell').then(named('CareTeamShell')), shell);
+const CareTeamDashboardPage = lazyPage(() => import('../roles/careteam/DashboardPage').then(named('DashboardPage')));
+const PatientsListPage = lazyPage(() => import('../roles/careteam/PatientsListPage').then(named('PatientsListPage')));
+const PatientWorkspacePage = lazyPage(() => import('../roles/careteam/PatientWorkspacePage').then(named('PatientWorkspacePage')));
+const DocumentsQueuePage = lazyPage(() => import('../roles/careteam/DocumentsQueuePage').then(named('DocumentsQueuePage')));
+const DocumentReviewPage = lazyPage(() => import('../roles/careteam/DocumentReviewPage').then(named('DocumentReviewPage')));
+const CareTeamQuestionsPage = lazyPage(() => import('../roles/careteam/QuestionsPage').then(named('QuestionsPage')));
+const TasksPage = lazyPage(() => import('../roles/careteam/TasksPage').then(named('TasksPage')));
+const ReferralsPage = lazyPage(() => import('../roles/careteam/ReferralsPage').then(named('ReferralsPage')));
+const CareTeamReferralDetailPage = lazyPage(() => import('../roles/careteam/ReferralDetailPage').then(named('ReferralDetailPage')));
+const HandoverPage = lazyPage(() => import('../roles/careteam/HandoverPage').then(named('HandoverPage')));
+const CareTeamUpdatesPage = lazyPage(() => import('../roles/careteam/UpdatesPage').then(named('UpdatesPage')));
+const CareTeamProfilePage = lazyPage(() => import('../roles/careteam/ProfilePage').then(named('ProfilePage')));
+
+// Doctor
+const DoctorShell = lazyPage(() => import('../roles/doctor/DoctorShell').then(named('DoctorShell')), shell);
+const DoctorDashboardPage = lazyPage(() => import('../roles/doctor/DashboardPage').then(named('DashboardPage')));
+const DoctorPatientsListPage = lazyPage(() => import('../roles/doctor/PatientsListPage').then(named('PatientsListPage')));
+const DoctorPatientWorkspacePage = lazyPage(() => import('../roles/doctor/PatientWorkspacePage').then(named('PatientWorkspacePage')));
+const TodaysBriefPage = lazyPage(() => import('../roles/doctor/TodaysBriefPage').then(named('TodaysBriefPage')));
+const ConsultationsPage = lazyPage(() => import('../roles/doctor/ConsultationsPage').then(named('ConsultationsPage')));
+const DocumentationHistoryPage = lazyPage(() => import('../roles/doctor/DocumentationHistoryPage').then(named('DocumentationHistoryPage')));
+const DoctorQuestionsPage = lazyPage(() => import('../roles/doctor/QuestionsPage').then(named('QuestionsPage')));
+const FollowUpsPage = lazyPage(() => import('../roles/doctor/FollowUpsPage').then(named('FollowUpsPage')));
+const GuidelinesPage = lazyPage(() => import('../roles/doctor/GuidelinesPage').then(named('GuidelinesPage')));
+const DoctorReferralDetailPage = lazyPage(() => import('../roles/doctor/ReferralDetailPage').then(named('ReferralDetailPage')));
+const DoctorHandoverPage = lazyPage(() => import('../roles/doctor/HandoverPage').then(named('HandoverPage')));
+const DoctorUpdatesPage = lazyPage(() => import('../roles/doctor/UpdatesPage').then(named('UpdatesPage')));
+const DoctorProfilePage = lazyPage(() => import('../roles/doctor/ProfilePage').then(named('ProfilePage')));
+const ReferenceLibraryPage = lazyPage(() => import('../roles/doctor/ReferenceLibraryPage').then(named('ReferenceLibraryPage')));
+
+// Used by both the doctor and the care team
+const CareWorkspacePage = lazyPage(() => import('../components/continuity/CareWorkspacePage').then(named('CareWorkspacePage')));
+const LibraryPage = lazyPage(() => import('../components/continuity/LibraryPage').then(named('LibraryPage')));
+const ClinicPage = lazyPage(() => import('../components/continuity/ClinicPage').then(named('ClinicPage')));
 
 function RootRoute() {
   const { user, isLoading } = useAuth();
@@ -80,6 +101,9 @@ export function AppRoutes() {
         <Route path="daily-log" element={<DailyLogPage />} />
         <Route path="care-plan" element={<CarePlanPage />} />
         <Route path="companion" element={<CompanionPage />} />
+        <Route path="guided-check-in" element={<GuidedCheckInPage />} />
+        <Route path="emergency" element={<EmergencyPage />} />
+        <Route path="references" element={<ReferencesPage />} />
         <Route path="consent" element={<ConsentPage />} />
       </Route>
 
@@ -99,7 +123,7 @@ export function AppRoutes() {
         <Route path="profile" element={<CareTeamProfilePage />} />
         <Route path="care-workspace" element={<CareWorkspacePage />} />
         <Route path="draft-studio" element={<CareWorkspacePage initialTab="drafts" />} />
-        <Route path="guidelines" element={<LibraryPage />} />
+        <Route path="guidelines" element={<Navigate to="/care-team/dashboard" replace />} />
         <Route path="clinic" element={<ClinicPage />} />
       </Route>
 
@@ -120,7 +144,8 @@ export function AppRoutes() {
         <Route path="profile" element={<DoctorProfilePage />} />
         <Route path="care-workspace" element={<CareWorkspacePage />} />
         <Route path="draft-studio" element={<CareWorkspacePage initialTab="drafts" />} />
-        <Route path="library" element={<LibraryPage />} />
+        <Route path="library" element={<ReferenceLibraryPage />} />
+        <Route path="clinical-settings" element={<LibraryPage />} />
         <Route path="clinic" element={<ClinicPage />} />
       </Route>
 

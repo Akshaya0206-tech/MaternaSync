@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from . import models
+from . import config, models
 
 FIELDS = ("context", "what_happened", "what_remains", "who_owns_it", "what_to_discuss")
 
@@ -22,6 +22,12 @@ FIELDS = ("context", "what_happened", "what_remains", "who_owns_it", "what_to_di
 class HandoverService:
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def require_active() -> None:
+        """Handover is paused: reading is allowed, but nothing can be generated, edited or shared."""
+        if config.HANDOVER_PAUSED:
+            raise HTTPException(status_code=423, detail=config.HANDOVER_PAUSED_MESSAGE)
 
     def get_latest(self, episode_id: str) -> models.Handover | None:
         return (
@@ -45,6 +51,7 @@ class HandoverService:
         overwritten. A FINAL (already-shared) handover is left untouched:
         regenerating after a share is allowed and simply starts a new
         version on top of it."""
+        self.require_active()
         current_draft = (
             self.db.query(models.Handover)
             .filter(models.Handover.episode_id == episode.id, models.Handover.status == "DRAFT")
@@ -67,6 +74,7 @@ class HandoverService:
         return new_handover
 
     def require_editable(self, handover: models.Handover) -> None:
+        self.require_active()
         if handover.status != "DRAFT":
             raise HTTPException(
                 status_code=409,

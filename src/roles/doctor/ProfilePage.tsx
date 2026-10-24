@@ -4,10 +4,12 @@ import { fetchProfile, updateProfile } from '../../api/doctorPortal';
 import type { DoctorProfile } from '../../api/doctorPortal';
 import { ApiError } from '../../api/client';
 import { Field, inputStyle } from '../../components/auth/AuthField';
+import { useTour } from '../../tour/tourContext';
 
 const readOnlyInputStyle = { ...inputStyle, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', cursor: 'not-allowed' };
 
 export function ProfilePage() {
+  const tour = useTour();
   const [profile, setProfile] = useState<DoctorProfile | null>(null);
   const [fullName, setFullName] = useState('');
   const [specialty, setSpecialty] = useState('');
@@ -62,6 +64,17 @@ export function ProfilePage() {
             {saved && <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.82rem', color: 'var(--emerald-raw)', fontWeight: 600 }}><CheckCircle2 size={15} /> Saved</span>}
           </div>
         </form>
+      )}
+
+      {/* Always offered, so a demonstration account (which never gets the new-account welcome) can show the tour. */}
+      {!isLoading && profile && (
+        <div className="glass-panel" style={{ padding: '20px 24px', marginTop: '16px' }}>
+          <h2 style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>Tour</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+            Take the short tour again to see what each part of the app is for.
+          </p>
+          <button type="button" className="btn-secondary" onClick={tour.start}>Start a tour</button>
+        </div>
       )}
     </main>
   );

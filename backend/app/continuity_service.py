@@ -133,7 +133,6 @@ def output_out(db, output, patient=False):
     if output.kind in SECTIONED_KINDS:
         result["sectionKinds"] = section_kinds(output.language, (output.structured_data or {}).keys() if output.kind == "explanation" else ())
     if not patient:
-        result["references"] = [resource_out(db, db.get(models.ClinicalResource, a.resource_id)) for a in db.query(models.ReferenceAttachment).filter_by(target_type="note", target_id=output.id).all()]
         result["reviewNotes"] = review_notes(output) if output.status == "DRAFT" else []
     return result
 

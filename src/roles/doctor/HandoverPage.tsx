@@ -5,6 +5,8 @@ import type { DoctorPatientRow, Handover, HandoverHistoryEntry } from '../../api
 import { ApiError } from '../../api/client';
 import { StatusBadge } from '../../components/StatusBadge';
 import { friendlyHandoverStatus, HANDOVER_STATUS_TONE, formatFriendlyDateTime } from './format';
+import { HandoverPausedNotice } from '../../components/HandoverPausedNotice';
+import { useHandoverPaused } from '../../components/useHandoverPaused';
 
 const SECTIONS: { key: keyof Pick<Handover, 'context' | 'whatHappened' | 'whatRemains' | 'whoOwnsIt' | 'whatToDiscuss'>; label: string }[] = [
   { key: 'context', label: 'Context' },
@@ -15,6 +17,7 @@ const SECTIONS: { key: keyof Pick<Handover, 'context' | 'whatHappened' | 'whatRe
 ];
 
 export function HandoverPage() {
+  const paused = useHandoverPaused();
   const [patients, setPatients] = useState<DoctorPatientRow[]>([]);
   const [selectedEpisodeId, setSelectedEpisodeId] = useState('');
   const [handover, setHandover] = useState<Handover | null>(null);
@@ -140,10 +143,12 @@ export function HandoverPage() {
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '700px', margin: '0 auto', width: '100%' }}>
       <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 18px 0' }}>Handover</h1>
+      {paused && <HandoverPausedNotice />}
 
       {patients.length > 0 && (
         <div style={{ marginBottom: '18px' }}>
           <select
+            aria-label="Choose a patient"
             value={selectedEpisodeId}
             onChange={(e) => setSelectedEpisodeId(e.target.value)}
             style={{ padding: '9px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', minWidth: '220px' }}
@@ -165,7 +170,7 @@ export function HandoverPage() {
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '16px' }}>
             No handover exists yet for {selectedPatient.patientName}.
           </p>
-          <button onClick={doGenerate} disabled={isActing} className="btn-primary">
+          <button onClick={doGenerate} disabled={isActing || paused} className="btn-primary">
             <Sparkles size={15} /> Generate Handover Draft
           </button>
         </div>
@@ -175,7 +180,7 @@ export function HandoverPage() {
         <div className="glass-panel" style={{ padding: '22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <StatusBadge label={friendlyHandoverStatus(handover.status)} tone={HANDOVER_STATUS_TONE[handover.status] ?? 'neutral'} />
-            <button onClick={handleRegenerateClick} disabled={isActing} className="btn-secondary" style={{ fontSize: '0.78rem' }}>
+            <button onClick={handleRegenerateClick} disabled={isActing || paused} className="btn-secondary" style={{ fontSize: '0.78rem' }}>
               <Sparkles size={13} /> Regenerate
             </button>
           </div>
@@ -252,19 +257,20 @@ export function HandoverPage() {
               <div key={s.key}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '5px' }}>{s.label}</div>
                 <textarea
+                  aria-label={s.label}
                   value={drafts[s.key] ?? ''}
                   onChange={(e) => setDrafts((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                  disabled={handover.status !== 'DRAFT'}
+                  disabled={handover.status !== 'DRAFT' || paused}
                   rows={2}
-                  style={{ width: '100%', background: handover.status !== 'DRAFT' ? 'var(--bg-secondary)' : 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '10px 12px', color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'inherit', resize: 'vertical' }}
+                  style={{ width: '100%', background: handover.status !== 'DRAFT' || paused ? 'var(--bg-secondary)' : 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '10px 12px', color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'inherit', resize: 'vertical' }}
                 />
               </div>
             ))}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '18px' }}>
-            <button onClick={handleSave} disabled={isActing || handover.status !== 'DRAFT'} className="btn-secondary"><Save size={14} /> Save</button>
-            <button onClick={handleShare} disabled={isActing || handover.status !== 'DRAFT'} className="btn-primary">
+            <button onClick={handleSave} disabled={isActing || paused || handover.status !== 'DRAFT'} className="btn-secondary"><Save size={14} /> Save</button>
+            <button onClick={handleShare} disabled={isActing || paused || handover.status !== 'DRAFT'} className="btn-primary">
               <Share2 size={14} /> {handover.status === 'FINAL' ? 'Shared Internally' : 'Share Internally'}
             </button>
             {saved && <span style={{ fontSize: '0.8rem', color: 'var(--emerald-raw)', fontWeight: 600 }}>Saved</span>}

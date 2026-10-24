@@ -1,20 +1,22 @@
-"""The doctor's Reference Library: real, publisher-sourced documents only.
+"""The doctor's personal Reference Library: real, publisher-sourced documents only.
 
 Content comes from backend/app/data/reference_library_*.json. Every entry there was checked against the issuing
-body's own page (title, date, version note, link, licence wording). Nothing is invented and no synthetic or
+body's own page (title, date, edition note, link, licence wording). Nothing is invented and no synthetic or
 demonstration guideline is created.
 
-Two layers, both waiting for a doctor's review before they are used:
-  * Library entries (ClinicalResource, kind "guideline"): citation, official links, a short summary written in our
-    own words, the publisher's reuse terms. The original text is never copied into the app.
-  * Passage search (GuidelineSource): only for documents whose licence allows it. Their PDFs are downloaded by
-    `python fetch_reference_documents.py` into backend/reference_documents/ (not committed to git) and indexed here.
+The library is a private shelf: no approval, no versions, and nothing here feeds any other part of the app.
+  * Every entry carries its citation, official links, a short summary in our own words and the publisher's reuse terms.
+  * Documents whose licence allows it also have their PDF kept on this server. `python fetch_reference_documents.py`
+    downloads them into backend/reference_documents/ (not committed to git); they are split into passages here so a
+    search can return the page that answers the question.
 """
 import json
-from datetime import timedelta
+from collections import Counter
 from pathlib import Path
 
-from . import models
+from sqlalchemy import func
+
+from . import models, reference_search
 from .config import UPLOAD_DIR
 from .continuity_service import now
 
@@ -65,65 +67,152 @@ def remove_placeholders(db):
         print(f"Retired {retired} placeholder reference link(s).")
 
 
-def _resource_values(entry):
-    content = entry["summary"] + "\n\nVersion and currency: " + entry["version_note"] + "\n\nThis entry cites the document and links to the publisher. It does not reproduce the document."
-    return dict(kind="guideline", title=entry["title"], topic=entry["topic"], issuer=entry["issuer"], jurisdiction=entry["jurisdiction"],
-                publication_date=entry.get("publication_date"), source_url=entry["source_url"], section=entry["section"], content=content,
-                rights_note=entry["rights"], language="en", stage="all",
-                configuration={"documentUrl": entry.get("document_url"), "category": entry["category"], "referenceId": entry["id"]})
+def move_old_library_entries(db):
+    """An earlier version kept references as approvable, versioned resources. They are plain references now.
 
-
-def add_library_entries(db, doctor):
-    added = 0
-    for entry in load_manifest():
-        family = "ref-" + entry["id"]
-        if db.query(models.ClinicalResource).filter_by(family_id=family).first():
+    The drafts it loaded from the data files are removed (the data files load them again). Anything a doctor added
+    themselves is copied across to that doctor's own shelf, and the old record is retired rather than deleted.
+    """
+    removed = moved = 0
+    old = db.query(models.ClinicalResource).filter(models.ClinicalResource.kind == "guideline").all()
+    for resource in old:
+        if resource.family_id.startswith("ref-"):
+            if resource.status == "DRAFT":
+                db.query(models.ReferenceAttachment).filter_by(resource_id=resource.id).delete()
+                db.delete(resource)
+                removed += 1
+            elif resource.status != "RETIRED":
+                resource.status = "RETIRED"
             continue
-        db.add(models.ClinicalResource(**_resource_values(entry), family_id=family, version=1, status="DRAFT",
-                                       review_due=(now().date() + timedelta(days=180)).isoformat(), created_by_user_id=doctor.id))
-        added += 1
-    if added:
-        _audit(db, "reference_documents_added", "Reference documents added", f"{added} verified real document(s) added to the Reference Library as drafts for doctor review.")
-        print(f"Added {added} reference document(s) to the Reference Library (drafts awaiting a doctor's approval).")
+        if resource.family_id.startswith("starter-") or resource.status == "RETIRED":
+            continue
+        key = f"legacy-{resource.id}"
+        if db.query(models.ReferenceItem).filter_by(ref_key=key).first():
+            continue
+        db.add(models.ReferenceItem(
+            owner_user_id=resource.created_by_user_id, ref_key=key, title=resource.title, issuer=resource.issuer, topic=resource.topic,
+            jurisdiction=resource.jurisdiction, publication_date=resource.publication_date, source_url=resource.source_url,
+            summary=resource.content or "", rights_note=resource.rights_note, tags=[]))
+        resource.status = "RETIRED"
+        moved += 1
+    if removed or moved:
+        _audit(db, "reference_library_simplified", "Reference Library is now a personal shelf",
+               f"{removed} loaded draft(s) removed (reloaded from the data files); {moved} reference(s) added by doctors moved to their own shelf.")
+        print(f"Reference Library: {removed} old draft(s) removed, {moved} doctor-added reference(s) moved.")
 
 
-def index_downloaded_documents(db, doctor):
-    """Index passages from PDFs that were downloaded from their publishers (see fetch_reference_documents.py)."""
-    from .routers.clinical_guidelines import ingest_source  # imported here: the router imports models at load time
+def remove_review_queue_copies(db):
+    """The earlier version also queued each downloaded PDF for approval on the Guidelines page. Untouched copies go."""
+    ids = {entry["id"] for entry in load_manifest()}
+    removed = 0
+    for source in db.query(models.GuidelineSource).filter(models.GuidelineSource.status == "AWAITING_REVIEW").all():
+        name = Path(source.file_path).name
+        if name.startswith("ref-") and name[4:-4] in ids:
+            try:
+                Path(source.file_path).unlink(missing_ok=True)
+            except OSError:
+                pass
+            db.delete(source)
+            removed += 1
+    if removed:
+        print(f"Removed {removed} duplicate review-queue copies of library PDFs from the Guidelines page.")
 
+
+def sync_items(db):
+    added = updated = 0
+    for entry in load_manifest():
+        values = dict(title=entry["title"], issuer=entry["issuer"], topic=entry["topic"], category=entry["category"],
+                      jurisdiction=entry["jurisdiction"], publication_date=entry.get("publication_date"), edition_note=entry["version_note"],
+                      source_url=entry["source_url"], document_url=entry.get("document_url"), summary=entry["summary"], rights_note=entry["rights"])
+        item = db.query(models.ReferenceItem).filter_by(ref_key=entry["id"]).first()
+        if not item:
+            db.add(models.ReferenceItem(ref_key=entry["id"], owner_user_id=None, tags=[], **values))
+            added += 1
+        elif any(getattr(item, key) != value for key, value in values.items()):
+            for key, value in values.items():
+                setattr(item, key, value)
+            item.updated_at = now()
+            updated += 1
+    if added or updated:
+        print(f"Reference Library: {added} reference(s) added, {updated} updated from the data files.")
+    db.flush()
+
+
+def ingest_pdf(db, item, path: Path) -> int:
+    """Split a PDF into passages (with page numbers) and store each passage's word counts. Returns the passage count."""
+    from . import extraction
+    from .routers.clinical_guidelines import _chunk_blocks  # imported here: the router imports models at load time
+
+    db.query(models.ReferenceChunk).filter_by(item_id=item.id).delete()
+    pages = extraction.extract_pages(path)
+    index = 0
+    for number, blocks in enumerate(pages, start=1):
+        for piece in _chunk_blocks(blocks):
+            sequence, counts = reference_search.analyse(piece["text"])
+            db.add(models.ReferenceChunk(item_id=item.id, chunk_index=index, page_number=number, section_label=piece["section_label"],
+                                         text=piece["text"], term_freq=dict(counts), token_count=len(sequence)))
+            index += 1
+    item.page_count = len(pages)
+    item.file_path = str(path)
+    item.updated_at = now()
+    db.flush()
+    invalidate()
+    return index
+
+
+def index_downloaded_documents(db):
+    """Index the PDFs that were downloaded from their publishers (see fetch_reference_documents.py)."""
     indexed = 0
     for entry in load_manifest():
+        item = db.query(models.ReferenceItem).filter_by(ref_key=entry["id"]).first()
         pdf = DOCUMENTS_DIR / f"{entry['id']}.pdf"
-        if not entry.get("passage_search") or not pdf.exists() or db.query(models.GuidelineSource).filter_by(title=entry["title"]).first():
+        if not item or not entry.get("passage_search") or not pdf.exists() or pdf.read_bytes()[:5] != b"%PDF-":
             continue
-        if pdf.read_bytes()[:5] != b"%PDF-":
+        if item.file_path != str(pdf):
+            item.file_path = str(pdf)
+        if db.query(models.ReferenceChunk).filter_by(item_id=item.id).first():
             continue
-        folder = UPLOAD_DIR / "guidelines"
-        folder.mkdir(parents=True, exist_ok=True)
-        stored = folder / f"ref-{entry['id']}.pdf"
-        stored.write_bytes(pdf.read_bytes())
-        source = models.GuidelineSource(
-            title=entry["title"], issuing_organization=entry["issuer"], source_url=entry["source_url"], version=entry["version_note"][:240],
-            publication_date=entry.get("publication_date"), category=entry["category"], document_type="Clinical Practice Guideline",
-            jurisdiction=entry["jurisdiction"], filename=pdf.name, file_path=str(stored), uploaded_by_user_id=doctor.id,
-            uploaded_by_role="doctor", is_demo_content=False, status="PROCESSING")
-        db.add(source)
-        db.flush()
-        ingest_source(db, source, stored)
-        source.status = "AWAITING_REVIEW"
-        _audit(db, "guideline_source_added", f"Reference document indexed: {source.title}",
-               f"{len(source.chunks)} passage(s) extracted from the publisher's PDF ({entry['rights']}). Awaiting a doctor's review.")
+        ingest_pdf(db, item, pdf)
         indexed += 1
     if indexed:
-        print(f"Indexed {indexed} reference document(s) for passage search (awaiting a doctor's review).")
+        print(f"Indexed {indexed} reference PDF(s) for passage search.")
 
 
 def sync_reference_library(db):
     """Idempotent. Safe to run on every start."""
     remove_synthetic_sources(db)
     remove_placeholders(db)
-    doctor = db.query(models.User).filter(models.User.role == "doctor").order_by(models.User.created_at).first()
-    if doctor:
-        add_library_entries(db, doctor)
-        index_downloaded_documents(db, doctor)
+    move_old_library_entries(db)
+    remove_review_queue_copies(db)
+    sync_items(db)
+    index_downloaded_documents(db)
     db.commit()
+    invalidate()
+
+
+# ---------------------------------------------------------------- what a search looks through
+
+_corpus: dict = {"signature": None, "chunks": [], "frequencies": Counter()}
+
+
+def invalidate():
+    _corpus["signature"] = None
+
+
+def corpus(db):
+    """Every PDF passage, kept in memory between searches (a few thousand short passages)."""
+    signature = (db.query(func.count(models.ReferenceChunk.id)).scalar(), db.query(func.max(models.ReferenceItem.updated_at)).scalar())
+    if _corpus["signature"] != signature:
+        chunks = [{"id": c.id, "item_id": c.item_id, "page": c.page_number, "section": c.section_label, "text": c.text, "tf": c.term_freq, "len": c.token_count}
+                  for c in db.query(models.ReferenceChunk).all()]
+        frequencies: Counter = Counter()
+        for chunk in chunks:
+            frequencies.update(chunk["tf"].keys())
+        _corpus.update(signature=signature, chunks=chunks, frequencies=frequencies)
+    return _corpus
+
+
+def reference_dir() -> Path:
+    folder = UPLOAD_DIR / "references"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder

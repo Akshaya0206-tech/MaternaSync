@@ -353,7 +353,7 @@ def build_explanation(*, language, episode, approved_content, consult_date, dete
     for topic in detected:
         module = modules.get(topic)
         if not module:
-            notes.append(f"No approved explanation of “{topic}” exists in this language, so that part was left out. Add one in the Reference Library (Patient education) or write it here.")
+            notes.append(f"No approved explanation of “{topic}” exists in this language, so that part was left out. Add one in Clinical Settings (Patient education) or write it here.")
             continue
         found += 1
         sections[module["title"]] = f"{module['content']}\n— {module['issuer']} · v{module['version']} · {module['reviewer']}"

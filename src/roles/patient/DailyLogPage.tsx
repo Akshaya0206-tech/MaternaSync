@@ -14,6 +14,8 @@ import {
   useAction,
   useWorkspace,
 } from "../../components/continuity/shared";
+import { SymptomPicker } from "./SymptomPicker";
+import { splitSaved } from "./symptoms";
 
 const MOODS: Record<string, string> = {
   not_recorded: tx("Not recorded"),
@@ -40,20 +42,23 @@ const empty = () => ({
   systolic: "",
   diastolic: "",
   weightKg: "",
-  symptoms: "",
+  symptoms: "", // the tapped buttons, comma separated
+  other: "", // what the patient typed after choosing "Other"
   mood: "not_recorded",
   adherence: "not_recorded",
   movementCount: "",
   movementMinutes: "",
   correctionReason: "",
+  enteredWithHelp: "", // kept as it was when an entry is corrected
 });
 
 export function DailyLogPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const workspace = useWorkspace();
   const action = useAction();
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
+  const [otherOpen, setOtherOpen] = useState(false);
   const [start, setStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [count, setCount] = useState(0);
@@ -73,10 +78,14 @@ export function DailyLogPage() {
   const save = (skipped = false) =>
     action.run(
       async () => {
+        const { other, ...rest } = form;
         const payload = {
-          ...form,
+          ...rest,
+          // The buttons and the typed text reach the care team as one plain line.
+          symptoms: [form.symptoms, other.trim()].filter(Boolean).join(", "),
           recordedAt: new Date(form.recordedAt).toISOString(),
           skipped,
+          enteredWithHelp: form.enteredWithHelp || null,
           systolic: skipped || !form.systolic ? null : Number(form.systolic),
           diastolic: skipped || !form.diastolic ? null : Number(form.diastolic),
           weightKg: skipped || !form.weightKg ? null : Number(form.weightKg),
@@ -98,6 +107,7 @@ export function DailyLogPage() {
           );
         setEditing(null);
         setForm(empty());
+        setOtherOpen(false);
         await workspace.reload();
       },
       skipped
@@ -106,17 +116,22 @@ export function DailyLogPage() {
     );
   function edit(log: DailyLog) {
     setEditing(log.id);
+    // Entries that match a button go back to the buttons; everything else was typed under "Other".
+    const { tapped, typed } = splitSaved(log.symptoms, language, t);
+    setOtherOpen(Boolean(typed));
     setForm({
       recordedAt: localDateTime(new Date(log.recordedAt)),
       systolic: String(log.systolic ?? ""),
       diastolic: String(log.diastolic ?? ""),
       weightKg: String(log.weightKg ?? ""),
-      symptoms: log.symptoms,
+      symptoms: tapped,
+      other: typed,
       mood: log.mood,
       adherence: log.adherence,
       movementCount: String(log.movementCount ?? ""),
       movementMinutes: String(log.movementMinutes ?? ""),
       correctionReason: "",
+      enteredWithHelp: log.enteredWithHelp ?? "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -140,6 +155,13 @@ export function DailyLogPage() {
             )}{" "}
             <Link to="/patient/questions">{t("Ask your care team")}</Link>.
           </div>
+          {!editing && (
+            <div className="continuity-note guided-invite">
+              <strong>{t("Filling this in with a health worker or a family member?")}</strong>{" "}
+              {t("The step-by-step version asks one question at a time, in large letters, and can read each question aloud.")}{" "}
+              <Link className="btn-secondary" to="/patient/guided-check-in">{t("Start the step-by-step check-in")}</Link>
+            </div>
+          )}
           <Panel
             title={editing ? t("Correct a check-in") : t("How are you today?")}
             aside={<Badge>{t("Optional · about 2 minutes")}</Badge>}
@@ -213,14 +235,14 @@ export function DailyLogPage() {
                   </select>
                 </Field>
               </div>
-              <Field label={t("Symptoms or anything you want your team to know")}>
-                <textarea
-                  rows={3}
-                  maxLength={4000}
-                  value={form.symptoms}
-                  onChange={(e) => set("symptoms", e.target.value)}
-                />
-              </Field>
+              <SymptomPicker
+                symptoms={form.symptoms}
+                other={form.other}
+                otherOpen={otherOpen}
+                onSymptoms={(next) => set("symptoms", next)}
+                onOther={(next) => set("other", next)}
+                onOtherOpen={setOtherOpen}
+              />
               <div className="continuity-fields">
                 <Field label={t("Movements recorded (optional)")}>
                   <input
@@ -271,6 +293,7 @@ export function DailyLogPage() {
                     onClick={() => {
                       setEditing(null);
                       setForm(empty());
+                      setOtherOpen(false);
                     }}
                   >
                     {t("Cancel correction")}
@@ -368,6 +391,11 @@ export function DailyLogPage() {
                   {t(MOODS[log.mood] ?? log.mood)} · {t("Adherence")}:{" "}
                   {t(ADHERENCE[log.adherence] ?? log.adherence)}
                 </p>
+                {log.enteredWithHelp && (
+                  <p className="continuity-muted">
+                    {t("Filled in with help from")}: {log.enteredWithHelp}
+                  </p>
+                )}
                 {log.movementCount != null && (
                   <p>
                     {t("{count} movements over {minutes} minutes", {

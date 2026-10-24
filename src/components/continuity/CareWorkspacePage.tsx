@@ -110,23 +110,6 @@ export function CareWorkspacePage({
               reload={w.reload}
             />
           )}
-          {w.data.references && w.data.references.length > 0 && (
-            <Panel title="References attached to this journey">
-              {w.data.references.map((a) => (
-                <p key={a.id} className="continuity-muted">
-                  <a
-                    href={a.resource.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {a.resource.title}
-                  </a>{" "}
-                  · {a.resource.issuer} · v{a.resource.version} ·{" "}
-                  {a.resource.section} · {a.targetType} · {a.resource.status}
-                </p>
-              ))}
-            </Panel>
-          )}
         </div>
       )}
     </Page>

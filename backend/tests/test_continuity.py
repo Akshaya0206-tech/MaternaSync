@@ -99,22 +99,26 @@ class ContinuityTests(unittest.TestCase):
         self.assertEqual(next(l for l in trends["logs"] if l["id"] == log["id"])["weightKg"], 64)
         self.request("POST", f"{ROOT}/episodes/{self.ep}/logs", "patient", {**data, "systolic": None}, expected=422)
 
-    def test_governed_rules_and_reference_versions(self):
+    def test_governed_rules_and_clinical_setting_versions(self):
         resource = self.resource("rule", {"metric": "systolic", "operator": "gt", "threshold": 1})
         self.assertFalse(resource["usable"])
         self.approve_resource(resource)
         trends = self.request("GET", f"{ROOT}/episodes/{self.ep}/trends")
         self.assertTrue(any(f["ruleId"] == resource["id"] for f in trends["flags"]))
-        guideline = self.approve_resource(self.resource("guideline", {}))
-        output = self.create_output()
-        body = {"resourceId": guideline["id"], "targetType": "note", "targetId": output["id"]}
-        attached = self.request("POST", f"{ROOT}/episodes/{self.ep}/references", payload=body)
-        self.assertEqual(attached["id"], self.request("POST", f"{ROOT}/episodes/{self.ep}/references", payload=body)["id"])
-        version = self.resource("guideline", {}, previousVersionId=guideline["id"])
+        layout = self.approve_resource(self.resource("template", title="Versioned layout (test)"))
+        version = self.resource("template", title="Versioned layout (test)", previousVersionId=layout["id"])
         self.assertEqual(version["version"], 2)
         self.approve_resource(version)
-        self.assertEqual(next(r for r in self.request("GET", "/api/v2/library") if r["id"] == guideline["id"])["status"], "SUPERSEDED")
-        self.request("POST", f"{ROOT}/episodes/{self.ep}/references", payload=body, expected=400)
+        self.assertEqual(next(r for r in self.request("GET", "/api/v2/library") if r["id"] == layout["id"])["status"], "SUPERSEDED")
+        self.request("POST", "/api/v2/library", payload=dict(kind="template", title="Stale branch", issuer="Owner", topic="T", content="Text.", sourceUrl="https://www.who.int/",
+                     section="S", rightsNote="Test", reviewDue=(datetime.now(timezone.utc).date() + timedelta(days=30)).isoformat(), configuration={"fields": ["Plan"], "required": ["Plan"]},
+                     previousVersionId=layout["id"]), expected=409)  # only the latest version can be continued
+
+    def test_references_are_not_attachable_to_notes(self):
+        output = self.create_output()
+        self.request("POST", f"{ROOT}/episodes/{self.ep}/references", payload={"resourceId": "x", "targetType": "note", "targetId": output["id"]}, expected=404)
+        self.assertNotIn("references", self.workspace())
+        self.assertNotIn("references", output)
 
     def test_output_approval_boundary(self):
         output = self.create_output()
@@ -205,16 +209,33 @@ class ContinuityTests(unittest.TestCase):
         self.assertEqual(next(q for q in self.request("GET", "/api/v2/patient/questions", "patient") if q["id"] == question["id"])["responses"], [])
         self.request("POST", f"/api/v2/doctor/questions/{question['id']}/approve-response")
         self.assertEqual(next(q for q in self.request("GET", "/api/v2/patient/questions", "patient") if q["id"] == question["id"])["status"], "ANSWERED")
-        handover = self.request("POST", f"/api/v2/care-team/handover/{self.ep}/generate", "staff")
-        self.assertIn("document / explanation draft(s) awaiting review", handover["whatRemains"])
-        self.request("POST", f"/api/v2/care-team/handover/{handover['id']}/share", "staff")
-        doctor_handover = self.request("POST", f"/api/v2/doctor/handover/{self.ep}/generate")
-        self.assertEqual(doctor_handover["version"], handover["version"] + 1)
-        self.assertIn("document / explanation draft(s) awaiting review", doctor_handover["whatRemains"])
-        history = self.request("GET", f"/api/v2/doctor/handover/{self.ep}/history")
-        self.assertEqual(next(h for h in history if h["id"] == handover["id"])["status"], "FINAL")
-        self.request("PATCH", f"/api/v2/doctor/handover/{handover['id']}", payload={"context": "Cannot edit final"}, expected=409)
+        with patch("backend.app.config.HANDOVER_PAUSED", False):  # the feature itself still works when it is switched back on
+            handover = self.request("POST", f"/api/v2/care-team/handover/{self.ep}/generate", "staff")
+            self.assertIn("document / explanation draft(s) awaiting review", handover["whatRemains"])
+            self.request("POST", f"/api/v2/care-team/handover/{handover['id']}/share", "staff")
+            doctor_handover = self.request("POST", f"/api/v2/doctor/handover/{self.ep}/generate")
+            self.assertEqual(doctor_handover["version"], handover["version"] + 1)
+            self.assertIn("document / explanation draft(s) awaiting review", doctor_handover["whatRemains"])
+            history = self.request("GET", f"/api/v2/doctor/handover/{self.ep}/history")
+            self.assertEqual(next(h for h in history if h["id"] == handover["id"])["status"], "FINAL")
+            self.request("PATCH", f"/api/v2/doctor/handover/{handover['id']}", payload={"context": "Cannot edit final"}, expected=409)
         self.request("GET", f"/api/v2/doctor/episodes/{self.ep}/todays-brief")
+
+    def test_handover_is_paused_but_readable(self):
+        status = self.request("GET", f"{ROOT}/handover-status")
+        self.assertTrue(status["paused"])
+        self.assertIn("paused", status["message"])
+        self.request("GET", f"{ROOT}/handover-status", "patient", expected=403)
+        for role, prefix in (("doctor", "doctor"), ("staff", "care-team")):
+            blocked = self.request("POST", f"/api/v2/{prefix}/handover/{self.ep}/generate", role, expected=423)
+            self.assertIn("paused", blocked["detail"])
+            self.request("GET", f"/api/v2/{prefix}/handover/{self.ep}", role)  # reading earlier drafts still works
+            self.request("GET", f"/api/v2/{prefix}/handover/{self.ep}/history", role)
+        with patch("backend.app.config.HANDOVER_PAUSED", False):
+            draft = self.request("POST", f"/api/v2/doctor/handover/{self.ep}/generate")
+        self.request("PATCH", f"/api/v2/doctor/handover/{draft['id']}", payload={"context": "x"}, expected=423)
+        self.request("POST", f"/api/v2/doctor/handover/{draft['id']}/share", expected=423)
+        self.request("POST", f"/api/v2/care-team/handover/{draft['id']}/share", "staff", expected=423)
 
     def test_voice_language_and_original_transcript(self):
         consult = self.request("POST", "/api/v2/doctor/consultations", payload={"episodeId": self.ep, "inputMode": "voice"})
@@ -667,15 +688,21 @@ class ContinuityTests(unittest.TestCase):
             self.assertTrue(entry["summary"] and entry["rights"] and entry["version_note"], entry["id"])
             self.assertTrue(entry.get("document_url") or not entry.get("passage_search"), entry["id"])
             self.assertNotIn("fictional", (entry["issuer"] + entry["title"]).lower())
-        library = {r["familyId"]: r for r in self.request("GET", "/api/v2/library?kind=guideline")}
-        self.assertEqual(sum(f.startswith("ref-") for f in library), len(manifest))
-        self.assertTrue(all(r["status"] == "DRAFT" and not r["usable"] for f, r in library.items() if f.startswith("ref-")))
-        for retired in ("starter-fogsi", "starter-icmr", "starter-who", "starter-nice"):
-            self.assertNotIn(retired, library)
-        issuers = {r["issuer"] for r in library.values()}
+        shelf = self.request("GET", "/api/v2/references")["items"]
+        bundled = [r for r in shelf if r["bundled"]]
+        self.assertEqual(len(bundled), len(manifest))
+        # A personal shelf: no approval, no versions, no review dates.
+        self.assertFalse({"version", "status", "usable", "reviewDue", "familyId"} & set(bundled[0]))
+        self.request("GET", "/api/v2/references", "staff", expected=403)
+        self.request("GET", "/api/v2/references", "patient", expected=403)
+        # The old approvable copies are gone, and so are the one-link-per-publisher placeholders.
+        old = {r["familyId"] for r in self.request("GET", "/api/v2/library?kind=guideline")}
+        self.assertFalse([f for f in old if f.startswith(("ref-", "starter-"))])
+        issuers = {r["issuer"] for r in bundled}
         for expected in ("WHO", "NICE", "RCOG", "ACOG", "SMFM", "RANZCOG", "FIGO", "FOGSI-ICOG"):
             self.assertTrue(any(i.startswith(expected) for i in issuers), expected)
         self.assertTrue(any("ICMR" in i for i in issuers) and any("Ministry of Health" in i for i in issuers))
+        self.assertTrue(all(r["sourceUrl"].startswith("https://") and r["rightsNote"] for r in bundled))
         # Synthetic demonstration documents are removed when found
         with SessionLocal() as db:
             doctor = db.query(models.User).filter_by(role="doctor").first()
@@ -684,6 +711,242 @@ class ContinuityTests(unittest.TestCase):
             db.commit()
             sync_reference_library(db)
             self.assertEqual(db.query(models.GuidelineSource).filter(models.GuidelineSource.is_demo_content.is_(True)).count(), 0)
+
+    def titles(self, query, role="doctor", limit=6):
+        result = self.request("GET", "/api/v2/references?q=" + query.replace(" ", "%20"), role)
+        return [r["title"].lower() for r in result["items"][:limit]], result
+
+    def test_reference_search_works_in_plain_words(self):
+        top, _ = self.titles("sugar")
+        self.assertTrue(any("diabetes" in t for t in top), top)
+        top, _ = self.titles("BP in pregnancy")
+        self.assertTrue(any("hypertension" in t or "pre-eclampsia" in t for t in top), top)
+        top, result = self.titles("bleeding after delivery")
+        self.assertTrue(any("haemorrhage" in t for t in top), top)
+        self.assertIn("pph", [w for w in result["interpretation"]["alsoSearched"]])
+        for spelling in ("haemorrhage", "hemorrhage", "hemmorhage"):  # both spellings, and a typing slip
+            top, _ = self.titles(spelling)
+            self.assertTrue(any("haemorrhage" in t for t in top), (spelling, top))
+        top, result = self.titles("diabetis")
+        self.assertTrue(any("diabetes" in t for t in top), top)
+        self.assertEqual(result["interpretation"]["corrections"][0]["from"], "diabetis")
+        top, _ = self.titles("preecl")  # half a word
+        self.assertTrue(any("pre-eclampsia" in t for t in top), top)
+        top, _ = self.titles("c section")
+        self.assertTrue(any("caesarean" in t for t in top), top)
+        self.assertEqual(self.request("GET", "/api/v2/references?q=zzzzqqqq")["items"], [])
+        nutrition = self.request("GET", "/api/v2/references?category=NUTRITION")["items"]  # filters narrow the shelf
+        self.assertTrue(nutrition and all(r["category"] == "NUTRITION" for r in nutrition))
+        self.assertTrue(all(r["category"] == "NUTRITION" for r in self.request("GET", "/api/v2/references?q=pregnancy&category=NUTRITION")["items"]))
+        # Every reference says why it matched
+        found = self.request("GET", "/api/v2/references?q=glucose")["items"][0]
+        self.assertTrue(found["matchedOn"] and found["searchTerms"])
+
+    def make_pdf(self, *pages):
+        import fitz
+        document = fitz.open()
+        for text in pages:
+            document.new_page().insert_text((72, 90), text, fontsize=11)
+        return document.tobytes()
+
+    def test_reference_pdf_search_returns_the_page_that_answers(self):
+        mine = self.request("POST", "/api/v2/references", payload={"title": "Unit protocol on bleeding after birth", "issuer": "My unit", "topic": "Emergency obstetrics"})
+        pdf = self.make_pdf("Wardlow protocol for severe bleeding after birth. Give tranexamic acid within three hours of delivery for postpartum haemorrhage.",
+                            "Zxqwv ration plan. Eat iron rich foods during pregnancy every day.")
+        headers = self.users["doctor"]["headers"]
+        upload = self.client.post(f"/api/v2/references/{mine['id']}/file", files={"file": ("protocol.pdf", pdf, "application/pdf")}, headers=headers)
+        self.assertEqual(upload.status_code, 200, upload.text)
+        self.assertTrue(upload.json()["hasPdf"] and upload.json()["pageCount"] == 2 and upload.json()["passages"] >= 2)
+        result = self.request("GET", "/api/v2/references?q=wardlow%20tranexamic%20acid")
+        top = result["passages"][0]
+        self.assertEqual((top["itemId"], top["page"]), (mine["id"], 1))
+        self.assertIn("tranexamic", top["text"].lower())
+        self.assertIn("tranexamic", top["marks"])
+        second = self.request("GET", "/api/v2/references?q=zxqwv%20ration")["passages"][0]
+        self.assertEqual((second["itemId"], second["page"]), (mine["id"], 2))
+        self.assertIn(mine["id"], [i["id"] for i in result["items"]])  # the reference is listed even though only its PDF matched
+        opened = self.client.get(f"/api/v2/references/{mine['id']}/file", headers=headers)
+        self.assertEqual((opened.status_code, opened.content[:5]), (200, b"%PDF-"))
+        self.assertEqual(self.client.get(f"/api/v2/references/{mine['id']}/file", headers=self.users["other"]["headers"]).status_code, 404)
+        bad = self.client.post(f"/api/v2/references/{mine['id']}/file", files={"file": ("x.pdf", b"not a pdf", "application/pdf")}, headers=headers)
+        self.assertEqual(bad.status_code, 400)
+        self.request("DELETE", f"/api/v2/references/{mine['id']}/file")
+        after = self.request("GET", "/api/v2/references?q=wardlow%20zxqwv")  # typo tolerance may now find similar words elsewhere
+        self.assertNotIn(mine["id"], [p["itemId"] for p in after["passages"]])
+        self.request("DELETE", f"/api/v2/references/{mine['id']}")
+
+    def test_doctors_keep_their_own_references_and_notes_private(self):
+        mine = self.request("POST", "/api/v2/references", payload={"title": "Private ward checklist for zxqv audit", "tags": ["zxqv", " zxqv ", "ward"], "sourceUrl": "https://example.org/x", "publicationDate": "2025-12"})
+        self.assertEqual((mine["mine"], mine["bundled"], mine["tags"]), (True, False, ["zxqv", "ward"]))
+        self.request("POST", "/api/v2/references", payload={"title": "No", "sourceUrl": "ftp://x"}, expected=422)
+        self.request("POST", "/api/v2/references", payload={"title": "Valid title", "publicationDate": "last year"}, expected=422)
+        self.assertEqual([i["id"] for i in self.request("GET", "/api/v2/references?q=zxqv")["items"]], [mine["id"]])
+        self.assertEqual(self.request("GET", "/api/v2/references?q=zxqv", "other")["items"], [])  # another doctor cannot see it
+        self.request("PUT", f"/api/v2/references/{mine['id']}", "other", {"title": "Hijacked title"}, expected=404)
+        edited = self.request("PUT", f"/api/v2/references/{mine['id']}", payload={"title": "Private ward checklist for zxqv audit", "notes": "Check the fridge log"})
+        self.assertEqual(edited["notes"], "Check the fridge log")
+        # Items that ship with the app are read-only, but any doctor can keep a private note on them
+        shipped = next(i for i in self.request("GET", "/api/v2/references")["items"] if i["bundled"])
+        self.request("PUT", f"/api/v2/references/{shipped['id']}", payload={"title": "Renamed"}, expected=403)
+        self.request("DELETE", f"/api/v2/references/{shipped['id']}", expected=403)
+        self.request("PUT", f"/api/v2/references/{shipped['id']}/note", payload={"text": "qwertyuiop follow our unit protocol"})
+        self.assertEqual(next(i for i in self.request("GET", "/api/v2/references")["items"] if i["id"] == shipped["id"])["myNote"], "qwertyuiop follow our unit protocol")
+        self.assertEqual([i["id"] for i in self.request("GET", "/api/v2/references?q=qwertyuiop")["items"]], [shipped["id"]])
+        self.assertEqual(self.request("GET", "/api/v2/references?q=qwertyuiop", "other")["items"], [])
+        self.request("PUT", f"/api/v2/references/{shipped['id']}/note", payload={"text": "  "})
+        self.assertEqual(self.request("GET", "/api/v2/references?q=qwertyuiop")["items"], [])
+        self.request("DELETE", f"/api/v2/references/{mine['id']}")
+        self.assertEqual(self.request("GET", "/api/v2/references?q=zxqv")["items"], [])
+
+    # ---- emergency help ----
+    OVERPASS = {"elements": [
+        {"type": "node", "lat": 13.0600, "lon": 80.2500, "tags": {"name": "Far Hospital", "phone": "+91 44 2222 3333", "emergency": "yes"}},
+        {"type": "way", "center": {"lat": 13.0850, "lon": 80.2710}, "tags": {"name": "Near Hospital", "addr:street": "Mount Road", "addr:city": "Chennai"}},
+        {"type": "node", "lat": 13.0851, "lon": 80.2711, "tags": {"amenity": "hospital"}},  # no name: not shown
+        {"type": "node", "lat": 13.0850, "lon": 80.2710, "tags": {"name": "Near Hospital"}},  # the same hospital twice: shown once
+    ]}
+
+    def new_patient(self, email, location=True):
+        """A patient account. Sign-up needs a location; `location=False` then removes it again, the way an account made
+        before a location was collected at sign-up would look."""
+        registered = self.client.post("/api/auth/register", json={"fullName": "New Patient", "email": email, "password": "Password123!", "confirmPassword": "Password123!", "role": "patient",
+                                                                  "emergency": {"homeLabel": "Chennai", "homeLat": 13.0827, "homeLon": 80.2707}})
+        self.assertEqual(registered.status_code, 200, registered.text)
+        self.assertEqual(registered.json()["user"]["role"], "patient")
+        if not location:
+            with SessionLocal() as db:
+                db.query(models.PatientEmergencyProfile).filter_by(user_id=registered.json()["user"]["id"]).delete()
+                db.commit()
+        return {"Authorization": "Bearer " + registered.json()["accessToken"]}
+
+    def test_patient_sign_up_needs_a_location_and_saves_it_with_the_account(self):
+        from backend.app import emergency
+        base = {"fullName": "Reg Patient", "password": "Password123!", "confirmPassword": "Password123!", "role": "patient"}
+        register = lambda email, **extra: self.client.post("/api/auth/register", json={**base, "email": email, **extra})
+        profile = lambda result: self.client.get("/api/v2/patient/emergency", headers={"Authorization": "Bearer " + result["accessToken"]}).json()["profile"]
+        # No location: refused, and no account is left behind
+        refused = register("reg.none@example.org")
+        self.assertEqual(refused.status_code, 400)
+        self.assertIn("where you live", refused.json()["detail"])
+        self.assertEqual(register("reg.blank@example.org", emergency={"contactName": "Asha"}).status_code, 400)
+        self.assertEqual(self.client.post("/api/auth/login", json={"email": "reg.none@example.org", "password": "Password123!"}).status_code, 401)
+        # An area the map finds: saved with the account, with the optional contact
+        with patch.object(emergency, "_fetch", return_value=[{"lat": "13.0827", "lon": "80.2707", "display_name": "Chennai"}]):
+            found = register("reg.found@example.org", emergency={"homeLabel": "Thandalam, Chennai", "contactName": "Asha", "contactPhone": "+91 98765 43210"}).json()
+        self.assertTrue(found["locationFound"])
+        saved = profile(found)
+        self.assertEqual((saved["homeLabel"], saved["hasHome"], saved["contactName"]), ("Thandalam, Chennai", True, "Asha"))
+        # An area the map cannot find: the account is made, the area is kept as text, and the answer says it was not found
+        with patch.object(emergency, "_fetch", return_value=[]):
+            lost = register("reg.lost@example.org", emergency={"homeLabel": "Zzzzqq Nowhere"})
+        self.assertEqual(lost.status_code, 200)
+        self.assertIs(lost.json()["locationFound"], False)
+        saved = profile(lost.json())
+        self.assertEqual((saved["homeLabel"], saved["hasHome"]), ("Zzzzqq Nowhere", False))
+        # The map service being down never blocks sign-up either
+        with patch.object(emergency, "_fetch", side_effect=emergency.MapLookupError("timed out")):
+            down = register("reg.down@example.org", emergency={"homeLabel": "Chennai"})
+        self.assertEqual((down.status_code, down.json()["locationFound"]), (200, False))
+        # The device's position alone needs no map lookup and is named for what it is
+        with patch.object(emergency, "_fetch", side_effect=AssertionError("no lookup expected")):
+            here = register("reg.here@example.org", emergency={"homeLat": 12.9, "homeLon": 80.2}).json()
+        self.assertTrue(here["locationFound"])
+        saved = profile(here)
+        self.assertEqual((saved["homeLabel"], saved["hasHome"]), ("My current location", True))
+        # Staff accounts are not asked for a location, and are told nothing about one
+        doctor = register("reg.doctor@example.org", role="doctor")
+        self.assertEqual(doctor.status_code, 200)
+        self.assertIsNone(doctor.json()["locationFound"])
+
+    def test_emergency_help_is_private_and_never_alerts_anyone(self):
+        from backend.app import emergency
+        headers = self.new_patient("emergency.one@example.org", location=False)
+        base = "/api/v2/patient/emergency"
+        first = self.client.get(base, headers=headers).json()
+        self.assertEqual((first["region"], first["profile"]["hasHome"]), ("India", False))
+        self.assertEqual([n["number"] for n in first["numbers"]], ["112", "108", "102", "181"])
+        for role in ("doctor", "staff"):
+            self.request("GET", base, role, expected=403)
+        # A typed area is turned into a position; the contact and hospital are kept
+        with patch.object(emergency, "_fetch", return_value=[{"lat": "13.0827", "lon": "80.2707", "display_name": "Chennai, Tamil Nadu, India"}]):
+            saved = self.client.put(base, headers=headers, json={"homeLabel": "Chennai", "contactName": "Asha", "contactRelation": "Sister", "contactPhone": "+91 98765 43210",
+                                                             "hospitalName": "City Maternity Hospital", "hospitalPhone": "044-2345-6789", "liveLocation": True}).json()
+        self.assertEqual((saved["located"], saved["profile"]["homeLat"], saved["profile"]["liveLocation"]), (True, 13.0827, True))
+        self.assertEqual((saved["profile"]["contactPhone"], saved["profile"]["hospitalName"]), ("+91 98765 43210", "City Maternity Hospital"))
+        self.assertEqual(self.client.put(base, headers=headers, json={"contactPhone": "call me"}).status_code, 422)
+        self.assertEqual(self.client.put(base, headers=headers, json={"homeLat": 95, "homeLon": 10}).status_code, 422)
+        # Hospitals near home, nearest first, named only, each once
+        with patch.object(emergency, "_fetch", return_value=self.OVERPASS):
+            emergency._cache.clear()
+            near = self.client.get(base + "/nearby", headers=headers).json()
+        self.assertEqual([h["name"] for h in near["hospitals"]], ["Near Hospital", "Far Hospital"])
+        self.assertEqual((near["away"], near["hospitals"][1]["emergencyDepartment"], near["hospitals"][1]["phone"]), (False, True, "+91 44 2222 3333"))
+        self.assertIn("Mount Road", near["hospitals"][0]["address"])
+        self.assertTrue(near["hospitals"][0]["directionsUrl"].startswith("https://www.google.com/maps/dir/"))
+        # Away from home: the hospitals follow the patient's current position, and the page says so
+        with patch.object(emergency, "_fetch", return_value=self.OVERPASS):
+            away = self.client.get(base + "/nearby?lat=28.6139&lon=77.2090", headers=headers).json()
+        self.assertTrue(away["away"] and away["awayKm"] > 1500)
+        self.assertEqual(away["region"], "India")
+        # Outside India the Indian numbers are not shown
+        elsewhere = self.client.get(base + "/nearby?lat=51.5&lon=-0.12", headers=headers).json()
+        self.assertEqual((elsewhere["region"], [n["number"] for n in elsewhere["numbers"]]), (None, ["112"]))
+        # When the map service is down the patient still gets the numbers, and an honest message
+        with patch.object(emergency, "_fetch", side_effect=emergency.MapLookupError("timed out")):
+            emergency._cache.clear()
+            down = self.client.get(base + "/nearby", headers=headers).json()
+        self.assertEqual(down["hospitals"], [])
+        self.assertIn("could not be reached", down["error"])
+        self.assertEqual(down["numbers"][0]["number"], "112")
+        # Another patient's details are separate, and pressing the button creates no task, question or notification
+        other = self.new_patient("emergency.two@example.org")
+        self.assertFalse(self.client.get(base, headers=other).json()["profile"]["contactName"])
+        with SessionLocal() as db:
+            self.assertEqual(db.query(models.Notification).filter(models.Notification.title.ilike("%emergency%")).count(), 0)
+
+    def test_demo_patients_have_a_saved_location_that_the_patient_can_change(self):
+        overview = self.request("GET", "/api/v2/patient/emergency", "patient")
+        self.assertTrue(overview["profile"]["hasHome"])
+        self.assertIn("Chennai", overview["profile"]["homeLabel"])
+        # Changing only the location keeps the rest of what the patient saved (the Profile page sends the whole record back)
+        saved = {**overview["profile"], "homeLabel": "My current location", "homeLat": 12.9, "homeLon": 80.2}
+        for key in ("hasHome",):
+            saved.pop(key)
+        updated = self.request("PUT", "/api/v2/patient/emergency", "patient", saved)
+        self.assertEqual((updated["profile"]["homeLabel"], updated["profile"]["homeLat"]), ("My current location", 12.9))
+        self.request("PUT", "/api/v2/patient/emergency", "patient", {**saved, "homeLabel": overview["profile"]["homeLabel"], "homeLat": overview["profile"]["homeLat"], "homeLon": overview["profile"]["homeLon"]})
+
+    def test_check_in_can_record_who_helped(self):
+        data = {"recordedAt": (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat(), "systolic": 118, "diastolic": 76, "symptoms": "Headache", "enteredWithHelp": "ASHA worker: Rekha"}
+        log = self.request("POST", f"{ROOT}/episodes/{self.ep}/logs", "patient", data)
+        self.assertEqual(log["enteredWithHelp"], "ASHA worker: Rekha")
+        trends = self.request("GET", f"{ROOT}/episodes/{self.ep}/trends")
+        self.assertEqual(next(l for l in trends["logs"] if l["id"] == log["id"])["enteredWithHelp"], "ASHA worker: Rekha")  # the doctor sees who took the reading
+        alone = self.request("POST", f"{ROOT}/episodes/{self.ep}/logs", "patient", {**data, "enteredWithHelp": "  "})
+        self.assertIsNone(alone["enteredWithHelp"])
+        self.request("POST", f"{ROOT}/episodes/{self.ep}/logs", "patient", {**data, "enteredWithHelp": "x" * 200}, expected=422)
+
+    def test_emergency_list_prefers_real_hospitals_over_small_clinics(self):
+        from backend.app import emergency
+        def node(name, lat, **tags):
+            return {"type": "node", "lat": lat, "lon": 80.27, "tags": {"name": name, **tags}}
+        elements = [node("Jayprakash Infotech", 13.001), node("Agarwals Eye Hospital", 13.002), node("Dr Rao Clinic", 13.003),
+                    node("Apollo Hospital", 13.04), node("Government Maternity Hospital", 13.05), node("City General Hospital", 13.06), node("Far Medical College Hospital", 13.09)]
+        with patch.object(emergency, "_fetch", return_value={"elements": elements}):
+            emergency._cache.clear()
+            names = [h["name"] for h in emergency.nearby_hospitals(13.0, 80.27)["hospitals"]]
+        self.assertEqual(names, ["Apollo Hospital", "Government Maternity Hospital", "City General Hospital", "Far Medical College Hospital"])  # no clinic, no eye hospital, no odd entry
+        with patch.object(emergency, "_fetch", return_value={"elements": elements[:3] + elements[3:4]}):
+            emergency._cache.clear()
+            names = [h["name"] for h in emergency.nearby_hospitals(13.0, 80.27)["hospitals"]]
+        self.assertEqual(names[0], "Apollo Hospital")  # with too few real hospitals the others fill the list, after it
+        self.assertGreater(len(names), 1)
+
+    def test_new_patients_can_use_the_app_before_a_record_is_linked(self):
+        headers = self.new_patient("emergency.three@example.org")
+        self.assertEqual(self.client.get("/api/v2/continuity/context", headers=headers).json()["episodes"], [])
+        self.assertEqual(self.client.get("/api/v2/patient/profile", headers=headers).status_code, 200)
+        self.assertEqual(self.client.get("/api/v2/patient/emergency", headers=headers).status_code, 200)
 
     def test_guideline_sources_can_be_approved_in_a_batch_by_doctors_only(self):
         with SessionLocal() as db:

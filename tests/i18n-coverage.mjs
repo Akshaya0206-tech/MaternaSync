@@ -9,6 +9,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const scanned = [
   join(root, "src", "roles", "patient"),
   join(root, "src", "components", "continuity", "shared.tsx"),
+  join(root, "src", "routes", "LoadStates.tsx"), // the loading and "could not load this page" messages
 ];
 const files = [];
 const walk = (path) => {

@@ -19,14 +19,32 @@ export function login(email: string, password: string): Promise<TokenResponse> {
   return api.post<TokenResponse>('/api/auth/login', { email, password });
 }
 
+/** A new patient's home and emergency details, saved together with the account. */
+export interface SignUpEmergency {
+  homeLabel: string | null;
+  homeLat: number | null;
+  homeLon: number | null;
+  contactName: string | null;
+  contactRelation: string | null;
+  contactPhone: string | null;
+  hospitalName: string | null;
+  hospitalPhone: string | null;
+}
+
+interface RegisterResponse extends TokenResponse {
+  /** For a patient: false when the area typed could not be found on the map. */
+  locationFound: boolean | null;
+}
+
 export function register(payload: {
   fullName: string;
   email: string;
   password: string;
   confirmPassword: string;
   role: UserRole;
-}): Promise<TokenResponse> {
-  return api.post<TokenResponse>('/api/auth/register', payload);
+  emergency?: SignUpEmergency;
+}): Promise<RegisterResponse> {
+  return api.post<RegisterResponse>('/api/auth/register', payload);
 }
 
 export function fetchCurrentUser(): Promise<CurrentUser> {

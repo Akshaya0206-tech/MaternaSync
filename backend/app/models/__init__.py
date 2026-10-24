@@ -28,6 +28,8 @@ from .continuity import (DailyLog, PatientPreference, SharingConsent, CareRemind
                          ClinicalResource, ClinicalOutput, ReferenceAttachment,
                          PathwayEnrollment, MonitoringPlan, Outreach, RecordedOutcome)
 from .guideline import GuidelineSource, GuidelineChunk, GuidelineReview
+from .reference import ReferenceItem, ReferenceChunk, ReferenceNote
+from .emergency import PatientEmergencyProfile
 
 __all__ = [
     # legacy
@@ -62,4 +64,8 @@ __all__ = [
     "Communication",
     # clinical guidelines
     "GuidelineSource", "GuidelineChunk", "GuidelineReview",
+    # personal reference library
+    "ReferenceItem", "ReferenceChunk", "ReferenceNote",
+    # patient emergency details
+    "PatientEmergencyProfile",
 ]

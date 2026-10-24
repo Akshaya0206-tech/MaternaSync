@@ -9,7 +9,7 @@ const modulePath = process.env.PLAYWRIGHT_MODULE;
 const { chromium } = await import(
   modulePath ? pathToFileURL(modulePath).href : "playwright"
 );
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, args: ["--mute-audio"] }); // some screens can read aloud
 const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },
 });

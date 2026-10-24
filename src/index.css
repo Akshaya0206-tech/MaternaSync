@@ -32,7 +32,7 @@
 
   --text-primary: var(--navy-deep);
   --text-secondary: #4B6269;
-  --text-muted: #85978F;
+  --text-muted: #566860; /* 5.1:1 or better on white and on the cream page background */
 
   --accent-cyan: var(--teal-primary);
   --accent-blue: var(--navy-deep);
@@ -108,6 +108,19 @@
   padding: 0;
 }
 
+/* Text size chosen with the "A A A" control (see src/accessibility). */
+html[data-text-size="large"] { font-size: 118.75%; }
+html[data-text-size="xlarge"] { font-size: 137.5%; }
+
+/* Keyboard users can always see where they are. */
+:focus-visible { outline: 3px solid var(--teal-primary) !important; outline-offset: 2px; } /* wins over the inline "outline: none" on form fields */
+.sidebar :focus-visible { outline-color: #f3b95f !important; }
+.app-main-column:focus-visible { outline: none !important; }
+
+/* A link that appears when a keyboard user tabs in, to jump past the menu. */
+.skip-link { position: absolute; left: 12px; top: -64px; z-index: 300; padding: 10px 16px; border-radius: var(--radius-md); background: #fff; color: #0f231e; font-weight: 700; text-decoration: none; box-shadow: var(--shadow-md); }
+.skip-link:focus { top: 12px; }
+
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-primary);
@@ -147,6 +160,7 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 100vh;
 }
 
+.app-main-column:focus { outline: none; }
 .app-main-column {
   display: flex;
   flex-direction: column;

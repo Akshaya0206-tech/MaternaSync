@@ -4,12 +4,16 @@ import { fetchMyProfile, updateMyProfile } from '../../api/patientPortal';
 import type { PatientProfile } from '../../api/patientPortal';
 import { ApiError } from '../../api/client';
 import { Field, inputStyle } from '../../components/auth/AuthField';
+import { Link } from 'react-router-dom';
 import { tx, useLanguage } from '../../i18n';
+import { useTour } from '../../tour/tourContext';
+import { LocationCard } from './LocationCard';
 
 const readOnlyInputStyle = { ...inputStyle, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', cursor: 'not-allowed' };
 
 export function ProfilePage() {
   const { t } = useLanguage();
+  const tour = useTour();
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -87,6 +91,29 @@ export function ProfilePage() {
             )}
           </div>
         </form>
+      )}
+
+      {!isLoading && profile && <LocationCard />}
+
+      {!isLoading && profile && (
+        <div className="glass-panel" style={{ padding: '20px 24px', marginTop: '16px' }}>
+          <h2 style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>{t('Emergency details')}</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+            {t('Your emergency contact and preferred hospital are kept on the Emergency help page. Only you can see them.')}
+          </p>
+          <Link className="btn-secondary" to="/patient/emergency">{t('Open Emergency help')}</Link>
+        </div>
+      )}
+
+      {/* Always offered, so a demonstration account (which never gets the new-account welcome) can show the tour. */}
+      {!isLoading && profile && (
+        <div className="glass-panel" style={{ padding: '20px 24px', marginTop: '16px' }}>
+          <h2 style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>{t('Tour')}</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+            {t('Take the short tour again to see what each part of the app is for.')}
+          </p>
+          <button type="button" className="btn-secondary" onClick={tour.start}>{t('Start a tour')}</button>
+        </div>
       )}
     </main>
   );

@@ -312,6 +312,7 @@ export function TrendsPanel({
                       <small>
                         Patient log · v{log.revision}
                         {log.skipped ? " · skipped" : ""}
+                        {log.enteredWithHelp ? ` · with help from ${log.enteredWithHelp}` : ""}
                       </small>
                     </td>
                     <td>
@@ -364,7 +365,7 @@ export function TrendsPanel({
           {!data.activeRuleCount && (
             <Empty>
               No approved review rules are configured. A doctor can approve the
-              starter rules under Reference Library → Review rules.
+              starter rules under Clinical Settings → Review rules.
             </Empty>
           )}
           {data.activeRuleCount > 0 && !data.flags.length && (

@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { HeartPulse, LogOut, Menu, X } from 'lucide-react';
 
 export interface RoleNavItem {
   label: string;
   to: string;
   icon: ReactNode;
+  /** Small tag after the label, e.g. "Paused". */
+  badge?: string;
+  /** Other pages that belong to this item, which stays highlighted on them (e.g. a step-by-step version of the page). */
+  alsoActiveOn?: string[];
 }
 
 interface RoleSidebarProps {
@@ -18,18 +22,46 @@ interface RoleSidebarProps {
   logoutLabel?: string;
   /** Optional control placed above the user block, e.g. a language switcher. */
   footerExtra?: ReactNode;
+  /** Optional control placed between the brand block and the navigation, e.g. an always-visible emergency button. */
+  topExtra?: ReactNode;
+  /** Text of the keyboard "skip to the page" link. */
+  skipLabel?: string;
 }
 
 /** Navigation shell shared by all three role workspaces. Active-state and
  * navigation are driven entirely by the URL (NavLink), not local state —
  * this is what makes browser back/forward and direct URL entry work for
  * free, unlike the old phase-based Sidebar it's modeled on. */
-export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLogout, logoutLabel = 'Logout', footerExtra }: RoleSidebarProps) {
+export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLogout, logoutLabel = 'Logout', footerExtra, topExtra, skipLabel = 'Skip to main content' }: RoleSidebarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { pathname } = useLocation();
   const initials = userName.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
+  const linkStyle = (isActive: boolean) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '9px 12px',
+    borderRadius: 'var(--radius-md)',
+    textDecoration: 'none',
+    background: isActive ? 'var(--sidebar-active-bg)' : 'transparent',
+    color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+    fontSize: '0.85rem',
+    fontWeight: isActive ? 700 : 500,
+    transition: 'background 0.15s ease, color 0.15s ease',
+  });
 
   return (
     <>
+      <a
+        href="#main-content"
+        className="skip-link"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+      >
+        {skipLabel}
+      </a>
       <button
         className="sidebar-mobile-toggle"
         onClick={() => setIsMobileOpen(true)}
@@ -93,30 +125,35 @@ export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLo
           </div>
         </div>
 
+        {topExtra && <div style={{ padding: '12px 12px 0 12px' }}>{topExtra}</div>}
+
         <nav style={{ flex: 1, padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto' }}>
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={() => setIsMobileOpen(false)}
-              style={({ isActive }) => ({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '9px 12px',
-                borderRadius: 'var(--radius-md)',
-                textDecoration: 'none',
-                background: isActive ? 'var(--sidebar-active-bg)' : 'transparent',
-                color: isActive ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-                fontSize: '0.85rem',
-                fontWeight: isActive ? 700 : 500,
-                transition: 'background 0.15s ease, color 0.15s ease',
-              })}
-            >
-              <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon}</span>
-              <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.35 }}>{item.label}</span>
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const content = (
+              <>
+                <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon}</span>
+                <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.35 }}>{item.label}</span>
+                {item.badge && (
+                  <span style={{ flexShrink: 0, padding: '1px 7px', borderRadius: '999px', border: '1px solid currentColor', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase', opacity: 0.85 }}>
+                    {item.badge}
+                  </span>
+                )}
+              </>
+            );
+            // On a page that belongs to this item the router does not know the item is current, so it is marked here.
+            if (item.alsoActiveOn?.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+              return (
+                <Link key={item.to} to={item.to} aria-current="page" onClick={() => setIsMobileOpen(false)} style={linkStyle(true)}>
+                  {content}
+                </Link>
+              );
+            }
+            return (
+              <NavLink key={item.to} to={item.to} onClick={() => setIsMobileOpen(false)} style={({ isActive }) => linkStyle(isActive)}>
+                {content}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div style={{ padding: '10px 12px', borderTop: '1px solid var(--sidebar-border)' }}>
@@ -132,7 +169,7 @@ export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLo
           </div>
           <button
             onClick={onLogout}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', marginTop: '4px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: 'var(--terracotta)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', marginTop: '4px', borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', color: '#e6967f', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
           >
             <LogOut size={18} />
             <span>{logoutLabel}</span>
