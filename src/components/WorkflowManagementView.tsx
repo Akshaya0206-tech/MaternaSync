@@ -190,7 +190,7 @@ export const WorkflowManagementView: React.FC<WorkflowManagementViewProps> = ({
   };
 
   const handleConfirmHandover = () => {
-    const contextLine = `GA ${episode.gestationalAgeWeeks}w${episode.gestationalAgeDays}d · Risk: ${episode.riskCategory.replace('_', ' ')} · Attending: ${episode.primaryClinician}.`;
+    const contextLine = `GA ${episode.gestationalAgeWeeks}w${episode.gestationalAgeDays}d · Attending: ${episode.primaryClinician}.`;
     const whatRemainsLine = openItems.length > 0
       ? `${openItems.length} open item(s): ${openItems.slice(0, 4).map(i => i.title).join('; ')}${openItems.length > 4 ? '…' : ''}.`
       : 'No open workflow items.';
@@ -497,7 +497,7 @@ export const WorkflowManagementView: React.FC<WorkflowManagementViewProps> = ({
 
             <div style={{ padding: '22px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <HandoverSection icon={<FileText size={16} style={{ color: 'var(--accent-blue)' }} />} title="Context">
-                GA {episode.gestationalAgeWeeks}w {episode.gestationalAgeDays}d · Risk category: {episode.riskCategory === 'high_risk' ? 'High Risk' : episode.riskCategory === 'moderate' ? 'Moderate' : 'Routine'} · Attending: {episode.primaryClinician} · {episode.facility}.
+                GA {episode.gestationalAgeWeeks}w {episode.gestationalAgeDays}d · Attending: {episode.primaryClinician} · {episode.facility}.
               </HandoverSection>
 
               <HandoverSection icon={<ClipboardCheck size={16} style={{ color: 'var(--accent-teal)' }} />} title="What Happened">

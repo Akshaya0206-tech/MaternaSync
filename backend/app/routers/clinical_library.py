@@ -76,7 +76,8 @@ def approve_resource(db, user, resource):
         raise HTTPException(400, "A future review date is required; create a revised version.")
     if not resource.issuer or not resource.content.strip():
         raise HTTPException(400, "An owner/issuer and reviewed content are required.")
-    if resource.kind != "template" and not resource.source_url:
+    # Templates and follow-up rules are the clinic's own administrative wording and have no outside source.
+    if resource.kind not in ("template", "rule") and not resource.source_url:
         raise HTTPException(400, "A source URL is required before approval.")
     if resource.kind == "guideline" and (not resource.rights_note or not resource.section):
         raise HTTPException(400, "Record usage rights and the source section before approval.")

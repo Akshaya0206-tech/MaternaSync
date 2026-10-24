@@ -1,6 +1,25 @@
 # AI workflow: replacing the care-team login
 
-**Status: design proposal. Nothing in this document is built yet.** It describes how the whole `care-team` login can be replaced by an AI workflow, how that workflow works end to end, which parts of this codebase it builds on, and the few places where a person must stay in the loop. Section 9 says plainly what "replace entirely" can and cannot safely mean.
+**Status (2026-10-24): the first slice is built, in `assist` mode only. The rest of this document is still the design.** It describes how the whole `care-team` login can be replaced by an AI workflow, how that workflow works end to end, which parts of this codebase it builds on, and the few places where a person must stay in the loop. Section 9 says plainly what "replace entirely" can and cannot safely mean.
+
+### What is built
+
+| Piece | Where | Notes |
+|---|---|---|
+| Document intake (W1) | `ai_coordinator/workflows.py` `run_document_intake` | A LangGraph graph: gather, analyse, check, decide. Name, record number, date and duplicate checks are plain code. It only ever **proposes** verifying or rejecting; a doctor approves. A document that looks like someone else's, or says it is urgent, goes to the doctor as an item that needs a person. |
+| Question routing (W2) | `run_question_routing` | Urgent wording gets the fixed emergency message in her language at once, plus an urgent alert to the doctor. Clinical or unclear questions go to the doctor with no draft answer. Administrative ones (next appointment, how to upload) become a fixed-wording proposed reply that a doctor approves. |
+| Missed check-ins (W5) and overdue tasks (part of W4) | `sweep_missed_checkins`, `sweep_overdue_tasks` | A fixed reminder once a day to the woman and to trusted people she allowed; after three, a doctor is asked to look. The wording says a missing entry is not a sign of anything. |
+| Policy engine and tools | `policy.py`, `tools.py` | Seven registered tools in two tiers. Anything else cannot be requested. Checks: same patient, recipient belongs to her, once only, daily cap per patient, kill switch read on every step. |
+| Audit and ledger | `models/ai.py` (`ai_runs`, `ai_actions`, `exception_items`), `AuditLog` | Every step, its tier, the policy decision, the mode, provider and prompt version. Assistant steps are attributed to its own account, which can never sign in. |
+| Doctor's inbox | Doctor app, **Care Assistant** page (`/doctor/assistant`) | Needs you, recently decided, and what the assistant did. Approving runs the step under the doctor's own identity. |
+| Model step | `providers.py` | `rules` (default, offline) or `claude` (opt in with `MATERNASYNC_AI_PROVIDER=claude`; names and record numbers are removed first; the more cautious of the model and the fixed word lists wins). |
+| Switches | `config.py` | `MATERNASYNC_AI_COORDINATOR_MODE` = `off`, `shadow` or `assist` (there is no `auto`), `MATERNASYNC_AI_WORKER`, `MATERNASYNC_AI_DAILY_CAP`. |
+| Care-team login switched off, kept in the code | `config.CARE_TEAM_ENABLED`, `deps.refuse_sign_in` | `MATERNASYNC_CARE_TEAM_ENABLED=true` brings it back. |
+| Caregiver login | `routers/caregiver.py`, `caregiver_service.py`, `src/roles/caregiver/` | A relative or friend the woman invites, with her choice of what they may do. |
+
+### What is not built
+
+Scheduling (W3), referrals (W6), outreach and WhatsApp reminders (W7), paperwork drafts (W8), outcomes and clinic reporting (W9) and handover (W10) are not part of the assistant yet; those screens are still run by hand, by a doctor now that the care-team login is off. There is no autonomous mode, no per-action undo, and no evaluation set yet (section 8). The `claude` provider is written against the documented API and tested with a stand-in client; it has not been run against the live API.
 
 Written from the code as it is on 2026-10-24 (`backend/app/routers/care_team_portal.py`, `continuity.py`, `automation/`, `reminders.py`, `extraction.py`, `whatsapp.py`).
 

@@ -119,8 +119,6 @@ export interface PatientEpisode {
   allergies: string[];
   primaryClinician: string;
   episodeStartDate: string;
-  riskCategory: 'routine' | 'moderate' | 'high_risk';
-  riskNotes: string;
   facility: string;
   records: PatientRecord[];
   workflowItems: PendingWorkflowItem[];

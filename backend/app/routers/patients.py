@@ -41,7 +41,7 @@ def list_patients(db: Session = Depends(get_db), current_user: models.User = Dep
         summaries.append(schemas.PatientSummary(
             id=p.id, patient_name=p.patient_name, mrn=p.mrn, age=p.age, edd=p.edd,
             gestational_age_weeks=p.gestational_age_weeks, gestational_age_days=p.gestational_age_days,
-            risk_category=p.risk_category, record_count=len(p.records), open_workflow_count=open_count,
+            record_count=len(p.records), open_workflow_count=open_count,
         ))
     return summaries
 

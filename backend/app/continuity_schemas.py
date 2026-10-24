@@ -92,7 +92,7 @@ class ReminderResponse(Input):
 
 
 class ResourceIn(Input):
-    kind: Literal["guideline", "template", "education", "pathway", "rule", "coding", "interaction"]
+    kind: Literal["guideline", "template", "education", "pathway", "rule", "coding"]
     title: str = Field(min_length=3, max_length=250)
     topic: str = Field("", max_length=150)
     issuer: str = Field("", max_length=150)
@@ -127,14 +127,16 @@ class ResourceIn(Input):
                 if not isinstance(step, dict) or not isinstance(step.get("title"), str) or not step["title"].strip() or not isinstance(step.get("days"), int) or not 0 <= step["days"] <= 365:
                     raise ValueError("Each step needs a title and days (0–365).")
         if self.kind == "rule":
-            if config.get("metric") not in ("systolic", "diastolic", "weight_kg", "missing_days", "overdue_task_days"):
-                raise ValueError("Select a supported metric.")
+            # Follow-up rules only look at whether check-ins and tasks are happening. They never read a blood pressure,
+            # a weight or any other clinical value, and they do not rank patients by urgency or risk.
+            if config.get("metric") not in ("missing_days", "overdue_task_days"):
+                raise ValueError("Follow-up rules can only watch missed check-ins and overdue tasks.")
             if config.get("operator") not in ("gt", "lt") or not isinstance(config.get("threshold"), (float, int)):
                 raise ValueError("Rules need a gt/lt comparison and numeric threshold.")
             if not math.isfinite(config["threshold"]):
                 raise ValueError("Rule thresholds must be finite.")
-            if config.get("tier", "routine") not in ("urgent", "soon", "routine"):
-                raise ValueError("A rule's review priority must be urgent, soon or routine.")
+            if config.get("tier", "routine") != "routine":
+                raise ValueError("Follow-up rules have a single level; there is no urgency ranking.")
             if not isinstance(config.get("nextAction", ""), str) or len(config.get("nextAction", "")) > 300:
                 raise ValueError("The next action must be text of up to 300 characters.")
         if self.kind == "template":
@@ -145,22 +147,6 @@ class ResourceIn(Input):
                 raise ValueError("Required fields must be present in the template.")
             if "default" in config and not isinstance(config["default"], bool):
                 raise ValueError("Template default must be true or false.")
-        if self.kind == "interaction":
-            pairs, cautions = config.get("pairs", []), config.get("cautions", [])
-            if not isinstance(pairs, list) or not isinstance(cautions, list) or not (pairs or cautions) or len(pairs) > 200 or len(cautions) > 200:
-                raise ValueError("Provide 1–200 reviewed interaction pairs and/or pregnancy cautions.")
-
-            def named(entry):
-                return isinstance(entry, dict) and isinstance(entry.get("name"), str) and entry["name"].strip() and isinstance(entry.get("aliases", []), list) and all(isinstance(a, str) for a in entry.get("aliases", []))
-
-            for pair in pairs:
-                if not (isinstance(pair, dict) and named(pair.get("a")) and named(pair.get("b")) and pair.get("severity") in ("major", "moderate", "minor")
-                        and isinstance(pair.get("effect"), str) and pair["effect"].strip() and str(pair.get("sourceUrl", "")).startswith("https://")):
-                    raise ValueError("Each interaction needs two named drugs, a severity, an effect and an https source URL.")
-            for caution in cautions:
-                if not (named(caution) and caution.get("severity") in ("major", "moderate") and isinstance(caution.get("statement"), str) and caution["statement"].strip()
-                        and str(caution.get("sourceUrl", "")).startswith("https://")):
-                    raise ValueError("Each pregnancy caution needs a drug name, a severity, a statement and an https source URL.")
         if self.kind == "coding":
             entries = config.get("entries", [])
             if not isinstance(entries, list) or not 1 <= len(entries) <= 200:
@@ -199,7 +185,6 @@ class OutputEdit(Input):
 class PublishIn(ApprovalIn):
     visible_to_patient: bool = True
     revision: int = Field(ge=1)
-    acknowledged_alerts: list[str] = Field(default_factory=list, max_length=100)  # drug-safety alert keys the doctor has read
 
 
 class EnrollIn(ApprovalIn):
@@ -215,7 +200,7 @@ class MonitorIn(Input):
     patient_agreed: Literal[True]
 
 
-class RiskConfirmIn(ApprovalIn):
+class FlagConfirmIn(ApprovalIn):
     flag_id: str = Field(min_length=3, max_length=200)
     decision: Literal["create_task", "no_action_needed"]
     owner_user_id: str | None = None

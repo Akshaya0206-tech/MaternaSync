@@ -70,7 +70,6 @@ class PatientSummary(CamelModel):
     edd: str
     gestational_age_weeks: int
     gestational_age_days: int
-    risk_category: str
     record_count: int
     open_workflow_count: int
 
@@ -94,8 +93,6 @@ class PatientOut(CamelModel):
     allergies: list[str]
     primary_clinician: str
     episode_start_date: str
-    risk_category: str
-    risk_notes: str
     facility: str
     is_ready_for_today_brief: bool
     handoff_timestamp: datetime | None

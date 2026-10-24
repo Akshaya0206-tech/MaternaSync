@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, FileCheck2, MessageCircle, ListTodo, ClipboardCheck, Stethoscope } from 'lucide-react';
+import { Users, FileCheck2, MessageCircle, ListTodo, ClipboardCheck, Stethoscope, Bot } from 'lucide-react';
 import { fetchDashboard } from '../../api/doctorPortal';
+import { assistantStatus } from '../../api/assistant';
 import type { DoctorDashboard } from '../../api/doctorPortal';
 import { useAuth } from '../../auth/AuthContext';
 import { formatFriendlyTime, timeOfDayGreeting } from './format';
@@ -13,12 +14,14 @@ export function DashboardPage() {
   const [dashboard, setDashboard] = useState<DoctorDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [assistantOpen, setAssistantOpen] = useState<number | null>(null);
 
   useEffect(() => {
     fetchDashboard()
       .then(setDashboard)
       .catch(() => setError("We couldn't load your dashboard. Please try again."))
       .finally(() => setIsLoading(false));
+    assistantStatus().then((s) => setAssistantOpen(s.open)).catch(() => undefined);
   }, []);
 
   const stats = dashboard
@@ -29,6 +32,7 @@ export function DashboardPage() {
         { label: 'Documents to Review', value: dashboard.documentsToReview, icon: <FileCheck2 size={18} />, to: '/doctor/patients' },
         { label: 'Follow-ups', value: dashboard.followUps, icon: <ListTodo size={18} />, to: '/doctor/follow-ups' },
         { label: 'Drafts to Approve', value: dashboard.draftsToApprove, icon: <Stethoscope size={18} />, to: '/doctor/documentation' },
+        ...(assistantOpen === null ? [] : [{ label: 'Care Assistant: needs you', value: assistantOpen, icon: <Bot size={18} />, to: '/doctor/assistant' }]),
       ]
     : [];
 

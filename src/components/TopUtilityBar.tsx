@@ -6,7 +6,6 @@ interface EpisodeOption {
   patientName: string;
   gestationalAgeWeeks: number;
   gestationalAgeDays: number;
-  riskCategory: 'routine' | 'moderate' | 'high_risk';
 }
 
 interface TopUtilityBarProps {
@@ -62,7 +61,7 @@ export const TopUtilityBar: React.FC<TopUtilityBarProps> = ({
           >
             {episodes.map(ep => (
               <option key={ep.id} value={ep.id}>
-                {ep.patientName} — Wk {ep.gestationalAgeWeeks}d{ep.gestationalAgeDays} ({ep.riskCategory === 'high_risk' ? 'High Risk' : ep.riskCategory === 'moderate' ? 'Moderate Risk' : 'Routine'})
+                {ep.patientName} — Wk {ep.gestationalAgeWeeks}d{ep.gestationalAgeDays}
               </option>
             ))}
           </select>

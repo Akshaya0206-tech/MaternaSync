@@ -11,7 +11,7 @@ from ..deps import require_role
 from .. import continuity_schemas as S
 from ..continuity_service import (ADMIN_REPLIES, allowed_ids, audit, candidate_codes, current_resource,
     episode, get_object, member_ids, name, notify, now, output_out, plain_language_draft, require_member,
-    resource_out, row, run_safety_check, source_snapshot, suggested_appointment, trend_data, utc, due_reminders, TIER_LABEL)
+    resource_out, row, source_snapshot, suggested_appointment, trend_data, utc, due_reminders)
 from ..plain_language import SECTIONED_KINDS, unresolved_placeholders
 from .. import whatsapp
 
@@ -225,9 +225,9 @@ def trends(episode_id: str, user=Depends(staff), db: Session = Depends(get_db)):
     return trend_data(db, episode(db, user, episode_id))
 
 
-@router.post("/episodes/{episode_id}/risk-flags/confirm")
-def confirm_risk_flag(episode_id: str, payload: S.RiskConfirmIn, user=Depends(doctor), db: Session = Depends(get_db)):
-    """A doctor records what they decided about a review flag: create a follow-up task for a named owner, or
+@router.post("/episodes/{episode_id}/follow-up-flags/confirm")
+def confirm_follow_up_flag(episode_id: str, payload: S.FlagConfirmIn, user=Depends(doctor), db: Session = Depends(get_db)):
+    """A doctor records what they decided about a follow-up flag: create a follow-up task for a named owner, or
     record that no action is needed and why. Flags never create tasks or messages on their own."""
     ep = episode(db, user, episode_id)
     flag = next((f for f in trend_data(db, ep)["flags"] if f["id"] == payload.flag_id), None)
@@ -238,23 +238,23 @@ def confirm_risk_flag(episode_id: str, payload: S.RiskConfirmIn, user=Depends(do
     task = None
     if payload.decision == "create_task":
         require_member(db, episode_id, payload.owner_user_id)
-        due = now().date() + timedelta(days={"urgent": 0, "soon": 2, "routine": 7}[flag["tier"]])
+        due = now().date() + timedelta(days=7)
         task = models.Task(
-            episode_id=episode_id, title=f"{TIER_LABEL[flag['tier']]}: {flag['ruleTitle']}",
+            episode_id=episode_id, title=f"Follow up: {flag['ruleTitle']}",
             description="\n".join(filter(None, [
-                flag["nextAction"] or "Review the flagged value and decide the next step.",
-                f"Flag: {flag['metric'].replace('_', ' ')} {flag['value']} {'>' if flag['operator'] == 'gt' else '<'} {flag['threshold']}, recorded {flag['recordedAt'][:10]}.",
+                flag["nextAction"] or "Follow up and decide the next step.",
+                f"Flag: {flag['metric'].replace('_', ' ')} {flag['value']} {'>' if flag['operator'] == 'gt' else '<'} {flag['threshold']}, noted {flag['recordedAt'][:10]}.",
                 f"Rule source: {flag['sourceUrl']}", f"Doctor's note: {payload.note}" if payload.note else ""])),
             owner_user_id=payload.owner_user_id, created_by_user_id=user.id, due_date=due.isoformat(),
-            priority="urgent" if flag["tier"] == "urgent" else "routine", source_type="risk_review", source_id=flag["id"])
+            priority="routine", source_type="follow_up_flag", source_id=flag["id"])
         db.add(task)
         db.flush()
         db.add(models.TaskAssignment(task_id=task.id, assigned_to_user_id=payload.owner_user_id, assigned_by_user_id=user.id))
-        notify(db, episode_id, payload.owner_user_id, f"{TIER_LABEL[flag['tier']]} follow-up assigned", flag["ruleTitle"])
+        notify(db, episode_id, payload.owner_user_id, "Follow-up assigned", flag["ruleTitle"])
     db.add(models.AuditLog(
-        episode_id=episode_id, actor_user_id=user.id, actor_role=user.role, actor_display_name=user.full_name, action="risk_flag_confirmed",
-        title="Review flag confirmed by a doctor", details=payload.note, object_type="RiskFlag", object_id=flag["id"],
-        new_state={"decision": payload.decision, "taskId": task.id if task else None, "tier": flag["tier"], "rule": flag["ruleTitle"]}))
+        episode_id=episode_id, actor_user_id=user.id, actor_role=user.role, actor_display_name=user.full_name, action="follow_up_flag_confirmed",
+        title="Follow-up flag confirmed by a doctor", details=payload.note, object_type="FollowUpFlag", object_id=flag["id"],
+        new_state={"decision": payload.decision, "taskId": task.id if task else None, "rule": flag["ruleTitle"]}))
     db.commit()
     return {"flagId": flag["id"], "decision": payload.decision, "task": row(task) if task else None}
 
@@ -350,14 +350,6 @@ def codes(output_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
     return candidate_codes(db, output.source_snapshot.get("text", ""))
 
 
-@router.get("/outputs/{output_id}/safety-check")
-def safety_check(output_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
-    output = get_object(db, user, models.ClinicalOutput, output_id)
-    if output.kind != "prescription":
-        raise HTTPException(400, "Safety checks apply to prescriptions.")
-    return run_safety_check(db, output)
-
-
 @router.post("/outputs/{output_id}/approve")
 def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db: Session = Depends(get_db)):
     output = get_object(db, user, models.ClinicalOutput, output_id)
@@ -371,14 +363,9 @@ def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db
         raise HTTPException(403, "Clinical outputs require an assigned doctor's approval.")
     if output.revision < 2 or unresolved_placeholders(output.content, output.structured_data):
         raise HTTPException(400, "Edit the draft and replace all review placeholders before approval.")
-    safety = None
+    # The prescription is the doctor's own. Nothing here checks medicines, doses, allergies or interactions.
     if output.kind == "prescription" and any(not output.structured_data.get(f, "").strip() for f in ("Medicine", "Dose", "Route", "Frequency", "Duration")):
         raise HTTPException(400, "Complete the clinician-entered prescription fields.")
-    if output.kind == "prescription":
-        safety = run_safety_check(db, output)
-        unread = [a for a in safety["alerts"] if a["key"] not in payload.acknowledged_alerts]
-        if unread:
-            raise HTTPException(409, f"Read and acknowledge all {len(safety['alerts'])} drug-safety alert(s) before signing ({len(unread)} still unacknowledged).")
     if output.template_id:
         template = db.get(models.ClinicalResource, output.template_id)
         if not current_resource(template):
@@ -403,10 +390,6 @@ def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db
                 response_text=output.content, status="APPROVED", approved_by_user_id=user.id, approved_at=now(), visible_to_patient=True))
             q.status = "ANSWERED"
     audit(db, user, "clinical_output_approved", output, after=row(output))
-    if safety is not None:
-        audit(db, user, "prescription_safety_check_recorded", output, details=(
-            f"Interaction/pregnancy lists: {safety['status']} ({', '.join(s['title'] + ' v' + str(s['version']) for s in safety['checkedAgainst']) or 'none approved'}). "
-            f"{len(safety['alerts'])} alert(s) shown and acknowledged by the signing doctor."))
     db.commit()
     return output_out(db, output)
 
@@ -605,7 +588,7 @@ def clinic(user=Depends(staff), db: Session = Depends(get_db)):
             "lastCheckIn": utc(latest.recorded_at).isoformat() if latest else None,
             "checkInDue": checkin_due.isoformat() if checkin_due else None,
             "missingCheckIn": bool(checkin_due and checkin_due < now()),
-            "reviewPriority": trend_data(db, ep)["reviewPriority"],
+            "openFlagCount": trend_data(db, ep)["openFlagCount"],
             "monitoringOwner": name(db, plan.owner_user_id) if plan else None})
     outcomes = db.query(models.RecordedOutcome).filter(models.RecordedOutcome.episode_id.in_(ids)).all()
     appts = db.query(models.Appointment).filter(models.Appointment.episode_id.in_(ids), models.Appointment.status.in_(["completed", "no_show"])).all()

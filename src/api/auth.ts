@@ -1,6 +1,6 @@
 import { api } from './client';
 
-export type UserRole = 'patient' | 'doctor' | 'care_team' | 'nurse' | 'care_coordinator' | 'other';
+export type UserRole = 'patient' | 'doctor' | 'caregiver' | 'care_team' | 'nurse' | 'care_coordinator' | 'other';
 
 export interface CurrentUser {
   id: string;
@@ -43,9 +43,15 @@ export function register(payload: {
   confirmPassword: string;
   role: UserRole;
   emergency?: SignUpEmergency;
+  /** A trusted person can only join with the code the woman made for them. */
+  inviteCode?: string;
 }): Promise<RegisterResponse> {
   return api.post<RegisterResponse>('/api/auth/register', payload);
 }
+
+/** What the sign-up page offers. The care-team roles are missing while that login is switched off. */
+export interface AuthOptions { careTeamEnabled: boolean; signUpRoles: { value: UserRole; label: string }[] }
+export const fetchAuthOptions = () => api.get<AuthOptions>('/api/auth/options');
 
 export function fetchCurrentUser(): Promise<CurrentUser> {
   return api.get<CurrentUser>('/api/auth/me');

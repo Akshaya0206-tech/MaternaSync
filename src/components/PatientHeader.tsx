@@ -1,34 +1,11 @@
 import type { PatientEpisode } from '../types/patient';
-import { User, AlertTriangle, ShieldAlert, CheckCircle } from 'lucide-react';
+import { User } from 'lucide-react';
 
 interface PatientHeaderProps {
   episode: PatientEpisode;
 }
 
 export const PatientHeader: React.FC<PatientHeaderProps> = ({ episode }) => {
-  const getRiskBadge = () => {
-    switch (episode.riskCategory) {
-      case 'high_risk':
-        return (
-          <span className="badge-urgent">
-            <AlertTriangle size={12} /> High Risk Episode
-          </span>
-        );
-      case 'moderate':
-        return (
-          <span className="badge-pending">
-            <ShieldAlert size={12} /> Moderate Risk
-          </span>
-        );
-      default:
-        return (
-          <span className="badge-raw">
-            <CheckCircle size={12} /> Routine Antenatal
-          </span>
-        );
-    }
-  };
-
   return (
     <div
       style={{
@@ -68,7 +45,6 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({ episode }) => {
               <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 700 }}>
                 {episode.patientName}
               </strong>
-              {getRiskBadge()}
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
               {episode.age} yrs &middot; {episode.gravidaPara} &middot; {episode.bloodType}

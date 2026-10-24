@@ -5,7 +5,7 @@ import re
 from fastapi import HTTPException
 from sqlalchemy import inspect
 
-from . import drug_safety, models
+from . import models
 from .deps import require_episode_access
 from .plain_language import (SECTIONED_KINDS, build_explanation, build_lab_explanation, build_visit_summary, detect_conditions,
                              format_when, review_notes, section_kinds, stage_for_weeks)
@@ -137,26 +137,6 @@ def output_out(db, output, patient=False):
     return result
 
 
-def safety_sets(db):
-    """Approved, in-date drug-safety lists. Without one, interaction and pregnancy checks are reported as unchecked."""
-    return [{"title": r.title, "version": r.version, "configuration": r.configuration or {}, "approvedBy": name(db, r.approved_by_user_id), "reviewDue": r.review_due}
-            for r in db.query(models.ClinicalResource).filter_by(kind="interaction", status="APPROVED").all() if current_resource(r)]
-
-
-def run_safety_check(db, output):
-    ep = db.get(models.PregnancyEpisode, output.episode_id)
-    sets = safety_sets(db)
-    cutoff = now() - timedelta(days=120)
-    earlier = [(o.structured_data or {}).get("Medicine", "") for o in db.query(models.ClinicalOutput).filter(
-        models.ClinicalOutput.episode_id == output.episode_id, models.ClinicalOutput.kind == "prescription",
-        models.ClinicalOutput.status == "APPROVED", models.ClinicalOutput.id != output.id).all() if utc(o.created_at) >= cutoff]
-    result = drug_safety.check((output.structured_data or {}).get("Medicine", ""), earlier, list(ep.allergies or []), sets)
-    result.update({"status": "checked" if sets else "unchecked", "limitation": drug_safety.LIMITATION, "allergiesRecorded": list(ep.allergies or []),
-                   "checkedAgainst": [{"title": s["title"], "version": s["version"], "approvedBy": s["approvedBy"], "reviewDue": s["reviewDue"],
-                                       "pairs": len(s["configuration"].get("pairs", [])), "cautions": len(s["configuration"].get("cautions", []))} for s in sets]})
-    return result
-
-
 def suggested_appointment(db, ep, payload):
     """Link a visit summary to the visit it describes when exactly one appointment fell on that day."""
     if payload.kind not in ("visit_summary", "explanation") or payload.source_type != "consultation":
@@ -221,14 +201,16 @@ def source_snapshot(db, ep, source_type, source_id):
     return {"title": "Patient question", "text": question.question_text, "isClinical": question.is_clinical}
 
 
-TIER_RANK = {"routine": 1, "soon": 2, "urgent": 3}
-TIER_LABEL = {"urgent": "Urgent review", "soon": "Review soon", "routine": "Routine review"}
+# Follow-up flags only watch whether check-ins and tasks are happening. They never read a blood pressure, a weight or
+# any other clinical value, and there is no urgency or risk ranking: every flag is simply "someone should follow up".
+FOLLOW_UP_METRICS = ("missing_days", "overdue_task_days")
 
 
 def trend_data(db, ep):
     start = datetime.combine(now().date() - timedelta(days=29), time.min, tzinfo=timezone.utc)
     logs = db.query(models.DailyLog).filter(models.DailyLog.episode_id == ep.id, models.DailyLog.recorded_at >= start).order_by(models.DailyLog.recorded_at).all()
-    rules = [r for r in db.query(models.ClinicalResource).filter_by(kind="rule", status="APPROVED").all() if current_resource(r)]
+    rules = [r for r in db.query(models.ClinicalResource).filter_by(kind="rule", status="APPROVED").all()
+             if current_resource(r) and (r.configuration or {}).get("metric") in FOLLOW_UP_METRICS]
     flags, task_titles = [], {}
     latest = next((log for log in reversed(logs) if not log.skipped), None)
     for rule in rules:
@@ -248,8 +230,6 @@ def trend_data(db, ep):
                         task_titles[task.id] = task.title
                     except ValueError:
                         continue
-        else:
-            candidates = [(log.id, getattr(log, metric), utc(log.recorded_at).isoformat()) for log in logs if not log.skipped and getattr(log, metric) is not None]
         for source_id, value, timestamp in candidates:
             matched = value > cfg["threshold"] if cfg["operator"] == "gt" else value < cfg["threshold"]
             if matched:
@@ -258,24 +238,22 @@ def trend_data(db, ep):
                 flag_id = f"{rule.id}:{source_id or 'plan-' + timestamp[:10]}"
                 flags.append({"id": flag_id, "ruleId": rule.id, "ruleTitle": rule.title, "version": rule.version, "metric": metric,
                               "value": value, "operator": cfg["operator"], "threshold": cfg["threshold"],
-                              "tier": cfg.get("tier", "routine"), "nextAction": cfg.get("nextAction", ""),
+                              "nextAction": cfg.get("nextAction", ""),
                               "sourceId": source_id, "recordedAt": timestamp, "sourceUrl": rule.source_url,
-                              "reviewer": name(db, rule.approved_by_user_id), "context": (f"Task: {task_titles[source_id]}. " if source_id in task_titles else "") + "Review flag; no diagnosis or treatment recommendation."})
+                              "reviewer": name(db, rule.approved_by_user_id), "context": (f"Task: {task_titles[source_id]}. " if source_id in task_titles else "") + "Follow-up flag about check-ins or tasks only."})
     decisions = {a.object_id: a for a in db.query(models.AuditLog).filter(
-        models.AuditLog.episode_id == ep.id, models.AuditLog.action == "risk_flag_confirmed", models.AuditLog.object_type == "RiskFlag").all()}
+        models.AuditLog.episode_id == ep.id, models.AuditLog.action.in_(["follow_up_flag_confirmed", "risk_flag_confirmed"]),  # the second is the earlier name
+        models.AuditLog.object_type.in_(["FollowUpFlag", "RiskFlag"])).all()}
     for flag in flags:
         decision = decisions.get(flag["id"])
         flag["confirmed"] = None if not decision else {
             "by": decision.actor_display_name, "at": utc(decision.timestamp).isoformat(), "decision": (decision.new_state or {}).get("decision"),
             "note": decision.details, "taskId": (decision.new_state or {}).get("taskId")}
-    flags.sort(key=lambda f: (TIER_RANK[f["tier"]], f["recordedAt"]), reverse=True)
-    open_tiers = [f["tier"] for f in flags if not f["confirmed"]]
+    flags.sort(key=lambda f: f["recordedAt"], reverse=True)  # newest first; there is no ranking by urgency
     days_with_logs = len({utc(log.recorded_at).date() for log in logs if not log.skipped})
     return {"logs": [row(log) for log in logs], "flags": flags, "daysWithLogs": days_with_logs,
             "missingDays": 30 - days_with_logs, "activeRuleCount": len(rules),
-            # Highest tier among flags nobody has reviewed yet. A review order for people, not a clinical risk score.
-            "reviewPriority": max(open_tiers, key=TIER_RANK.get) if open_tiers else "none",
-            "tierCounts": {tier: open_tiers.count(tier) for tier in TIER_RANK},
+            "openFlagCount": sum(1 for f in flags if not f["confirmed"]),
             "units": {"systolic": "mmHg", "diastolic": "mmHg", "weightKg": "kg", "movementCount": "movements"}}
 
 

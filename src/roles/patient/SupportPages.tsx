@@ -211,7 +211,7 @@ export function SummaryList({
   data,
   appointmentId,
 }: {
-  data: Workspace;
+  data: Pick<Workspace, "outputs" | "appointments">;
   appointmentId?: string;
 }) {
   const { t } = useLanguage();

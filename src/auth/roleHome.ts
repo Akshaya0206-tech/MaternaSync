@@ -1,6 +1,8 @@
 const ROLE_HOME: Record<string, string> = {
   patient: '/patient/dashboard',
   doctor: '/doctor/dashboard',
+  caregiver: '/caregiver/home',
+  // Still routed, so switching the care-team login back on (MATERNASYNC_CARE_TEAM_ENABLED=true) needs no change here.
   care_team: '/care-team/dashboard',
 };
 

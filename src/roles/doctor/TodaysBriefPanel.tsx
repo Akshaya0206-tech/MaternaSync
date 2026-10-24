@@ -50,7 +50,6 @@ export function TodaysBriefPanel({ episodeId }: Props) {
           <span>{brief.age != null ? `Age ${brief.age}` : 'Age not recorded'}</span>
           <span>GA {brief.gestationalAgeWeeks}w{brief.gestationalAgeDays}d</span>
           <span>EDD: {formatFriendlyDate(brief.edd)}</span>
-          <span>Risk: {brief.riskCategory.replace('_', ' ')}</span>
         </div>
       </div>
 

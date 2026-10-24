@@ -148,7 +148,7 @@ def _build_doctor_handover_content(db: Session, episode: models.PregnancyEpisode
     what_to_discuss = f"{open_questions} patient question(s) pending response." if open_questions else "No pending patient questions."
 
     return {
-        "context": f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d, risk: {episode.risk_category}.",
+        "context": f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d.",
         "what_happened": what_happened, "what_remains": what_remains,
         "who_owns_it": f"{current_user.full_name} (clinical).", "what_to_discuss": what_to_discuss,
     }
@@ -361,7 +361,7 @@ def get_todays_brief(episode: models.PregnancyEpisode = Depends(require_episode_
     return schemas_v2.TodaysBriefOut(
         episode_id=episode.id, patient_name=episode.patient_name, age=episode.age,
         gestational_age_weeks=episode.gestational_age_weeks, gestational_age_days=episode.gestational_age_days,
-        edd=episode.edd, risk_category=episode.risk_category,
+        edd=episode.edd,
         recent_events=[schemas_v2.JourneyEventOut(**e) for e in content["recentEvents"]],
         pending_items=[schemas_v2.TaskOut(**t) for t in content["pendingItems"]],
         patient_questions=[schemas_v2.CareTeamQuestionOut(**q) for q in content["patientQuestions"]],
@@ -608,7 +608,7 @@ def _to_draft_out(d: models.ConsultationDraft) -> schemas_v2.ConsultationDraftOu
 def _build_draft_content(db: Session, episode: models.PregnancyEpisode, consultation: models.Consultation) -> dict:
     """Organizes real, already-documented data into the four required
     sections. Never infers or invents — see module docstring."""
-    visit_context = f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d visit for {episode.patient_name}. Risk category: {episode.risk_category}."
+    visit_context = f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d visit for {episode.patient_name}."
 
     documented_discussion = consultation.raw_transcript.strip() if consultation.raw_transcript and consultation.raw_transcript.strip() else "Not documented."
 

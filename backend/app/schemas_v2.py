@@ -47,7 +47,6 @@ class EpisodeSummaryOut(CamelModel):
     edd: str
     gestational_age_weeks: int
     gestational_age_days: int
-    risk_category: str
 
 
 class EpisodeOut(CamelModel):
@@ -63,8 +62,6 @@ class EpisodeOut(CamelModel):
     gravida_para: str
     blood_type: str
     allergies: list[str]
-    risk_category: str
-    risk_notes: str
     facility: str
     is_ready_for_today_brief: bool
     created_at: datetime
@@ -564,7 +561,6 @@ class TodaysBriefOut(CamelModel):
     gestational_age_weeks: int
     gestational_age_days: int
     edd: str
-    risk_category: str
     recent_events: list[JourneyEventOut]
     pending_items: list[TaskOut]
     patient_questions: list[CareTeamQuestionOut]

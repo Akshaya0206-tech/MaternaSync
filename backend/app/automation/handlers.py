@@ -7,7 +7,7 @@ response, consultation approval all remain separate, human-triggered
 actions elsewhere in the codebase).
 """
 
-from .. import models
+from .. import config, models
 from . import events
 
 OPEN_TASK_STATUSES = ("OPEN", "IN_PROGRESS", "WAITING")
@@ -50,7 +50,12 @@ def handle_document_uploaded(db, *, episode_id, actor_user_id, source_id, payloa
     guarantees a JourneyEvent row only ever exists for verified/approved
     content, so the patient-facing journey can never leak an unverified
     upload. Automation traceability for this step lives in AuditLog
-    (written by dispatch_event) instead."""
+    (written by dispatch_event) instead.
+
+    While the care-team login is switched off nobody would pick this task up, so it is skipped: the care assistant
+    (app/ai_coordinator) checks the document and hands the doctor a proposal instead."""
+    if not config.CARE_TEAM_ENABLED:
+        return
     if _existing_open_task(db, episode_id, "document_review", source_id):
         return
 
@@ -83,6 +88,8 @@ def handle_patient_question_created(db, *, episode_id, actor_user_id, source_id,
     is_clinical = _looks_clinical(question_text)
     question.is_clinical = is_clinical
 
+    if not config.CARE_TEAM_ENABLED:  # the care assistant routes the question instead (app/ai_coordinator)
+        return
     if _existing_open_task(db, episode_id, "question_triage", source_id):
         return
 
@@ -101,7 +108,19 @@ def handle_patient_question_created(db, *, episode_id, actor_user_id, source_id,
         ))
 
 
+def queue_for_assistant_document(db, *, episode_id, source_id, **_kwargs):
+    """Hand the new document to the care assistant. This only adds a queued job row to the same transaction; the
+    assistant does the work later, so a slow model can never hold up an upload."""
+    from ..ai_coordinator import orchestrator
+    orchestrator.enqueue(db, "document_intake", episode_id=episode_id, source_type="MedicalDocument", source_id=source_id)
+
+
+def queue_for_assistant_question(db, *, episode_id, source_id, **_kwargs):
+    from ..ai_coordinator import orchestrator
+    orchestrator.enqueue(db, "question_routing", episode_id=episode_id, source_type="PatientQuestion", source_id=source_id)
+
+
 REGISTRY = {
-    events.DOCUMENT_UPLOADED: [handle_document_uploaded],
-    events.PATIENT_QUESTION_CREATED: [handle_patient_question_created],
+    events.DOCUMENT_UPLOADED: [handle_document_uploaded, queue_for_assistant_document],
+    events.PATIENT_QUESTION_CREATED: [handle_patient_question_created, queue_for_assistant_question],
 }

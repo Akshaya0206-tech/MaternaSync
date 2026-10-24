@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from . import models
+from . import config, models
 from .database import get_db
 from .security import decode_access_token
 
@@ -28,8 +28,19 @@ def get_current_user(
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise unauthorized
+    refuse_sign_in(user)
 
     return user
+
+
+def refuse_sign_in(user: models.User) -> None:
+    """The care assistant's service account can never sign in, and while the care-team login is switched off nobody can
+    use a care-team account. Checked on every request, so a token issued earlier stops working too. The care-team code
+    itself is untouched: set MATERNASYNC_CARE_TEAM_ENABLED=true and it works again."""
+    if user.role == "ai_coordinator":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account is a service account and cannot sign in.")
+    if user.role == "care_team" and not config.CARE_TEAM_ENABLED:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=config.CARE_TEAM_OFF_MESSAGE)
 
 
 def require_role(*roles: str):

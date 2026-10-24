@@ -17,9 +17,8 @@ import {
 // The lists other parts of the app read from. Each must be approved by a doctor before it is used.
 // (Reference documents are not here: they live on the doctor's own Reference Library page.)
 const kinds = {
-  rule: "Review rules",
+  rule: "Follow-up rules",
   coding: "ICD-10 code sets",
-  interaction: "Drug safety checks",
   education: "Patient education",
   pathway: "Care pathways",
   template: "Note templates",
@@ -82,7 +81,7 @@ export function LibraryPage() {
   return (
     <Page
       title="Clinical settings"
-      subtitle="The lists other parts of the app read from: review rules, ICD-10 code sets, drug safety checks, patient education, care pathways and note layouts. A doctor approves each one before it is used, and every approval records the reviewer and version."
+      subtitle="The lists other parts of the app read from: follow-up rules, ICD-10 code sets, patient education, care pathways and note layouts. A doctor approves each one before it is used, and every approval records the reviewer and version."
     >
       <Feedback error={action.error} message={action.message} />
       <div className="continuity-tabs">
@@ -366,10 +365,9 @@ export function LibraryPage() {
               <p className="continuity-muted">
                 Flags when {String(selected.configuration.metric).replaceAll("_", " ")}{" "}
                 {selected.configuration.operator === "gt" ? ">" : "<"}{" "}
-                {String(selected.configuration.threshold)} · Review priority:{" "}
-                {String(selected.configuration.tier ?? "routine")}
+                {String(selected.configuration.threshold)}
                 {selected.configuration.nextAction
-                  ? ` · Next action: ${selected.configuration.nextAction}`
+                  ? ` · Follow-up: ${selected.configuration.nextAction}`
                   : ""}
               </p>
             )}
@@ -379,42 +377,6 @@ export function LibraryPage() {
                 phrase-to-code entries. Review the phrases before approving; a
                 phrase only suggests a candidate and never assigns a code.
               </p>
-            )}
-            {selected.kind === "interaction" && (
-              <div>
-                <p className="continuity-muted">
-                  Every entry cites the product label it came from. This is a
-                  limited reviewed list, not a complete interaction database.
-                </p>
-                {(
-                  (selected.configuration.pairs as
-                    | { a: { name: string }; b: { name: string }; severity: string; effect: string; sourceUrl: string }[]
-                    | undefined) ?? []
-                ).map((p, i) => (
-                  <p key={`p${i}`}>
-                    <strong>
-                      {p.a.name} + {p.b.name}
-                    </strong>{" "}
-                    · {p.severity} · {p.effect}{" "}
-                    <a href={p.sourceUrl} target="_blank" rel="noreferrer">
-                      label
-                    </a>
-                  </p>
-                ))}
-                {(
-                  (selected.configuration.cautions as
-                    | { name: string; severity: string; statement: string; sourceUrl: string }[]
-                    | undefined) ?? []
-                ).map((c, i) => (
-                  <p key={`c${i}`}>
-                    <strong>{c.name}</strong> · pregnancy · {c.severity} ·{" "}
-                    {c.statement}{" "}
-                    <a href={c.sourceUrl} target="_blank" rel="noreferrer">
-                      label
-                    </a>
-                  </p>
-                ))}
-              </div>
             )}
             <div className="continuity-actions">
               {selected.hasFile && (
@@ -555,19 +517,8 @@ function ResourceEditor({
   const [threshold, setThreshold] = useState(
     String(initial?.configuration.threshold ?? ""),
   );
-  const [tier, setTier] = useState(String(initial?.configuration.tier || "routine"));
   const [nextAction, setNextAction] = useState(
     String(initial?.configuration.nextAction || ""),
-  );
-  const [interactionJson, setInteractionJson] = useState(
-    JSON.stringify(
-      {
-        pairs: initial?.configuration.pairs ?? [],
-        cautions: initial?.configuration.cautions ?? [],
-      },
-      null,
-      2,
-    ),
   );
   const [codes, setCodes] = useState(
     (
@@ -599,10 +550,8 @@ function ResourceEditor({
                 : type === "pathway"
                   ? { steps }
                   : type === "rule"
-                    ? { metric, operator, threshold: Number(threshold), tier, nextAction }
-                    : type === "interaction"
-                      ? JSON.parse(interactionJson)
-                      : type === "coding"
+                    ? { metric, operator, threshold: Number(threshold), nextAction }
+                    : type === "coding"
                       ? {
                           entries: lines(codes).map((s) => {
                             const [code, label, match] = s
@@ -665,7 +614,7 @@ function ResourceEditor({
           <Field label="Official source URL">
             <input
               type="url"
-              required={type !== "template"}
+              required={type !== "template" && type !== "rule"}
               value={source}
               onChange={(e) => setSource(e.target.value)}
               placeholder="https://"
@@ -820,9 +769,11 @@ function ResourceEditor({
         {type === "rule" && (
           <>
             <div className="continuity-note">
-              Thresholds must come from a protocol your clinic validated. A rule
-              shows flags only after a doctor approves it, and a flag asks a
-              clinician to look; it does not diagnose, message the patient or
+              A follow-up rule watches only whether check-ins and tasks are
+              happening. It cannot read a blood pressure, a weight or any other
+              clinical value, and it does not rank patients by urgency or risk.
+              A rule shows flags only after a doctor approves it, and a flag asks
+              a person to follow up; it does not diagnose, message the patient or
               assign work by itself.
             </div>
             <div className="continuity-fields">
@@ -834,9 +785,6 @@ function ResourceEditor({
                   {[
                     ["overdue_task_days", "Overdue task (days)"],
                     ["missing_days", "Missing agreed check-in (days)"],
-                    ["systolic", "Systolic BP (mmHg)"],
-                    ["diastolic", "Diastolic BP (mmHg)"],
-                    ["weight_kg", "Weight (kg)"],
                   ].map(([key, label]) => (
                     <option key={key} value={key}>
                       {label}
@@ -853,7 +801,7 @@ function ResourceEditor({
                   <option value="lt">Less than</option>
                 </select>
               </Field>
-              <Field label="Validated threshold">
+              <Field label="Threshold (days)">
                 <input
                   type="number"
                   step="any"
@@ -862,38 +810,12 @@ function ResourceEditor({
                   onChange={(e) => setThreshold(e.target.value)}
                 />
               </Field>
-              <Field label="Review priority when it flags">
-                <select value={tier} onChange={(e) => setTier(e.target.value)}>
-                  <option value="urgent">Urgent review</option>
-                  <option value="soon">Review soon</option>
-                  <option value="routine">Routine review</option>
-                </select>
-              </Field>
             </div>
-            <Field label="Next action shown to the doctor (administrative wording, up to 300 characters)">
+            <Field label="Follow-up shown to the doctor (administrative wording, up to 300 characters)">
               <input
                 maxLength={300}
                 value={nextAction}
                 onChange={(e) => setNextAction(e.target.value)}
-              />
-            </Field>
-          </>
-        )}
-        {type === "interaction" && (
-          <>
-            <div className="continuity-note">
-              Only statements you can see in the official product label belong
-              here. Each pair needs two named drugs (with aliases), a severity,
-              the effect and an https source URL; each pregnancy caution needs a
-              drug name, a severity, the label statement and a source URL.
-            </div>
-            <Field label="Interaction pairs and pregnancy cautions (JSON)">
-              <textarea
-                rows={12}
-                required
-                value={interactionJson}
-                onChange={(e) => setInteractionJson(e.target.value)}
-                style={{ fontFamily: "monospace" }}
               />
             </Field>
           </>

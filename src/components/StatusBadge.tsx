@@ -3,7 +3,8 @@ import type { WorkflowStatus } from '../types/patient';
 export type BadgeTone = 'green' | 'amber' | 'red' | 'blue' | 'purple' | 'neutral';
 
 const TONE_STYLES: Record<BadgeTone, { bg: string; color: string; border: string }> = {
-  green: { bg: 'var(--emerald-raw-bg)', color: 'var(--emerald-raw)', border: 'var(--emerald-raw-border)' },
+  // The text is darker than --emerald-raw, which measured 4.29:1 on this background (4.5:1 is needed for small bold text).
+  green: { bg: 'var(--emerald-raw-bg)', color: '#0f6158', border: 'var(--emerald-raw-border)' },
   amber: { bg: 'var(--amber-pending-bg)', color: 'var(--amber-pending)', border: 'rgba(154, 91, 46, 0.25)' },
   red: { bg: 'var(--rose-urgent-bg)', color: 'var(--rose-urgent)', border: 'rgba(156, 58, 34, 0.3)' },
   blue: { bg: 'rgba(23, 50, 77, 0.08)', color: 'var(--navy-deep)', border: 'rgba(23, 50, 77, 0.22)' },

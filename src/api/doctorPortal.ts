@@ -48,7 +48,6 @@ export interface TodaysBrief {
   gestationalAgeWeeks: number;
   gestationalAgeDays: number;
   edd: string;
-  riskCategory: string;
   recentEvents: JourneyEvent[];
   pendingItems: Task[];
   patientQuestions: CareTeamQuestion[];

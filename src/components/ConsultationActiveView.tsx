@@ -168,14 +168,13 @@ export const ConsultationActiveView: React.FC<ConsultationActiveViewProps> = ({
       : 'No unanswered patient portal questions were flagged for this encounter.';
 
     const openCount = episode.workflowItems.filter(w => w.status !== 'completed').length;
-    const riskLabel = episode.riskCategory === 'high_risk' ? 'High Risk' : episode.riskCategory === 'moderate' ? 'Moderate' : 'Routine';
 
     return {
       consultationNotes: sourceText.trim(),
       documentedEvents: documentedEvents || 'No discrete events extracted. Edit this section to list key events from the note.',
       patientQuestions,
       followUpItems: [],
-      handoverNotes: `GA ${episode.gestationalAgeWeeks}w${episode.gestationalAgeDays}d · Risk category: ${riskLabel} · ${openCount} workflow item(s) remain open for the next visit. See consultation notes above for today's encounter summary.`
+      handoverNotes: `GA ${episode.gestationalAgeWeeks}w${episode.gestationalAgeDays}d · ${openCount} workflow item(s) remain open for the next visit. See consultation notes above for today's encounter summary.`
     };
   };
 

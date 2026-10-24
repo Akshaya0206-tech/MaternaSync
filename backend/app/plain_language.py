@@ -4,10 +4,11 @@ Nothing here calls a language model or machine-translates clinical text.
 The builders reorganize what a clinician already approved (or what a verified
 document literally says) into patient-friendly sections, expand a small
 reviewed set of abbreviations, add general "what this test measures" notes,
-and compare a result with the range *printed on the report*. Anything that
-would be a clinical judgement (what a result means for this patient, what to
-do next) is left as an explicit placeholder that blocks approval until the
-doctor writes or removes it.
+and list each result next to the range *printed on the report*. It never says
+whether a result is normal, high or low. Anything that would be a clinical
+judgement (what a result means for this patient, what to do next) is left as
+an explicit placeholder that blocks approval until the doctor writes or
+removes it.
 """
 import re
 from datetime import datetime, timezone
@@ -148,29 +149,11 @@ T = {
         "ta": "உங்கள் அடுத்த சந்திப்பு: {when} ({kind}).",
         "te": "మీ తదుపరి అపాయింట్‌మెంట్: {when} ({kind}).",
     },
-    "within": {
-        "en": "within the printed range",
-        "hi": "छपी सीमा के भीतर",
-        "ta": "அச்சிடப்பட்ட வரம்பிற்குள்",
-        "te": "ముద్రించిన పరిధిలో ఉంది",
-    },
-    "below": {
-        "en": "below the printed range",
-        "hi": "छपी सीमा से कम",
-        "ta": "அச்சிடப்பட்ட வரம்பை விடக் குறைவு",
-        "te": "ముద్రించిన పరిధి కంటే తక్కువ",
-    },
-    "above": {
-        "en": "above the printed range",
-        "hi": "छपी सीमा से अधिक",
-        "ta": "அச்சிடப்பட்ட வரம்பை விட அதிகம்",
-        "te": "ముద్రించిన పరిధి కంటే ఎక్కువ",
-    },
-    "no_range": {
-        "en": "no printed range to compare with",
-        "hi": "तुलना के लिए कोई छपी सीमा नहीं",
-        "ta": "ஒப்பிட அச்சிடப்பட்ட வரம்பு இல்லை",
-        "te": "పోల్చడానికి ముద్రించిన పరిధి లేదు",
+    "range_note": {
+        "en": "This page does not say whether a result is normal or not. The range printed on your report is shown beside each result.",
+        "hi": "यह पृष्ठ यह नहीं बताता कि कोई परिणाम सामान्य है या नहीं। आपकी रिपोर्ट में छपी सीमा हर परिणाम के साथ दिखाई गई है।",
+        "ta": "ஒரு முடிவு இயல்பானதா இல்லையா என்பதை இந்தப் பக்கம் சொல்லாது. உங்கள் அறிக்கையில் அச்சிடப்பட்ட வரம்பு ஒவ்வொரு முடிவுக்கும் அருகில் காட்டப்பட்டுள்ளது.",
+        "te": "ఒక ఫలితం సాధారణమా కాదా అని ఈ పేజీ చెప్పదు. మీ నివేదికలో ముద్రించిన పరిధి ప్రతి ఫలితం పక్కన చూపబడింది.",
     },
     "range_word": {
         "en": "printed range",
@@ -406,10 +389,9 @@ _UPPER = re.compile(r"[<≤]\s*(?P<hi>" + _NUMBER + ")")
 _LOWER = re.compile(r"[>≥]\s*(?P<lo>" + _NUMBER + ")")
 _VALUE = re.compile(r"^[:\s\-]*(?P<cmp>[<>])?\s*(?P<val>" + _NUMBER + r")(?![\d.])")
 _UNIT = re.compile(r"^\s*(?P<unit>/?[A-Za-zµμ%][A-Za-z0-9µμ%^*./]*)")
-_FLAG = re.compile(r"(?:^|\s)(?P<flag>H|L|High|Low|HIGH|LOW|\*)\s*$")
 _TEXT_RESULT = re.compile(r"(non[\s-]?reactive|reactive|not detected|detected|positive|negative|nil|trace|absent|present|\+{1,4}|\b(?:AB|A|B|O)\b[\s,]*(?:rh\s*)?(?:positive|negative|pos|neg|\+ve|-ve|\+|-)?)", re.I)
 _SKIP_LINE = re.compile(r"^(patient|name|age|sex|gender|date|sample|specimen|page|phone|mobile|ref(?:erred)?\s*by|report|lab(?:oratory)?|address|mrn|uhid|collected|received|doctor|dr\.?)\b", re.I)
-_FLAG_WORDS = {"H": "high", "HIGH": "high", "L": "low", "LOW": "low"}
+_FLAG_WORDS = {"H", "HIGH", "L", "LOW"}  # a bare flag the report prints after a value: skipped, never read as a unit or reported
 
 
 def _num(text):
@@ -428,12 +410,9 @@ def _parse_numeric_tail(rest):
     tail = rest[value.end():]
     unit = None
     unit_match = _UNIT.match(tail)
-    flag_from_unit = None
     if unit_match:
         candidate = unit_match.group("unit")
-        if candidate.upper() in _FLAG_WORDS:
-            flag_from_unit = candidate.upper()
-        else:
+        if candidate.upper() not in _FLAG_WORDS:
             unit = candidate
             tail = tail[unit_match.end():]
     lo = hi = None
@@ -448,25 +427,8 @@ def _parse_numeric_tail(rest):
             hi, range_text = _num(upper.group("hi")), f"< {upper.group('hi')}"
         elif lower:
             lo, range_text = _num(lower.group("lo")), f"> {lower.group('lo')}"
-    flag_match = _FLAG.search(tail)
-    flag = flag_from_unit or (flag_match.group("flag").upper() if flag_match else None)
     return {"value": _num(value.group("val")), "valueText": value.group("val"), "comparator": value.group("cmp") or "",
-            "unit": unit, "low": lo, "high": hi, "rangeText": range_text, "printedFlag": _FLAG_WORDS.get(flag) if flag else None,
-            "hasUnitOrRange": bool(unit or range_text)}
-
-
-def _position(row):
-    """Where the value sits relative to the range printed on the report."""
-    if row["printedFlag"]:
-        return {"high": "above", "low": "below"}[row["printedFlag"]]
-    value, lo, hi = row["value"], row["low"], row["high"]
-    if value is None or (lo is None and hi is None):
-        return "none"
-    if lo is not None and value < lo:
-        return "below"
-    if hi is not None and value > hi:
-        return "above"
-    return "within"
+            "unit": unit, "low": lo, "high": hi, "rangeText": range_text, "hasUnitOrRange": bool(unit or range_text)}
 
 
 def _match_test(line):
@@ -496,8 +458,7 @@ def parse_lab_results(text):
             found = _TEXT_RESULT.search(rest.strip(" :-"))
             if found and len(rest.strip()) <= 40:
                 results.append({"name": printed_name, "testId": test["id"], "kind": "text", "valueText": rest.strip(" :-"),
-                                "value": None, "unit": None, "low": None, "high": None, "rangeText": "", "printedFlag": None,
-                                "position": "none", "originalLine": original})
+                                "value": None, "unit": None, "low": None, "high": None, "rangeText": "", "originalLine": original})
             continue
         row = None
         if test:
@@ -522,7 +483,6 @@ def parse_lab_results(text):
                 printed_name = generic.group("name").strip(" :-")
         if row:
             row.update({"name": printed_name or line, "testId": test["id"] if test else None, "kind": "number", "originalLine": original})
-            row["position"] = _position(row)
             results.append(row)
     return results
 
@@ -533,7 +493,7 @@ def _result_line(row, language):
     unit = f" {row['unit']}" if row.get("unit") else ""
     value = f"{row['comparator']}{row['valueText']}{unit}"
     range_part = f" ({tr('range_word', language)} {row['rangeText']})" if row["rangeText"] else ""
-    return f"{row['name']}: {value}{range_part} — {tr(row['position'] if row['position'] != 'none' else 'no_range', language)}"
+    return f"{row['name']}: {value}{range_part}"
 
 
 def build_lab_explanation(*, language, text, document_title):
@@ -545,7 +505,7 @@ def build_lab_explanation(*, language, text, document_title):
         notes.append("This report includes infection screening results. Confirm the patient should receive them in this written format.")
     if any(r["kind"] == "number" and r["testId"] is None for r in results):
         notes.append("Some rows are tests without a general description in the library; they are listed without a 'what this measures' note.")
-    results_text = "\n".join(_result_line(r, language) for r in results) if results else tr("no_results", language) + "\n" + PH_RESULTS
+    results_text = ("\n".join(_result_line(r, language) for r in results) + "\n\n" + tr("range_note", language)) if results else tr("no_results", language) + "\n" + PH_RESULTS
     measured, seen = [], set()
     for row in results:
         if not row["testId"] or row["testId"] in seen:
@@ -558,7 +518,7 @@ def build_lab_explanation(*, language, text, document_title):
         sections[tr("sec_measure", language)] = "\n".join(measured)
     sections[tr("sec_means", language)] = tr("means_default", language) + "\n" + PH_MEANS
     sections[tr("sec_next", language)] = PH_NEXT
-    snapshot_rows = [{k: r[k] for k in ("name", "testId", "valueText", "unit", "rangeText", "printedFlag", "position", "originalLine")} for r in results]
+    snapshot_rows = [{k: r[k] for k in ("name", "testId", "valueText", "unit", "rangeText", "originalLine")} for r in results]
     return {"title": tr("title_lab", language), "content": tr("intro_lab", language, title=document_title), "structured": sections,
             "notes": notes, "parsed": snapshot_rows}
 

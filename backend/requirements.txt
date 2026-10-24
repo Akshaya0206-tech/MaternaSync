@@ -10,3 +10,6 @@ pillow==11.0.0
 email-validator==2.3.0
 faster-whisper==1.2.1
 apscheduler==3.11.3
+langgraph==1.2.17
+# Optional: only needed for MATERNASYNC_AI_PROVIDER=claude (see README, "Care assistant").
+# anthropic

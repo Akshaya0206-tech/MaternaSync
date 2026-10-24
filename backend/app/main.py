@@ -11,8 +11,11 @@ from .migrations import backfill_handover_versions, run_additive_migrations
 from .reminders import check_reminders
 from .routers import auth, care_team_portal, clinical_guidelines, doctor_portal, episodes, external_simulator, patient_portal, patients, records, workflow
 from .seed_data import run_seed
-from .routers import continuity, clinical_library, companion, emergency as emergency_router, references, whatsapp_webhook
-from .seed_continuity import ensure_demo_locations, run_seed_continuity
+from .routers import assistant, caregiver, continuity, clinical_library, companion, emergency as emergency_router, references, whatsapp_webhook
+from .seed_continuity import ensure_demo_locations, remove_withdrawn_features, run_seed_continuity
+from .seed_assistant import ensure_assistant_user, ensure_demo_caregiver
+from .ai_coordinator import orchestrator
+from . import config
 from .config import DEMO_ENABLED
 from .reference_library import sync_reference_library
 from .seed_role_data import ensure_additional_demo_accounts, ensure_patient_portal_demo_data, run_seed_role_data
@@ -47,6 +50,9 @@ app.include_router(emergency_router.router)
 app.include_router(companion.router)
 app.include_router(whatsapp_webhook.router)
 app.include_router(clinical_guidelines.router)
+app.include_router(assistant.router)
+app.include_router(caregiver.patient_router)
+app.include_router(caregiver.router)
 
 
 scheduler = BackgroundScheduler()
@@ -71,8 +77,11 @@ def on_startup():
             ensure_additional_demo_accounts(db)
             run_seed_continuity(db)
             ensure_demo_locations(db)
+            ensure_demo_caregiver(db)
         # Real reference documents belong to every deployment, not only the demo.
         sync_reference_library(db)
+        remove_withdrawn_features(db)  # drug-safety lists and blood-pressure/weight rules are no longer used anywhere
+        ensure_assistant_user(db)  # the care assistant's own account: it can never sign in, it only owns what it records
     finally:
         db.close()
 
@@ -81,6 +90,11 @@ def on_startup():
     # Runs every 5 minutes; Task.last_reminder_sent_at keeps it from
     # spamming the same task on every tick.
     scheduler.add_job(_run_reminder_sweep, "interval", minutes=5, id="reminder_sweep")
+    # The care assistant (see app/ai_coordinator). Jobs are queued inside the request that caused them and run here, so a slow
+    # model can never hold up an upload or a question. Switched off with MATERNASYNC_AI_COORDINATOR=off or MATERNASYNC_AI_WORKER=off.
+    if config.AI_WORKER and config.AI_COORDINATOR_MODE != "off":
+        scheduler.add_job(orchestrator.process_queue, "interval", seconds=5, id="assistant_queue", max_instances=1, coalesce=True)
+        scheduler.add_job(orchestrator.run_sweeps, "interval", minutes=30, id="assistant_sweeps", max_instances=1, coalesce=True)
     scheduler.start()
 
 

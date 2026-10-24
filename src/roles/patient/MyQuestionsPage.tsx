@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { askMyQuestion, fetchMyQuestions } from '../../api/patientPortal';
+import { talkToAPerson } from '../../api/assistant';
 import type { PatientQuestion } from '../../api/patientPortal';
 import { ApiError } from '../../api/client';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -24,6 +25,28 @@ export function MyQuestionsPage() {
   const [draft, setDraft] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [talkOpen, setTalkOpen] = useState(false);
+  const [talkText, setTalkText] = useState('');
+  const [talkBusy, setTalkBusy] = useState(false);
+  const [talkError, setTalkError] = useState('');
+  const [talkReply, setTalkReply] = useState('');
+
+  const handleTalk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTalkBusy(true);
+    setTalkError('');
+    try {
+      // The reply comes from the server in her saved language, in fixed wording.
+      const sent = await talkToAPerson(talkText.trim());
+      setTalkReply(sent.message);
+      setTalkText('');
+      setTalkOpen(false);
+    } catch (err) {
+      setTalkError(err instanceof ApiError ? err.message : t('Could not send your request. Please try again.'));
+    } finally {
+      setTalkBusy(false);
+    }
+  };
 
   const loadQuestions = () => {
     setIsLoading(true);
@@ -76,6 +99,26 @@ export function MyQuestionsPage() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Always works, and goes straight to a doctor: the care assistant is never in the way of reaching a person. */}
+      <div className="glass-panel" style={{ padding: '20px 22px', marginBottom: '20px' }}>
+        <h2 style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>{t('Talk to a person')}</h2>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 10px 0' }}>
+          {t('Prefer to speak to someone? This asks your doctor’s clinic to get back to you. If it is urgent, call 112 or your local emergency number now.')}
+        </p>
+        {!talkOpen ? (
+          <button type="button" className="btn-secondary" onClick={() => setTalkOpen(true)}>{t('Ask someone to get back to me')}</button>
+        ) : (
+          <form onSubmit={handleTalk} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <label htmlFor="talk-message" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{t('Message (optional)')}</label>
+            <textarea id="talk-message" value={talkText} onChange={(e) => setTalkText(e.target.value)} rows={2} maxLength={500}
+              style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '10px 12px', color: 'var(--text-primary)', fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical' }} />
+            {talkError && <div role="alert" style={{ fontSize: '0.8rem', color: 'var(--rose-urgent)' }}>{talkError}</div>}
+            <div><button type="submit" disabled={talkBusy} className="btn-primary">{talkBusy ? t('Sending…') : t('Send')}</button></div>
+          </form>
+        )}
+        {talkReply && <p role="status" className="continuity-success" style={{ marginTop: '10px' }}>{talkReply}</p>}
       </div>
 
       {isLoading && (

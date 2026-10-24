@@ -11,8 +11,15 @@ import {
 } from "./core";
 import type { Language, LanguageValue } from "./core";
 
+// Where the saved language lives. A trusted person (caregiver) has their own setting; the patient endpoints refuse them.
+const SOURCES = {
+  patient: { read: "/api/v2/continuity/context", write: "/api/v2/continuity/preferences" },
+  caregiver: { read: "/api/v2/caregiver/preferences", write: "/api/v2/caregiver/preferences" },
+} as const;
+
 /** Patient-portal language: remembered on this device, saved to the account, applied to the page. */
-export function LanguageProvider({ children }: { children: ReactNode }) {
+export function LanguageProvider({ children, variant = "patient" }: { children: ReactNode; variant?: keyof typeof SOURCES }) {
+  const source = SOURCES[variant];
   const [language, setLanguageState] = useState<Language>(storedLanguage);
   const apply = useCallback((next: Language) => {
     setActiveLanguage(next);
@@ -30,7 +37,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let current = true;
     api
-      .get<{ language: Language }>("/api/v2/continuity/context")
+      .get<{ language: Language }>(source.read)
       .then((context) => {
         if (current && !chosen.current && isLanguage(context.language)) apply(context.language);
       })
@@ -40,7 +47,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return () => {
       current = false;
     };
-  }, [apply]);
+  }, [apply, source.read]);
 
   // Children render after this component, so set the language they read from before they do.
   setActiveLanguage(language);
@@ -59,9 +66,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     async (next: Language) => {
       chosen.current = true;
       apply(next);
-      await api.patch("/api/v2/continuity/preferences", { language: next });
+      await api.patch(source.write, { language: next });
     },
-    [apply],
+    [apply, source.write],
   );
   const value = useMemo<LanguageValue>(
     () => ({

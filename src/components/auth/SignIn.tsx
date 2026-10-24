@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AuthLayout } from './AuthLayout';
 import { Field, inputStyle } from './AuthField';
-import { fetchDemoAccounts, login } from '../../api/auth';
+import { fetchAuthOptions, fetchDemoAccounts, login } from '../../api/auth';
 import type { DemoAccount as PortalDemoAccount } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { CurrentUser } from '../../api/auth';
@@ -13,7 +13,7 @@ interface SignInProps {
 }
 
 interface DemoAccount {
-  role: 'Patient' | 'Care Team' | 'Doctor';
+  role: 'Patient' | 'Caregiver' | 'Care Team' | 'Doctor';
   name: string;
   email: string;
   password: string;
@@ -26,6 +26,8 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   { role: 'Patient', name: 'Priya Sharma', email: 'priya.sharma@maternasync.app', password: 'PriyaDemo123!' },
   { role: 'Patient', name: 'Ananya Kumar', email: 'ananya.kumar@maternasync.app', password: 'AnanyaDemo123!' },
   { role: 'Patient', name: 'Meera Raj', email: 'meera.raj@maternasync.app', password: 'MeeraDemo123!' },
+  { role: 'Caregiver', name: 'Ravi Jenkins (Sarah\'s husband)', email: 'ravi.jenkins@maternasync.app', password: 'RaviDemo123!' },
+  // The care-team accounts still exist; they are only listed (and only accepted) while that login is switched on.
   { role: 'Care Team', name: 'Brenda Miller', email: 'brenda.miller@maternasync.app', password: 'BrendaDemo123!' },
   { role: 'Care Team', name: 'James Wilson', email: 'james.wilson@maternasync.app', password: 'JamesDemo123!' },
   { role: 'Care Team', name: 'Kavya Narayanan', email: 'kavya.narayanan@maternasync.app', password: 'KavyaDemo123!' },
@@ -34,7 +36,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   { role: 'Doctor', name: 'Dr. Arjun Menon', email: 'arjun.menon@maternasync.app', password: 'ArjunDemo123!' },
 ];
 
-const DEMO_ROLE_ORDER: DemoAccount['role'][] = ['Patient', 'Care Team', 'Doctor'];
+const DEMO_ROLE_ORDER: DemoAccount['role'][] = ['Patient', 'Caregiver', 'Care Team', 'Doctor'];
 
 export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignUp }) => {
   const [email, setEmail] = useState('');
@@ -44,6 +46,9 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
   const [demoAccounts, setDemoAccounts] = useState<PortalDemoAccount[]>([]);
   const [demoError, setDemoError] = useState('');
   const [demoRole, setDemoRole] = useState('');
+  // Until the server says the care-team login is on, its demo accounts are hidden (they would only be refused).
+  const [careTeamOn, setCareTeamOn] = useState(false);
+  useEffect(() => { let active = true; fetchAuthOptions().then(o => { if (active) setCareTeamOn(o.careTeamEnabled); }).catch(() => undefined); return () => { active = false; }; }, []);
   useEffect(() => { let active = true; fetchDemoAccounts().then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError('Demo logins are unavailable. Check that the API is running.'); }); return () => { active = false; }; }, []);
   const signInDemo = async (account: PortalDemoAccount) => {
     if (isSubmitting) return;
@@ -63,7 +68,8 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
       onAuthenticated(result.accessToken, result.user);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.status === 401 ? 'Invalid email or password.' : 'Something went wrong. Please try again.');
+        // A 403 carries a plain explanation from the server (for example, that the care-team sign-in is switched off).
+        setError(err.status === 401 ? 'Invalid email or password.' : err.status === 403 ? err.message : 'Something went wrong. Please try again.');
       } else {
         // fetch() itself failed before any response came back — e.g. the
         // backend isn't running/reachable. Not an ApiError, so it needs its
@@ -155,7 +161,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
 
         {showDemoAccounts && (
           <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {DEMO_ROLE_ORDER.map((role) => (
+            {DEMO_ROLE_ORDER.filter((role) => role !== 'Care Team' || careTeamOn).map((role) => (
               <div key={role}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>
                   {role}

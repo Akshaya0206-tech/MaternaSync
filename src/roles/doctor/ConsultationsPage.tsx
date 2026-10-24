@@ -248,7 +248,7 @@ export function ConsultationsPage() {
             <div className="glass-panel" style={{ padding: '20px 24px' }}>
               <div className="page-title" style={{ fontSize: '1.1rem', marginBottom: '10px' }}>Patient Context: {brief.patientName}</div>
               <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                GA {brief.gestationalAgeWeeks}w{brief.gestationalAgeDays}d · Risk: {brief.riskCategory.replace('_', ' ')}
+                GA {brief.gestationalAgeWeeks}w{brief.gestationalAgeDays}d
               </div>
               <ContextRow label="Recent Journey" value={brief.recentEvents.length ? brief.recentEvents.slice(0, 3).map((e) => e.title).join('; ') : 'Not available in current records.'} />
               <ContextRow label="Relevant Documents" value={brief.relevantDocuments.length ? brief.relevantDocuments.map((d) => d.filename).join(', ') : 'Not available in current records.'} />

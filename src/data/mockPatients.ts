@@ -15,8 +15,6 @@ export const mockPatients: PatientEpisode[] = [
     allergies: ['Penicillin (Hives)', 'Latex (Mild)'],
     primaryClinician: 'Dr. Eleanor Vance, MD (Obstetrics)',
     episodeStartDate: '2026-03-01',
-    riskCategory: 'high_risk',
-    riskNotes: 'Documented History of Gestational Diabetes (GDMA1) & Mild Chronic Hypertension monitoring',
     facility: 'St. Jude Women\'s Health & Maternal Pavilion',
     isReadyForTodayBrief: false,
     administrativeDocs: [
@@ -468,8 +466,6 @@ export const mockPatients: PatientEpisode[] = [
     allergies: ['No Known Drug Allergies (NKDA)'],
     primaryClinician: 'Dr. David Chen, MD (Obstetrics)',
     episodeStartDate: '2026-06-15',
-    riskCategory: 'routine',
-    riskNotes: 'Routine low-risk primigravida antenatal episode',
     facility: 'Metro Maternal Care Center - North Clinic',
     isReadyForTodayBrief: false,
     administrativeDocs: [
@@ -631,8 +627,6 @@ export const mockPatients: PatientEpisode[] = [
     allergies: ['Sulfa Drugs (Rash)'],
     primaryClinician: 'Dr. Eleanor Vance, MD (Obstetrics)',
     episodeStartDate: '2026-01-20',
-    riskCategory: 'moderate',
-    riskNotes: 'Term pregnancy with Group B Strep (GBS) positive carrier status and rapid labor history',
     facility: 'St. Jude Women\'s Health & Maternal Pavilion',
     isReadyForTodayBrief: false,
     administrativeDocs: [

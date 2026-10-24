@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { tx, useLanguage } from '../../i18n';
 import { useTour } from '../../tour/tourContext';
 import { LocationCard } from './LocationCard';
+import { TrustedPeopleCard } from './TrustedPeopleCard';
 
 const readOnlyInputStyle = { ...inputStyle, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', cursor: 'not-allowed' };
 
@@ -94,6 +95,8 @@ export function ProfilePage() {
       )}
 
       {!isLoading && profile && <LocationCard />}
+
+      {!isLoading && profile && <TrustedPeopleCard />}
 
       {!isLoading && profile && (
         <div className="glass-panel" style={{ padding: '20px 24px', marginTop: '16px' }}>

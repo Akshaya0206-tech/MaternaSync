@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AuthLayout } from './AuthLayout';
 import { Field, inputStyle } from './AuthField';
-import { register } from '../../api/auth';
+import { fetchAuthOptions, register } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { CurrentUser, UserRole } from '../../api/auth';
 import { offerTourToNewAccount } from '../../tour/tourContext';
@@ -13,12 +13,12 @@ interface SignUpProps {
   onSwitchToSignIn: () => void;
 }
 
-const ROLES: { value: UserRole; label: string }[] = [
+// Shown until the server says which roles can sign up. The care-team roles are not in this list: they only appear when the
+// server reports that the care-team login is switched on.
+const DEFAULT_ROLES: { value: UserRole; label: string }[] = [
   { value: 'patient', label: 'Patient' },
   { value: 'doctor', label: 'Doctor' },
-  { value: 'nurse', label: 'Nurse' },
-  { value: 'care_coordinator', label: 'Care Coordinator' },
-  { value: 'other', label: 'Other Care Team Member' },
+  { value: 'caregiver', label: 'Family member or trusted person' },
 ];
 
 export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignIn }) => {
@@ -27,7 +27,14 @@ export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignI
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<UserRole>('doctor');
+  const [roles, setRoles] = useState(DEFAULT_ROLES);
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetchAuthOptions().then((options) => { if (active && options.signUpRoles.length) setRoles(options.signUpRoles); }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // A patient says where they live (required: it decides which emergency numbers and hospitals they are shown) and may
   // add who to call in an emergency (optional).
@@ -66,6 +73,9 @@ export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignI
     if (role === 'patient' && !area.trim() && !coords) {
       return 'Please enter your area or city, or use your current location.';
     }
+    if (role === 'caregiver' && !inviteCode.trim()) {
+      return 'Please enter the invite code she gave you.';
+    }
     return null;
   };
 
@@ -88,7 +98,10 @@ export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignI
             hospitalName: blank(hospitalName), hospitalPhone: blank(hospitalPhone),
           }
         : undefined;
-      const result = await register({ fullName: fullName.trim(), email: email.trim(), password, confirmPassword, role, emergency });
+      const result = await register({
+        fullName: fullName.trim(), email: email.trim(), password, confirmPassword, role, emergency,
+        inviteCode: role === 'caregiver' ? inviteCode.trim() : undefined,
+      });
       // A brand-new doctor or patient is offered the guided tour on first sign-in.
       if (role === 'doctor' || role === 'patient') offerTourToNewAccount(result.user.id);
       // An area the map could not find is kept as text, but hospitals near it cannot be shown: open the Location card to fix it.
@@ -135,9 +148,22 @@ export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignI
         </div>
         <Field label="Role">
           <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} style={{ ...inputStyle, cursor: 'pointer' }}>
-            {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+            {roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </Field>
+
+        {role === 'caregiver' && (
+          <fieldset style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px', margin: 0 }}>
+            <legend style={{ padding: '0 6px', fontSize: '0.85rem', fontWeight: 700 }}>Invite code (required)</legend>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+              A family member or friend joins only when the woman invites them. Ask her to open Profile, then Trusted people, and
+              make an invite. She will see a code like ABCD-2345 that works once and expires after 48 hours. She chooses what you can see.
+            </p>
+            <Field label="Invite code">
+              <input type="text" required value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} style={inputStyle} placeholder="ABCD-2345" />
+            </Field>
+          </fieldset>
+        )}
 
         {role === 'patient' && (
           <>

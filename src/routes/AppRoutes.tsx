@@ -36,7 +36,18 @@ const GuidedCheckInPage = lazyPage(() => import('../roles/patient/GuidedCheckInP
 // The References page carries a lot of text in four languages.
 const ReferencesPage = lazyPage(() => import('../roles/patient/ReferencesPage').then(named('ReferencesPage')));
 
-// Care team
+// Caregiver (a relative or friend the woman has invited)
+const CaregiverShell = lazyPage(() => import('../roles/caregiver/CaregiverShell').then(named('CaregiverShell')), shell);
+const CaregiverHomePage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverHomePage')));
+const CaregiverAppointmentsPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverAppointmentsPage')));
+const CaregiverCheckInPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverCheckInPage')));
+const CaregiverNewCheckInPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverNewCheckInPage')));
+const CaregiverCarePlanPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverCarePlanPage')));
+const CaregiverQuestionsPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverQuestionsPage')));
+const CaregiverEmergencyPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverEmergencyPage')));
+const CaregiverUpdatesPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverUpdatesPage')));
+
+// Care team (the sign-in is switched off on the server, but these screens are kept so it can be switched back on)
 const CareTeamShell = lazyPage(() => import('../roles/careteam/CareTeamShell').then(named('CareTeamShell')), shell);
 const CareTeamDashboardPage = lazyPage(() => import('../roles/careteam/DashboardPage').then(named('DashboardPage')));
 const PatientsListPage = lazyPage(() => import('../roles/careteam/PatientsListPage').then(named('PatientsListPage')));
@@ -67,6 +78,7 @@ const DoctorHandoverPage = lazyPage(() => import('../roles/doctor/HandoverPage')
 const DoctorUpdatesPage = lazyPage(() => import('../roles/doctor/UpdatesPage').then(named('UpdatesPage')));
 const DoctorProfilePage = lazyPage(() => import('../roles/doctor/ProfilePage').then(named('ProfilePage')));
 const ReferenceLibraryPage = lazyPage(() => import('../roles/doctor/ReferenceLibraryPage').then(named('ReferenceLibraryPage')));
+const AssistantPage = lazyPage(() => import('../roles/doctor/AssistantPage').then(named('AssistantPage')));
 
 // Used by both the doctor and the care team
 const CareWorkspacePage = lazyPage(() => import('../components/continuity/CareWorkspacePage').then(named('CareWorkspacePage')));
@@ -107,6 +119,18 @@ export function AppRoutes() {
         <Route path="consent" element={<ConsentPage />} />
       </Route>
 
+      <Route path="/caregiver" element={<RequireRole role="caregiver"><CaregiverShell /></RequireRole>}>
+        <Route index element={<Navigate to="home" replace />} />
+        <Route path="home" element={<CaregiverHomePage />} />
+        <Route path="appointments" element={<CaregiverAppointmentsPage />} />
+        <Route path="check-in" element={<CaregiverCheckInPage />} />
+        <Route path="check-in/new" element={<CaregiverNewCheckInPage />} />
+        <Route path="care-plan" element={<CaregiverCarePlanPage />} />
+        <Route path="questions" element={<CaregiverQuestionsPage />} />
+        <Route path="emergency" element={<CaregiverEmergencyPage />} />
+        <Route path="updates" element={<CaregiverUpdatesPage />} />
+      </Route>
+
       <Route path="/care-team" element={<RequireRole role="care_team"><CareTeamShell /></RequireRole>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<CareTeamDashboardPage />} />
@@ -135,6 +159,7 @@ export function AppRoutes() {
         <Route path="todays-brief" element={<TodaysBriefPage />} />
         <Route path="consultations" element={<ConsultationsPage />} />
         <Route path="questions" element={<DoctorQuestionsPage />} />
+        <Route path="assistant" element={<AssistantPage />} />
         <Route path="documentation" element={<DocumentationHistoryPage />} />
         <Route path="follow-ups" element={<FollowUpsPage />} />
         <Route path="guidelines" element={<GuidelinesPage />} />

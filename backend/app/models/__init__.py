@@ -30,6 +30,8 @@ from .continuity import (DailyLog, PatientPreference, SharingConsent, CareRemind
 from .guideline import GuidelineSource, GuidelineChunk, GuidelineReview
 from .reference import ReferenceItem, ReferenceChunk, ReferenceNote
 from .emergency import PatientEmergencyProfile
+from .caregiver import CaregiverLink
+from .ai import AIRun, AIAction, ExceptionItem
 
 __all__ = [
     # legacy
@@ -68,4 +70,8 @@ __all__ = [
     "ReferenceItem", "ReferenceChunk", "ReferenceNote",
     # patient emergency details
     "PatientEmergencyProfile",
+    # trusted family members
+    "CaregiverLink",
+    # the care assistant
+    "AIRun", "AIAction", "ExceptionItem",
 ]

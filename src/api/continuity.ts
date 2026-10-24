@@ -103,8 +103,6 @@ export interface ParsedResult {
   valueText: string;
   unit: string | null;
   rangeText: string;
-  printedFlag: string | null;
-  position: "within" | "below" | "above" | "none";
   originalLine: string;
 }
 export interface ReviewNote {
@@ -150,7 +148,6 @@ export interface ClinicalOutput {
   approvedByName: string | null;
   approvedAt: string | null;
 }
-export type Tier = "urgent" | "soon" | "routine";
 export interface Flag {
   id: string;
   ruleId: string;
@@ -160,7 +157,6 @@ export interface Flag {
   value: number;
   operator: string;
   threshold: number;
-  tier: Tier;
   nextAction: string;
   sourceId: string | null;
   recordedAt: string;
@@ -181,35 +177,7 @@ export interface Trends {
   daysWithLogs: number;
   missingDays: number;
   activeRuleCount: number;
-  reviewPriority: Tier | "none";
-  tierCounts: Record<Tier, number>;
-}
-export interface SafetyAlert {
-  key: string;
-  kind: "allergy" | "pregnancy" | "interaction";
-  severity: "major" | "moderate" | "minor";
-  drugs: string[];
-  message: string;
-  management: string;
-  sourceUrl: string | null;
-  quote: string | null;
-  setTitle: string;
-  withEarlier?: boolean;
-}
-export interface SafetyCheck {
-  status: "checked" | "unchecked";
-  medicines: string[];
-  alerts: SafetyAlert[];
-  limitation: string;
-  allergiesRecorded: string[];
-  checkedAgainst: {
-    title: string;
-    version: number;
-    approvedBy: string;
-    reviewDue: string;
-    pairs: number;
-    cautions: number;
-  }[];
+  openFlagCount: number;
 }
 export interface Outreach {
   id: string;
@@ -279,7 +247,7 @@ export interface Clinic {
     lastCheckIn: string | null;
     checkInDue: string | null;
     missingCheckIn: boolean;
-    reviewPriority: Tier | "none";
+    openFlagCount: number;
     monitoringOwner: string | null;
   }[];
   metrics: {

@@ -949,7 +949,7 @@ def _build_care_team_handover_content(db: Session, episode: models.PregnancyEpis
     who_owns_it = f"{current_user.full_name} (coordination)" + (f", {doctor.full_name} (clinical)." if doctor else ".")
 
     return {
-        "context": f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d, risk: {episode.risk_category}.",
+        "context": f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d.",
         "what_happened": what_happened, "what_remains": what_remains,
         "who_owns_it": who_owns_it, "what_to_discuss": what_to_discuss,
     }

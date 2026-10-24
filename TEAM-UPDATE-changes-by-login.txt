@@ -1,0 +1,242 @@
+=====================================================================================
+MATERNASYNC - TEAM UPDATE: ALL CHANGES, BY LOGIN
+Prepared 25 Oct 2026, from the work done by Andry (with Claude Code)
+=====================================================================================
+
+HOW TO READ THIS
+  [A] = already committed (commit 8f7785a "new rework of patient + doctor tab", 24 Oct)
+  [B] = done after that commit and NOT committed or pushed yet (about 74 files changed)
+  NEW / CHANGED / REMOVED mark what happened to each item.
+
+BEFORE YOU PULL / RUN  (important for [B])
+  1. Install the new backend library:  pip install -r backend/requirements.txt
+     (adds langgraph; "anthropic" is optional, only for the Claude option)
+  2. Backend:  backend/venv/Scripts/python.exe -m uvicorn backend.app.main:app --port 8001
+     Frontend: npm run dev   then open http://localhost:5173/signin
+     (Andry's own copy runs the API on 8003; the README has the exact commands.)
+  3. New database tables are created automatically on start. No manual migration.
+  4. Demo logins (all synthetic data):
+       Patient    sarah.jenkins@maternasync.app   SarahDemo123!
+       Doctor     demo@maternasync.app            MaternaDemo123!
+       Caregiver  ravi.jenkins@maternasync.app    RaviDemo123!   (Sarah's husband, all permissions)
+       Care Team  brenda.miller@maternasync.app   BrendaDemo123! (REFUSED unless the flag below is on)
+
+-------------------------------------------------------------------------------------
+THE FIVE BIG CHANGES IN ONE GLANCE
+-------------------------------------------------------------------------------------
+  1. [B] Care-team login is SWITCHED OFF (code kept). Replaced by an AI care assistant + doctor.
+  2. [B] NEW "Caregiver" login for a relative or friend the pregnant woman invites.
+  3. [B] NEW AI care assistant (LangGraph) doing routine admin work, doctor approves in the app.
+  4. [B] Scope clean-up for the hackathon: risk labels, drug-safety check, BP/weight rules removed.
+  5. [A] Patient app: Emergency help, Location, References, step-by-step check-in, tour, text size.
+
+=====================================================================================
+SIGN-IN AND SIGN-UP PAGES (everyone)
+=====================================================================================
+  [A] Sign-up now offers "Patient". A patient MUST give a location (area/city or device location);
+      emergency contact and preferred hospital are optional. Location is saved in the same
+      request as the account (all or nothing). If the map cannot find the area, the patient is
+      sent to Profile -> Location and a banner stays until it is fixed.
+  [B] CHANGED Sign-up roles are now exactly: Patient, Doctor, Family member or trusted person.
+      Nurse / Care Coordinator / Other Care Team Member are hidden and refused by the server.
+  [B] NEW Choosing "Family member or trusted person" shows an Invite code box (no location asked).
+  [B] CHANGED Sign-in: "Demo Care Team" button and care-team demo credentials are hidden.
+      A "Demo Caregiver" button was added. A care-team login shows a plain message:
+      "The care-team sign-in is switched off..."
+  [B] An old care-team session token is signed out automatically (403 clears the token).
+
+=====================================================================================
+PATIENT LOGIN
+=====================================================================================
+  Sidebar / pages added or changed
+  [A] NEW  Emergency help - red button at the top of the sidebar, always visible.
+           Shows numbers to call (112, 108, 102, 181), her own emergency contact, preferred
+           hospital and nearby hospitals (OpenStreetMap). Pressing it alerts nobody.
+           Location stays on the patient's device/profile and is never shown to doctors.
+  [A] NEW  Profile -> Location card (saved area, edit, "Use my current location").
+           Banner if she is >25 km from the saved place, or if no usable location is saved.
+  [A] NEW  References tab (above Updates): 14 topics + 5 helplines in 4 languages, read-aloud,
+           official sources on each topic.
+  [A] NEW  Daily Check-in: tap-to-add symptom buttons with an "Other" box.
+  [A] NEW  Daily Check-in -> "Step-by-step check-in": one question at a time, big buttons,
+           read-aloud, skip any question. Saves a normal check-in plus a "who helped" note
+           (shown to the doctor in the trends table as "with help from ...").
+  [A] NEW  Text size control (normal / large / extra large) in every sidebar, skip-to-content link.
+  [A] NEW  Guided tour: offered on first sign-in; "Start a tour" always on Profile.
+  [A] CHANGED Pages download only when opened (faster on weak networks).
+  [B] NEW  Profile -> "Trusted people" card (below Location). She:
+             - invites a relative/friend and gets an invite code (shown ONCE, single use,
+               expires in 48 hours, stored only as a hash; she can make a new code)
+             - ticks what that person may do: appointments (on by default), daily check-ins,
+               care plan, questions, emergency details (all off until she ticks them)
+             - sees what each person did ("See what they did")
+             - removes them; access ends on the very next request
+  [B] NEW  My Questions -> "Talk to a person" card. Always works, goes straight to a doctor,
+           even if the assistant is switched off.
+  [B] NEW  Updates now also shows what the assistant sends: fixed urgent message ("Please get
+           help now ... call 112") and fixed reminders for missed check-ins, in her language.
+  [B] CHANGED Replies approved with the assistant's help say so ("prepared by the clinic's care
+           assistant and approved by a doctor").
+  [B] REMOVED "High Risk / Moderate Risk" labels and risk category on patient-facing screens.
+  [B] CHANGED Lab report explanation shows each result as printed with the range printed on the
+           report. The "above / below / within range" wording was removed.
+  [A] FIXED  Language no longer flips back when a late server preference arrives.
+  [A] FIXED  Patient with no pregnancy record yet: pages explain it instead of erroring.
+
+=====================================================================================
+CAREGIVER LOGIN  (NEW, all [B])
+=====================================================================================
+  Who: a relative or friend of the pregnant woman. The WOMAN owns the access.
+  How they join: sign up as "Family member or trusted person" with her invite code, or use the
+  Demo Caregiver button. One caregiver can look after more than one woman (one code each).
+  Workspace (/caregiver/...): the menu shows ONLY the pages she allowed.
+    Home          - who they help, what is allowed / not allowed, next appointments, last
+                    check-in, "Talk to a person", "Looking after someone else too?" (add code)
+    Appointments  - her visits                                         (needs: appointments)
+    Daily Check-in- recent check-ins + step-by-step form; saved as "Family member: <their name>"
+                    taken from their login, never from the browser     (needs: check_in)
+    Care plan     - ONLY summaries a doctor approved and released to her  (needs: care_plan)
+    Questions     - ask the clinic, read approved replies               (needs: questions)
+    Emergency help- numbers, her contact, preferred hospital            (needs: emergency)
+    Updates       - reminders and replies for them
+    Sidebar: language switcher (EN/HI/TA/TE, saved to their own account), text size, red
+    "Emergency help" or "Talk to a person" button, banner "You are looking after <name>".
+  Safety rules in the code
+    - Every caregiver endpoint re-checks the link, the owner and the permission on EVERY request.
+    - Wrong id, someone else's link and a removed link all give the same refusal.
+    - Caregiver cannot open patient, doctor, assistant or shared-episode endpoints.
+    - Invite problems (bad / expired / used) all give one message so codes cannot be guessed.
+    - Caregiver actions are written to the audit log; she can read them.
+
+=====================================================================================
+DOCTOR LOGIN
+=====================================================================================
+  [A] NEW  Reference Library tab: private shelf of 76 real documents (WHO, MoHFW/NHM/ICMR/FOGSI,
+           NICE ...). Plain-word search ("sugar" finds gestational diabetes), typo-tolerant,
+           returns matching passages with PDF page numbers from 15 openly licensed PDFs.
+           Doctor can add own references and private notes. Feeds nothing else in the app.
+  [A] CHANGED Handover is PAUSED (page says so; server refuses with HTTP 423).
+  [A] NEW  Tour + "Start a tour" on Profile; text size control.
+  [A] FIXED Reference Library search no longer shows stale results while typing.
+  [B] NEW  Care Assistant tab (sidebar, between Patient Questions and Documentation, shows
+           "N open"). Cards:
+             Status            - mode, model step, waiting count, handled today, "Check now"
+             Needs you         - proposals (Approve / Dismiss) and hand-offs (I have seen this)
+             Recently decided  - who decided and when
+             What the assistant did - full log of every step
+           Approving runs the step under the DOCTOR's own name.
+  [B] NEW  Dashboard card "Care Assistant: needs you"; tour has a new Care Assistant step (17 steps).
+  [B] REMOVED Risk labels and "Risk: ..." text in Today's Brief, Consultations, patient headers,
+           top utility bar, patients list and visit context.
+  [B] CHANGED Clinic Overview: column "Review priority" is now "Follow-up flags" ("N waiting").
+  [B] CHANGED Connected Care -> Trends & pathways: only administrative follow-up flags
+           (missed check-in, overdue task). Blood-pressure/weight rules and urgent/soon/routine
+           levels were REMOVED. Flag card says "Follow-up in the rule".
+  [B] CHANGED Clinical Settings: tab "Review rules" is now "Follow-up rules"; tab "Drug safety
+           checks" REMOVED; follow-up rules and templates no longer need a source link to approve.
+  [B] REMOVED Document Studio -> Prescription: the automated drug safety check. The screen says
+           MaternaSync does not check medicines, doses, allergies or interactions.
+  [B] Patient Questions page: unchanged for doctors, but clinical questions now arrive already
+           assigned to them by the assistant (no care-team triage task).
+
+=====================================================================================
+CARE TEAM LOGIN  (switched off, kept)
+=====================================================================================
+  [B] CHANGED Sign-in is refused (HTTP 403 with explanation) and old tokens stop working.
+  [B] CHANGED New uploads and patient questions no longer create care-team tasks/notifications
+      while it is off; the care assistant handles them.
+  [B] KEPT    ALL care-team pages, routes, endpoints, screens and tests are still in the code.
+  TO BRING IT BACK: set MATERNASYNC_CARE_TEAM_ENABLED=true and restart. Everything returns
+  (demo button, sign-up roles, automatic tasks). The test setup runs with it ON on purpose.
+  [A] Handover paused here too. Care-team Profile has no tour.
+  Not done: doctor screens that mention the care team (for example assigning to them) were not
+  reworded. Decide with the team whether to hide those.
+
+=====================================================================================
+THE AI CARE ASSISTANT  (system behind the doctor's Care Assistant tab, all [B])
+=====================================================================================
+  Code: backend/app/ai_coordinator/ (LangGraph graphs + policy engine + 7 registered tools)
+  What it does
+    - New upload: checks name, record number, date, duplicates. Only PROPOSES verify/reject.
+      Looks like someone else's, or says it is urgent -> handed to the doctor.
+    - New question: urgent wording -> fixed emergency message in her language at once + urgent
+      alert to the doctor. Clinical/unclear -> assigned to a doctor, NO draft answer.
+      Administrative (next appointment, how to upload) -> fixed-wording proposed reply.
+    - Missed check-in: one fixed reminder a day to her and to trusted people she allowed;
+      after 3, asks a doctor to look. Wording says a missing entry is not a sign of anything.
+    - Task overdue 3+ days: raised to the doctor once.
+  What it will NEVER do: diagnose, advise on treatment, answer a clinical question, interpret a
+  document, release anything to a patient without a doctor, or act on another patient's data.
+  Guards: modes off / shadow (records only) / assist (no autonomous mode); kill switch read on
+  every step; same-patient and recipient checks; each step only once; daily cap per patient;
+  every stopped or failed step becomes an item for the doctor; every step logged with mode,
+  provider, prompt version. Its own account cannot sign in.
+  Model step: default "rules" (plain code, nothing leaves the server). Optional Claude provider
+  (MATERNASYNC_AI_PROVIDER=claude): names/record numbers removed first; the more cautious of
+  model and fixed word-lists wins. NOT yet tested against the live Claude API.
+  Runs in the background: queue every 5 seconds, follow-up checks every 30 minutes.
+
+=====================================================================================
+SETTINGS (environment variables)
+=====================================================================================
+  MATERNASYNC_CARE_TEAM_ENABLED    default false. true = care-team login back on.
+  MATERNASYNC_AI_COORDINATOR_MODE  off | shadow | assist (default assist). Also the kill switch.
+  MATERNASYNC_AI_PROVIDER          rules (default) | claude
+  MATERNASYNC_AI_MODEL             for claude; default claude-opus-5-5 (claude-haiku-5-5 is cheaper)
+  MATERNASYNC_AI_WORKER            background job on/off, default true
+  MATERNASYNC_AI_DAILY_CAP         assistant steps per patient per day, default 40
+  (Older flags unchanged: MATERNASYNC_HANDOVER_PAUSED, _DEMO_ENABLED, _WHATSAPP_*, etc.)
+
+=====================================================================================
+BACKEND CHANGES AT A GLANCE (for developers)
+=====================================================================================
+  New tables:    ai_runs, ai_actions, exception_items, caregiver_links
+  New role:      "caregiver" (plus an internal "ai_coordinator" service account)
+  New endpoints: /api/v2/assistant/*  (doctor: status, exceptions, decide, activity, run-now;
+                                       patient: talk-to-a-person)
+                 /api/v2/patient/caregivers/*  (the woman: invite, permissions, remove, activity)
+                 /api/v2/caregiver/*  (the trusted person's own workspace)
+                 /api/auth/options  (what sign-up offers)
+  Key new files: ai_coordinator/, routers/assistant.py, routers/caregiver.py,
+                 caregiver_service.py, seed_assistant.py, models/ai.py, models/caregiver.py
+  Key frontend:  src/roles/caregiver/, src/roles/doctor/AssistantPage.tsx,
+                 src/roles/patient/TrustedPeopleCard.tsx, GuidedCheckInForm.tsx (shared)
+  Removed files: backend/app/drug_safety.py and data/drug_safety_labels.json. On start-up the app
+                 also deletes leftover drug-safety lists and BP/weight rules from old databases.
+  Sign-in check lives in one place: deps.refuse_sign_in.
+
+=====================================================================================
+TESTS - WHAT WAS RUN
+=====================================================================================
+  Backend: 100 unit/integration tests pass (46 existing + 54 new).
+    Run:  backend/venv/Scripts/python.exe -m unittest discover -s backend/tests
+    New file: backend/tests/test_assistant_caregiver.py ; shared setup: backend/tests/testenv.py
+  Frontend: type-check, production build and translation check (node tests/i18n-coverage.mjs)
+    pass; lint shows warnings only, no errors.
+  Browser (Playwright): full flow tested - invite, caregiver sign-up, permissions, step-by-step
+    check-in, assistant proposals approved by a doctor, removal. Older big browser scripts
+    still pass with the care-team login switched on. Accessibility scan (axe) of all new and
+    changed pages in English and Tamil: no serious problems.
+
+=====================================================================================
+KNOWN GAPS / THINGS THE TEAM SHOULD KNOW
+=====================================================================================
+  - NOT BUILT as assistant workflows: scheduling, referrals, WhatsApp outreach, paperwork drafts,
+    outcomes reporting, handover. No autonomous mode. No per-step undo. No evaluation set yet.
+  - The default demo "AI" is rules-based. The Claude provider is written but untested live. If
+    used for real, names are removed but document text is still sent: needs a data agreement.
+  - Hindi / Tamil / Telugu text (about 100 new strings) was written by Claude and needs a native
+    speaker's review. Sign-in, sign-up and doctor screens are English only.
+  - A caregiver needs an email + password. No SMS/WhatsApp alerts to caregivers.
+  - A caregiver's question and its reply are visible to the caregiver and the doctor; the woman
+    sees it under Profile -> Trusted people -> "See what they did".
+  - First download grew about 8 kB (sign-in about 133 kB compressed) because translations are bundled.
+  - Still missing against the hackathon rules: a 60-90 day impact measurement plan, and light
+    integration with existing systems (the app is standalone).
+  - Nearest item to the "no interpretation / no decision support" line: ICD-10 candidate codes
+    (phrase matching on the doctor's own note; the doctor ticks each code).
+  - All [B] work is uncommitted. Ask Andry to commit and push before you rely on it.
+
+=====================================================================================
+END
+=====================================================================================

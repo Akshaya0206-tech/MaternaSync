@@ -104,7 +104,7 @@ export const AddWorkflowItemModal: React.FC<AddWorkflowItemModalProps> = ({
             <input
               type="text"
               required
-              placeholder="e.g. Schedule High-Risk MFM Ultrasound Consult"
+              placeholder="e.g. Schedule growth ultrasound consult"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               style={{

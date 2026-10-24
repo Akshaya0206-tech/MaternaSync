@@ -285,8 +285,6 @@
 .continuity-table th,
 .continuity-table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
 .continuity-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--text-muted); }
-.continuity-pos-below,
-.continuity-pos-above { font-weight: 700; color: var(--amber-pending); }
 .companion { display: grid; gap: 14px; }
 .companion-log { display: flex; flex-direction: column; gap: 12px; max-height: 56vh; overflow-y: auto; padding: 4px; }
 .companion-bubble {
@@ -404,3 +402,29 @@
 
 /* Long plain-language sections read better one per row than in narrow columns. */
 .continuity-fields.continuity-fields-wide { grid-template-columns: 1fr; }
+
+/* Trusted people (patient Profile) and the caregiver workspace. */
+.continuity-list { margin: 8px 0; padding-left: 20px; line-height: 1.7; font-size: 0.88rem; }
+.trusted-permissions { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px; margin: 10px 0; display: grid; gap: 8px; }
+.trusted-permissions legend { padding: 0 6px; font-size: 0.8rem; font-weight: 700; }
+.trusted-permission { display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem; line-height: 1.45; cursor: pointer; }
+.trusted-permission input { margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0; }
+.trusted-card input:not([type="checkbox"]) { width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px; background: var(--bg-tertiary); color: var(--text-primary); font: inherit; font-size: 0.875rem; min-width: 0; }
+.trusted-code { margin: 10px 0 14px; }
+.trusted-code-value { margin: 8px 0; font-size: 1.9rem; font-weight: 800; letter-spacing: 0.12em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.trusted-invite { margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--border-color); }
+.danger-action { color: var(--rose-urgent); border-color: var(--rose-urgent); }
+.caregiver-banner { margin: 14px 24px 0; }
+.caregiver-banner select { margin-left: 4px; }
+
+/* Care assistant (doctor). */
+.assistant-status { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 0 0 10px; font-size: 0.88rem; }
+.assistant-status dt { font-weight: 700; color: var(--text-muted); }
+.assistant-status dd { margin: 0; }
+.assistant-urgent { border-left: 4px solid var(--rose-urgent); padding-left: 12px; }
+.assistant-preview { margin: 8px 0; padding: 10px 14px; border-left: 3px solid var(--teal-primary); background: var(--bg-tertiary); white-space: pre-wrap; font-size: 0.86rem; line-height: 1.55; }
+.assistant-note { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; max-width: 460px; font-size: 0.8rem; }
+.assistant-log-wrap { overflow-x: auto; }
+.assistant-log { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.assistant-log th, .assistant-log td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+.assistant-log th { color: var(--text-muted); font-weight: 700; white-space: nowrap; }

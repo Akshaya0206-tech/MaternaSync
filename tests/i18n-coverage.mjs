@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const scanned = [
   join(root, "src", "roles", "patient"),
+  join(root, "src", "roles", "caregiver"), // the trusted person's pages use the same four languages
   join(root, "src", "components", "continuity", "shared.tsx"),
   join(root, "src", "routes", "LoadStates.tsx"), // the loading and "could not load this page" messages
 ];

@@ -30,17 +30,9 @@ EDUCATION_BODY = {
 }
 
 
-# (title, metric, "greater than" threshold, review priority, next action). Blood-pressure bands follow the severity
-# definitions in NICE NG133 (mild 140/90, severe 160/110); a reading AT the band triggers, hence thresholds of 139/89/159/109.
+# (title, metric, "greater than" threshold, level, next action). Follow-up rules only watch whether check-ins and
+# tasks are happening. None of them reads a blood pressure, a weight or any other clinical value.
 REVIEW_RULES = [
-    ("Severe-range systolic BP reading (160 mmHg or higher)", "systolic", 159, "urgent",
-     "Review this reading today and decide what the patient needs, including whether to contact them now."),
-    ("Severe-range diastolic BP reading (110 mmHg or higher)", "diastolic", 109, "urgent",
-     "Review this reading today and decide what the patient needs, including whether to contact them now."),
-    ("Raised systolic BP reading (140 mmHg or higher)", "systolic", 139, "soon",
-     "Review at the next opportunity and decide whether to contact the patient or ask for a repeat reading."),
-    ("Raised diastolic BP reading (90 mmHg or higher)", "diastolic", 89, "soon",
-     "Review at the next opportunity and decide whether to contact the patient or ask for a repeat reading."),
     ("No agreed check-in for more than 7 days", "missing_days", 7, "routine",
      "Contact the patient to ask whether they need help completing check-ins. A missing entry is not evidence of a problem."),
     ("Overdue follow-up task", "overdue_task_days", 0, "routine",
@@ -111,18 +103,29 @@ def icd10_sets():
     return sets
 
 
-def drug_safety_set():
-    """Label-sourced interaction pairs and pregnancy cautions for the prescription safety check (a draft until a doctor approves it)."""
-    config = json.loads((DATA_DIR / "drug_safety_labels.json").read_text(encoding="utf-8"))
-    return dict(
-        key="drug-safety-labels", kind="interaction", title="Drug safety checks from US product labels (DailyMed)",
-        issuer="FDA-approved product labelling on DailyMed; selection to be reviewed by the clinic", topic="Drug safety", jurisdiction="United States",
-        source_url="https://dailymed.nlm.nih.gov/", section="Boxed warnings, contraindications and drug-interaction sections", publication_date="2026",
-        content=(f"A limited list of {len(config['pairs'])} drug interactions and {len(config['cautions'])} pregnancy cautions taken from US FDA product labels on DailyMed (read in October 2026). "
-                 "Every entry quotes the label wording and links to the label. Medicines are matched by generic name; brand names are not recognised. "
-                 "US labels can differ from the products used in India, and this is not a complete interaction database. A doctor should review the entries "
-                 "and can extend the list by creating a new version."),
-        configuration=config)
+def remove_withdrawn_features(db):
+    """The app no longer checks prescriptions for drug interactions, and no longer flags blood pressure or weight.
+    Lists and rules made for those checks (starter or doctor-made) can no longer be used, so they are removed
+    from existing databases, together with anything attached to them."""
+    clinical_metrics = ("systolic", "diastolic", "weight_kg")
+    rules = db.query(models.ClinicalResource).filter(models.ClinicalResource.kind.in_(["interaction", "rule"])).all()
+    gone = [r for r in rules if r.kind == "interaction" or (r.configuration or {}).get("metric") in clinical_metrics]
+    # The two follow-up rules that stay were once labelled with a blood-pressure guideline; correct the description only.
+    relabelled = 0
+    for r in rules:
+        if r not in gone and r.kind == "rule" and "NICE NG133" in (r.issuer or ""):
+            r.issuer, r.topic, r.jurisdiction, r.source_url, r.section = "Clinic governance owner", "Follow-up rules", "India", "", "Local administrative follow-up"
+            relabelled += 1
+    if relabelled:
+        db.commit()
+    if not gone:
+        return
+    ids = [r.id for r in gone]
+    db.query(models.ReferenceAttachment).filter(models.ReferenceAttachment.resource_id.in_(ids)).delete(synchronize_session=False)
+    for resource in gone:
+        db.delete(resource)
+    db.commit()
+    print(f"Removed {len(gone)} drug-safety list(s) and blood-pressure/weight review rule(s) that the app no longer uses.")
 
 
 # A home location for each demonstration patient, so Profile and Emergency help show a saved location. They are
@@ -167,18 +170,15 @@ def run_seed_continuity(db):
             content="Starter administrative workflow only. A clinician must adapt the steps and timing to the documented care plan, approve the version, and confirm enrollment.",
             configuration={"steps": [{"title": "Confirm the documented follow-up plan with the assigned clinician", "days": 0}, {"title": "Contact patient to arrange the clinician-requested follow-up", "days": 1}]}))
     resources.extend(icd10_sets())
-    resources.append(drug_safety_set())
     for topic, versions in CONDITION_TEXT.items():
         for language, (title, body) in versions.items():
             resources.append(dict(key=f"condition-{topic}-{language}", kind="education", language=language, title=title, issuer="Clinic education owner", topic=topic,
                 stage="all", source_url=CONDITION_SOURCES[topic], section="Patient explanation draft for clinician confirmation", content=body))
     for title, metric, threshold, tier, action in REVIEW_RULES:
-        resources.append(dict(key="rule-" + title, kind="rule", title=title, issuer="Clinic governance owner (thresholds from NICE NG133)", topic="Review rules",
-            jurisdiction="United Kingdom", source_url="https://www.nice.org.uk/guidance/ng133", section="Hypertension in pregnancy: severity of hypertension",
-            content=("Review flag for patient-reported values. A flag asks a clinician to look; it is not a diagnosis and it never contacts the patient or changes the record by itself. "
-                     "Patient-entered readings may be inaccurate. Confirm the threshold against your own protocol before approving."
-                     if metric in ("systolic", "diastolic") else
-                     "Administrative review flag. It asks a clinician or coordinator to follow up; it is not evidence of a clinical problem or of non-adherence."),
+        resources.append(dict(key="rule-" + title, kind="rule", title=title, issuer="Clinic governance owner", topic="Follow-up rules",
+            jurisdiction="India", source_url="", section="Local administrative follow-up",
+            content="Administrative follow-up flag. It asks a clinician or coordinator to follow up on a missed check-in or an overdue task. "
+                    "It never reads a clinical value, it is not evidence of a clinical problem or of non-adherence, and it never contacts the patient or changes the record by itself.",
             configuration={"metric": metric, "operator": "gt", "threshold": threshold, "tier": tier, "nextAction": action}))
     for topic, stage in EDUCATION_TOPICS:
         resources.append(dict(key="education-" + topic, kind="education", title=f"Preparing to discuss {topic.lower()}", issuer="Clinic education owner", topic=topic, stage=stage,

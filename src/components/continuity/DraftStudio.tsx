@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import { ROOT, languages, formatTime } from "../../api/continuity";
@@ -7,7 +7,6 @@ import type {
   ClinicalOutput,
   Language,
   Resource,
-  SafetyCheck,
   Workspace,
 } from "../../api/continuity";
 import { Badge, Empty, Feedback, Field, Panel, useAction } from "./shared";
@@ -201,11 +200,9 @@ export function DraftStudio({
           {kind === "prescription" && (
             <div className="continuity-note">
               Enter the medicine, dose, route, frequency and duration yourself;
-              nothing is suggested. After you save, a drug safety check runs
-              against the patient&apos;s recorded allergies and the reviewed,
-              label-sourced lists a doctor approved in Clinical Settings.
-              It is not a complete interaction database, so review
-              independently before signing.
+              nothing is suggested. MaternaSync does not check medicines, doses,
+              allergies or interactions. The prescription is yours to write,
+              check and sign, so use a full drug reference before signing.
             </div>
           )}
           <button className="btn-primary" disabled={action.busy || !source}>
@@ -251,13 +248,6 @@ export function DraftStudio({
   );
 }
 
-const positionLabels: Record<string, string> = {
-  within: "Within printed range",
-  below: "Below printed range",
-  above: "Above printed range",
-  none: "No printed range",
-};
-
 function OutputEditor({
   output,
   appointments,
@@ -276,30 +266,6 @@ function OutputEditor({
   const [structured, setStructured] = useState(output.structuredData || {});
   const [appointmentId, setAppointmentId] = useState(output.appointmentId ?? "");
   const parsed = output.sourceSnapshot?.parsedResults ?? [];
-  const [safety, setSafety] = useState<SafetyCheck | null>(null);
-  const [safetyError, setSafetyError] = useState("");
-  const [acknowledged, setAcknowledged] = useState<string[]>([]);
-  const checking = doctor && output.kind === "prescription" && output.status === "DRAFT";
-  // Re-run the check whenever the saved medicines change (every save bumps the revision).
-  useEffect(() => {
-    if (!checking) return;
-    let active = true;
-    api
-      .get<SafetyCheck>(`${ROOT}/outputs/${output.id}/safety-check`)
-      .then((r) => {
-        if (!active) return;
-        setSafety(r);
-        setSafetyError("");
-        setAcknowledged((old) => old.filter((key) => r.alerts.some((a) => a.key === key)));
-      })
-      .catch((e) => {
-        if (active) setSafetyError(e.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, [checking, output.id, output.revision]);
-  const unacknowledged = safety?.alerts.filter((a) => !acknowledged.includes(a.key)) ?? [];
   const [publish, setPublish] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
   const [codes, setCodes] = useState<
@@ -356,15 +322,15 @@ function OutputEditor({
         <div className="continuity-table-wrap">
           <table className="continuity-table">
             <caption className="continuity-muted">
-              Values read automatically from the verified report. Compare each
-              row with the original line before approving.
+              Values read automatically from the verified report, beside the
+              range printed on it. They are not labelled normal or abnormal.
+              Compare each row with the original line before approving.
             </caption>
             <thead>
               <tr>
                 <th>Test (as printed)</th>
                 <th>Value</th>
                 <th>Printed range</th>
-                <th>Position</th>
                 <th>Original line</th>
               </tr>
             </thead>
@@ -376,10 +342,6 @@ function OutputEditor({
                     {row.valueText} {row.unit ?? ""}
                   </td>
                   <td>{row.rangeText || "—"}</td>
-                  <td className={`continuity-pos-${row.position}`}>
-                    {positionLabels[row.position]}
-                    {row.printedFlag ? ` (report flag: ${row.printedFlag})` : ""}
-                  </td>
                   <td>{row.originalLine}</td>
                 </tr>
               ))}
@@ -432,75 +394,13 @@ function OutputEditor({
           </Field>
         ))}
       </div>
-      {checking && (
-        <section className="continuity-section continuity-section-results" aria-label="Drug safety check">
-          <h4>Drug safety check</h4>
-          <p className="continuity-muted">
-            Runs on the medicines you have saved in this draft. Save your edits
-            to re-check.
-          </p>
-          {safetyError && <p role="alert" className="continuity-alert">{safetyError}</p>}
-          {safety && (
-            <>
-              <p className="continuity-section-note">
-                {safety.status === "checked"
-                  ? `Checked against: ${safety.checkedAgainst.map((s) => `${s.title} v${s.version} (${s.pairs} interaction pairs, ${s.cautions} pregnancy cautions, approved by ${s.approvedBy})`).join("; ")}.`
-                  : "No drug-safety list is approved yet, so interactions and pregnancy cautions are UNCHECKED. A doctor can approve the label-sourced list under Clinical Settings → Drug safety checks."}
-                {" "}
-                Allergies recorded for this patient:{" "}
-                {safety.allergiesRecorded.length
-                  ? safety.allergiesRecorded.join(", ")
-                  : "none recorded"}
-                .
-              </p>
-              <p className="continuity-muted">{safety.limitation}</p>
-              {!safety.medicines.length && (
-                <p className="continuity-muted">Enter a medicine and save to run the check.</p>
-              )}
-              {safety.medicines.length > 0 && !safety.alerts.length && (
-                <p className="continuity-success">
-                  No alert for: {safety.medicines.join(", ")}. This is not a statement that the
-                  combination is safe.
-                </p>
-              )}
-              {safety.alerts.map((a) => (
-                <div key={a.key} className="continuity-note" style={{ borderLeftColor: a.severity === "major" ? "var(--rose-urgent)" : "var(--amber-pending)" }}>
-                  <strong>
-                    {a.kind === "allergy" ? "Allergy" : a.kind === "pregnancy" ? "Pregnancy caution" : "Interaction"} ·{" "}
-                    {a.severity.toUpperCase()} · {a.drugs.join(" + ")}
-                    {a.withEarlier ? " (with an earlier prescription)" : ""}
-                  </strong>
-                  <p>{a.message}</p>
-                  {a.management && <p className="continuity-muted">{a.management}</p>}
-                  {a.quote && <p className="continuity-muted">Label wording: “{a.quote}”</p>}
-                  <p className="continuity-muted">
-                    {a.setTitle}
-                    {a.sourceUrl && (
-                      <>
-                        {" · "}
-                        <a href={a.sourceUrl} target="_blank" rel="noreferrer">
-                          Product label
-                        </a>
-                      </>
-                    )}
-                  </p>
-                  <label className="continuity-check">
-                    <input
-                      type="checkbox"
-                      checked={acknowledged.includes(a.key)}
-                      onChange={(e) =>
-                        setAcknowledged((old) =>
-                          e.target.checked ? [...old, a.key] : old.filter((k) => k !== a.key),
-                        )
-                      }
-                    />
-                    I have read this alert and decided how to proceed.
-                  </label>
-                </div>
-              ))}
-            </>
-          )}
-        </section>
+      {doctor && output.kind === "prescription" && draft && (
+        <p className="continuity-note">
+          The allergies recorded for this patient are shown at the top of the
+          draft for your reference. MaternaSync does not check this prescription
+          for allergies, interactions or doses. Check a full drug reference
+          before you sign.
+        </p>
       )}
       {doctor && draft && (
         <>
@@ -579,8 +479,7 @@ function OutputEditor({
             {(doctor || output.kind === "reply") && (
               <button
                 className="btn-primary"
-                disabled={action.busy || !confirmed || unacknowledged.length > 0}
-                title={unacknowledged.length ? "Acknowledge every drug-safety alert first" : undefined}
+                disabled={action.busy || !confirmed}
                 onClick={() =>
                   action.run(
                     async () => {
@@ -592,7 +491,6 @@ function OutputEditor({
                             confirmed: true,
                             visibleToPatient: publish,
                             revision: saved.revision,
-                            acknowledgedAlerts: acknowledged,
                           },
                         );
                         await onChange(approved);

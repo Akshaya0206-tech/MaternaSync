@@ -21,7 +21,6 @@ export interface PatientSummary {
   edd: string;
   gestationalAgeWeeks: number;
   gestationalAgeDays: number;
-  riskCategory: 'routine' | 'moderate' | 'high_risk';
   recordCount: number;
   openWorkflowCount: number;
 }
@@ -40,8 +39,6 @@ interface PatientDto {
   allergies: string[];
   primaryClinician: string;
   episodeStartDate: string;
-  riskCategory: 'routine' | 'moderate' | 'high_risk';
-  riskNotes: string;
   facility: string;
   isReadyForTodayBrief: boolean;
   handoffTimestamp: string | null;
@@ -221,8 +218,6 @@ export async function fetchFullEpisode(patientId: string): Promise<PatientEpisod
     allergies: patient.allergies,
     primaryClinician: patient.primaryClinician,
     episodeStartDate: patient.episodeStartDate,
-    riskCategory: patient.riskCategory,
-    riskNotes: patient.riskNotes,
     facility: patient.facility,
     isReadyForTodayBrief: patient.isReadyForTodayBrief,
     handoffTimestamp: patient.handoffTimestamp || undefined,

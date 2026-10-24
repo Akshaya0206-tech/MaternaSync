@@ -26,9 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchCurrentUser()
       .then(setUser)
       .catch((err) => {
-        // Only a 401 means the token is invalid. A 5xx or dropped connection is
-        // transient — keep the token so a reload recovers instead of logging out.
-        if (err instanceof ApiError && err.status === 401) setToken(null);
+        // A 401 means the token is invalid, and a 403 means the account may no longer sign in (the care-team login can be
+        // switched off). A 5xx or dropped connection is transient — keep the token so a reload recovers instead of logging out.
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) setToken(null);
       })
       .finally(() => setIsLoading(false));
   }, []);

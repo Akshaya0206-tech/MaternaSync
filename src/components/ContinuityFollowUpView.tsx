@@ -465,7 +465,7 @@ export const ContinuityFollowUpView: React.FC<ContinuityFollowUpViewProps> = ({
             </div>
             <div style={{ padding: '22px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <HandoverSection icon={<FileText size={16} style={{ color: 'var(--accent-blue)' }} />} title="Context">
-                GA {episode.gestationalAgeWeeks}w {episode.gestationalAgeDays}d · Risk category: {episode.riskCategory === 'high_risk' ? 'High Risk' : episode.riskCategory === 'moderate' ? 'Moderate' : 'Routine'} · Attending: {episode.primaryClinician} · {episode.facility}.
+                GA {episode.gestationalAgeWeeks}w {episode.gestationalAgeDays}d · Attending: {episode.primaryClinician} · {episode.facility}.
               </HandoverSection>
               <HandoverSection icon={<Stethoscope size={16} style={{ color: 'var(--accent-teal)' }} />} title="What Happened">
                 {latestVisit ? `${latestVisit.title} (${formatDate(latestVisit.timestamp)}): ${latestVisit.summaryText}` : 'No consultation documentation recorded yet.'}

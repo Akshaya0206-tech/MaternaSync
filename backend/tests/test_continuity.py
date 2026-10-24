@@ -6,10 +6,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-_temp = tempfile.TemporaryDirectory(prefix="maternasync-test-")
-os.environ["MATERNASYNC_DATABASE_URL"] = "sqlite:///" + _temp.name.replace("\\", "/") + "/test.db"
-os.environ["MATERNASYNC_UPLOAD_DIR"] = _temp.name + "/uploads"
-os.environ["MATERNASYNC_DEMO_ENABLED"] = "true"
+import testenv  # noqa: F401: sets the isolated database and settings before the app is imported
 
 from fastapi.testclient import TestClient
 from backend.app.main import app
@@ -37,8 +34,6 @@ class ContinuityTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.client_context.__exit__(None, None, None)
-        engine.dispose()
-        _temp.cleanup()
 
     def request(self, method, path, role="doctor", payload=None, expected=200):
         if path.startswith(ROOT + "/outputs/") and path.endswith("/approve") and payload is not None and "revision" not in payload:
@@ -70,7 +65,7 @@ class ContinuityTests(unittest.TestCase):
 
     def test_demo_accounts(self):
         accounts = self.client.get("/api/auth/demo-accounts").json()
-        self.assertEqual({a["role"] for a in accounts}, {"patient", "doctor", "care_team"})
+        self.assertEqual({a["role"] for a in accounts}, {"patient", "doctor", "care_team", "caregiver"})  # this suite runs with the care-team portal switched on
         for account in accounts:
             self.assertEqual(self.client.post("/api/auth/login", json={"email": account["email"], "password": account["password"]}).status_code, 200)
         with patch("backend.app.config.DEMO_ENABLED", False):
@@ -100,11 +95,15 @@ class ContinuityTests(unittest.TestCase):
         self.request("POST", f"{ROOT}/episodes/{self.ep}/logs", "patient", {**data, "systolic": None}, expected=422)
 
     def test_governed_rules_and_clinical_setting_versions(self):
-        resource = self.resource("rule", {"metric": "systolic", "operator": "gt", "threshold": 1})
+        resource = self.resource("rule", {"metric": "overdue_task_days", "operator": "gt", "threshold": 30})
         self.assertFalse(resource["usable"])
         self.approve_resource(resource)
-        trends = self.request("GET", f"{ROOT}/episodes/{self.ep}/trends")
-        self.assertTrue(any(f["ruleId"] == resource["id"] for f in trends["flags"]))
+        # A follow-up rule is the clinic's own administrative wording, so it needs no outside source link; other lists still do
+        self.approve_resource(self.resource("rule", {"metric": "missing_days", "operator": "gt", "threshold": 40}, title="Rule without an outside source (test)", sourceUrl=""))
+        no_source = self.resource("education", {}, title="Education without a source (test)", sourceUrl="")
+        self.request("POST", f"/api/v2/library/{no_source['id']}/approve", payload={"confirmed": True}, expected=400)
+        # A rule that reads a blood pressure or a weight can no longer be made
+        self.resource("rule", {"metric": "systolic", "operator": "gt", "threshold": 1}, expected=422)
         layout = self.approve_resource(self.resource("template", title="Versioned layout (test)"))
         version = self.resource("template", title="Versioned layout (test)", previousVersionId=layout["id"])
         self.assertEqual(version["version"], 2)
@@ -357,11 +356,15 @@ class ContinuityTests(unittest.TestCase):
         output = self.create_output("lab_explanation", sourceType="document", sourceId=doc["id"], language="ta")
         parsed = {row["name"]: row for row in output["sourceSnapshot"]["parsedResults"]}
         self.assertEqual(set(parsed), {"Haemoglobin", "Fasting Blood Sugar", "HBsAg"})
-        self.assertEqual(parsed["Haemoglobin"]["position"], "below")
-        self.assertEqual(parsed["Fasting Blood Sugar"]["position"], "within")
+        # A result is shown next to the range printed on the report and is never labelled normal, high, low, above or below
+        self.assertTrue(all("position" not in row and "printedFlag" not in row for row in parsed.values()))
         self.assertIn("Haemoglobin 10.8 g/dL 11.0 - 14.0", parsed["Haemoglobin"]["originalLine"])
         results = output["structuredData"]["உங்கள் அறிக்கையில் உள்ள முடிவுகள்"]
-        self.assertIn("Haemoglobin: 10.8 g/dL (அச்சிடப்பட்ட வரம்பு 11.0–14.0) — அச்சிடப்பட்ட வரம்பை விடக் குறைவு", results)
+        self.assertIn("Haemoglobin: 10.8 g/dL (அச்சிடப்பட்ட வரம்பு 11.0–14.0)\n", results)
+        self.assertIn("Fasting Blood Sugar: 92 mg/dL (அச்சிடப்பட்ட வரம்பு 70–100)\n", results)
+        self.assertIn("இயல்பானதா இல்லையா என்பதை இந்தப் பக்கம் சொல்லாது", results)  # "this page does not say whether a result is normal"
+        for judgement in ("விடக் குறைவு", "விட அதிகம்", "வரம்பிற்குள்"):  # the earlier below / above / within wording
+            self.assertNotIn(judgement, results)
         self.assertIn("HBsAg: Non-reactive", results)
         self.assertTrue(any("infection screening" in note["text"] for note in output["reviewNotes"]))
         means_key, next_key = "இது உங்களுக்கு என்ன பொருள்", "உறுதி செய்யப்பட்ட உங்கள் அடுத்த படிகள்"
@@ -428,45 +431,60 @@ class ContinuityTests(unittest.TestCase):
         self.assertTrue(all(r["status"] == "DRAFT" and not r["usable"] for r in starters))
 
 
-    # ---- risk review and next action, WhatsApp delivery, explanations, prescription safety, ICD-10, reference library ----
-    def test_risk_review_needs_a_doctor_decision_and_never_acts_alone(self):
-        rule = self.approve_resource(self.resource("rule", {"metric": "systolic", "operator": "gt", "threshold": 159, "tier": "urgent", "nextAction": "Review this reading today."}, title="Severe-range systolic (test)"))
-        reading = {"recordedAt": (datetime.now(timezone.utc) - timedelta(minutes=3)).isoformat(), "systolic": 168, "diastolic": 104, "symptoms": "Synthetic reading"}
-        log = self.request("POST", f"{ROOT}/episodes/{self.ep}/logs", "patient", reading)
+    # ---- follow-up flags, WhatsApp delivery, explanations, prescriptions, ICD-10, reference library ----
+    def overdue_task(self, title, days_overdue):
+        due = (datetime.now(timezone.utc).date() - timedelta(days=days_overdue)).isoformat()
+        return self.request("POST", "/api/v2/care-team/tasks", "staff", {"episodeId": self.ep, "title": title, "dueDate": due})
+
+    def test_follow_up_flag_needs_a_doctor_decision_and_never_acts_alone(self):
+        rule = self.approve_resource(self.resource("rule", {"metric": "overdue_task_days", "operator": "gt", "threshold": 0, "nextAction": "Follow up the overdue task."}, title="Overdue task (test)"))
+        task = self.overdue_task("Synthetic overdue task for the flag test", 3)
         trends = self.request("GET", f"{ROOT}/episodes/{self.ep}/trends")
-        flag = next(f for f in trends["flags"] if f["ruleId"] == rule["id"] and f["sourceId"] == log["id"])
-        self.assertEqual((flag["tier"], flag["nextAction"], flag["confirmed"]), ("urgent", "Review this reading today.", None))
-        self.assertEqual(trends["reviewPriority"], "urgent")
-        self.assertEqual(trends["flags"][0]["tier"], "urgent")  # most urgent first
+        flag = next(f for f in trends["flags"] if f["ruleId"] == rule["id"] and f["sourceId"] == task["id"])
+        self.assertEqual((flag["nextAction"], flag["confirmed"]), ("Follow up the overdue task.", None))
+        # No urgency levels or risk ranking exist any more
+        self.assertNotIn("tier", flag)
+        self.assertNotIn("reviewPriority", trends)
+        self.assertNotIn("tierCounts", trends)
+        self.assertGreaterEqual(trends["openFlagCount"], 1)
         body = {"flagId": flag["id"], "decision": "create_task", "ownerUserId": self.users["staff"]["id"], "note": "Please call today.", "confirmed": True}
         self.assertEqual([t for t in self.request("GET", f"{ROOT}/episodes/{self.ep}/tasks") if t["sourceId"] == flag["id"]], [])  # a flag alone creates no task
-        self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", "staff", body, expected=403)
-        self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", payload={**body, "ownerUserId": None}, expected=422)
-        self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", payload={**body, "decision": "no_action_needed", "note": ""}, expected=422)
-        self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", payload={**body, "ownerUserId": self.users["other"]["id"]}, expected=400)
-        self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", payload={**body, "flagId": "nope:nope"}, expected=404)
-        result = self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", payload=body)
-        self.assertEqual(result["task"]["priority"], "urgent")
+        confirm = f"{ROOT}/episodes/{self.ep}/follow-up-flags/confirm"
+        self.request("POST", confirm, "staff", body, expected=403)
+        self.request("POST", confirm, payload={**body, "ownerUserId": None}, expected=422)
+        self.request("POST", confirm, payload={**body, "decision": "no_action_needed", "note": ""}, expected=422)
+        self.request("POST", confirm, payload={**body, "ownerUserId": self.users["other"]["id"]}, expected=400)
+        self.request("POST", confirm, payload={**body, "flagId": "nope:nope"}, expected=404)
+        self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", payload=body, expected=404)  # the earlier route name is gone
+        result = self.request("POST", confirm, payload=body)
+        self.assertEqual(result["task"]["priority"], "routine")
         self.assertEqual(result["task"]["ownerUserId"], self.users["staff"]["id"])
-        self.assertTrue(result["task"]["title"].startswith("Urgent review: Severe-range systolic"))
-        self.assertEqual(result["task"]["dueDate"], datetime.now(timezone.utc).date().isoformat())
-        self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", payload=body, expected=409)
+        self.assertTrue(result["task"]["title"].startswith("Follow up: Overdue task (test)"))
+        self.assertEqual(result["task"]["dueDate"], (datetime.now(timezone.utc).date() + timedelta(days=7)).isoformat())
+        self.request("POST", confirm, payload=body, expected=409)
         after = next(f for f in self.request("GET", f"{ROOT}/episodes/{self.ep}/trends")["flags"] if f["id"] == flag["id"])
         self.assertEqual((after["confirmed"]["decision"], after["confirmed"]["taskId"]), ("create_task", result["task"]["id"]))
         self.assertTrue(any(t["id"] == result["task"]["id"] for t in self.request("GET", f"{ROOT}/episodes/{self.ep}/tasks")))
         clinic = self.request("GET", ROOT + "/clinic", "staff")
-        self.assertIn(next(p for p in clinic["patients"] if p["episodeId"] == self.ep)["reviewPriority"], ("urgent", "soon", "routine", "none"))
+        row = next(p for p in clinic["patients"] if p["episodeId"] == self.ep)
+        self.assertIsInstance(row["openFlagCount"], int)
+        self.assertNotIn("reviewPriority", row)
 
-    def test_review_rule_validation_and_no_action_decision(self):
-        self.resource("rule", {"metric": "diastolic", "operator": "gt", "threshold": 109, "tier": "critical"}, expected=422)
-        rule = self.approve_resource(self.resource("rule", {"metric": "diastolic", "operator": "gt", "threshold": 109, "tier": "soon"}, title="Diastolic (test)"))
-        self.request("POST", f"{ROOT}/episodes/{self.ep}/logs", "patient", {"recordedAt": (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat(), "systolic": 150, "diastolic": 112})
-        flag = next(f for f in self.request("GET", f"{ROOT}/episodes/{self.ep}/trends")["flags"] if f["ruleId"] == rule["id"])
-        self.assertEqual(flag["tier"], "soon")
-        done = self.request("POST", f"{ROOT}/episodes/{self.ep}/risk-flags/confirm", payload={"flagId": flag["id"], "decision": "no_action_needed", "note": "Repeat reading was normal.", "confirmed": True})
+    def test_follow_up_rules_never_read_clinical_values_and_have_no_urgency_levels(self):
+        for metric in ("systolic", "diastolic", "weight_kg"):
+            self.resource("rule", {"metric": metric, "operator": "gt", "threshold": 1}, expected=422)
+        self.resource("rule", {"metric": "missing_days", "operator": "gt", "threshold": 3, "tier": "urgent"}, expected=422)
+        rule = self.approve_resource(self.resource("rule", {"metric": "overdue_task_days", "operator": "gt", "threshold": 1}, title="Overdue by two days (test)"))
+        task = self.overdue_task("Synthetic second overdue task", 5)
+        # A blood-pressure reading, however high, produces no flag
+        self.request("POST", f"{ROOT}/episodes/{self.ep}/logs", "patient", {"recordedAt": (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat(), "systolic": 190, "diastolic": 120})
+        flags = self.request("GET", f"{ROOT}/episodes/{self.ep}/trends")["flags"]
+        self.assertTrue(all(f["metric"] in ("missing_days", "overdue_task_days") for f in flags))
+        flag = next(f for f in flags if f["ruleId"] == rule["id"] and f["sourceId"] == task["id"])
+        done = self.request("POST", f"{ROOT}/episodes/{self.ep}/follow-up-flags/confirm", payload={"flagId": flag["id"], "decision": "no_action_needed", "note": "Rescheduled by phone.", "confirmed": True})
         self.assertIsNone(done["task"])
         after = next(f for f in self.request("GET", f"{ROOT}/episodes/{self.ep}/trends")["flags"] if f["id"] == flag["id"])
-        self.assertEqual(after["confirmed"]["note"], "Repeat reading was normal.")
+        self.assertEqual(after["confirmed"]["note"], "Rescheduled by phone.")
 
     # ---- WhatsApp sending, delivery tracking and opt-out ----
     def outreach(self, phone):
@@ -585,81 +603,28 @@ class ContinuityTests(unittest.TestCase):
         empty = self.create_output("explanation", sourceType="consultation", sourceId=undocumented["id"], language="en")
         self.assertTrue(any("No known condition topic" in n["text"] for n in empty["reviewNotes"]))
 
-    # ---- prescription safety check ----
+    # ---- prescriptions: written and signed by the doctor, with no automated drug check ----
     def prescription(self, medicine, consultation=None):
-        approved = consultation or self.approved_consultation("Synthetic prescribing visit for the safety check.")
+        approved = consultation or self.approved_consultation("Synthetic prescribing visit.")
         output = self.create_output("prescription", sourceType="consultation", sourceId=approved["id"])
         fields = {"Medicine": medicine, "Dose": "Test entry", "Route": "Test route", "Frequency": "Test frequency", "Duration": "Test duration", "Instructions": ""}
         return self.edit_output(output, content="Reviewed prescription.", structuredData=fields)
 
-    def test_prescription_safety_check_requires_acknowledgement_of_every_alert(self):
-        plain = self.prescription("Paracetamol 500 mg")
-        before = self.request("GET", f"{ROOT}/outputs/{plain['id']}/safety-check")
-        self.assertEqual(before["status"], "unchecked")
-        self.assertIn("not a complete drug-interaction database", before["limitation"])
-        self.request("GET", f"{ROOT}/outputs/{plain['id']}/safety-check", "staff", expected=403)
-        safety = self.approve_resource(self.resource("interaction", {
-            "pairs": [{"a": {"name": "levothyroxine", "aliases": ["thyroxine"]}, "b": {"name": "calcium carbonate", "aliases": ["calcium"]}, "severity": "moderate",
-                       "effect": "Calcium can reduce how much levothyroxine is absorbed.", "management": "Separate the doses.", "sourceUrl": "https://dailymed.nlm.nih.gov/", "quote": "Test quote."}],
-            "cautions": [{"name": "lisinopril", "aliases": ["enalapril"], "severity": "major", "statement": "The label warns of fetal harm.", "sourceUrl": "https://dailymed.nlm.nih.gov/"}]}, title="Drug safety list (test)"))
-        self.assertEqual(self.request("GET", f"{ROOT}/outputs/{plain['id']}/safety-check")["alerts"], [])
-        checked = self.request("GET", f"{ROOT}/outputs/{plain['id']}/safety-check")
-        self.assertEqual((checked["status"], checked["checkedAgainst"][0]["pairs"], checked["checkedAgainst"][0]["cautions"]), ("checked", 1, 1))
-        # An interaction inside one prescription
-        both = self.prescription("Levothyroxine 50 mcg, Tab. Calcium carbonate 500 mg")
-        alerts = self.request("GET", f"{ROOT}/outputs/{both['id']}/safety-check")["alerts"]
-        self.assertEqual([(a["kind"], a["severity"]) for a in alerts], [("interaction", "moderate")])
-        self.assertEqual(alerts[0]["sourceUrl"], "https://dailymed.nlm.nih.gov/")
-        self.request("POST", f"{ROOT}/outputs/{both['id']}/approve", payload={"confirmed": True}, expected=409)
-        self.request("POST", f"{ROOT}/outputs/{both['id']}/approve", payload={"confirmed": True, "acknowledgedAlerts": ["not-the-key"]}, expected=409)
-        self.request("POST", f"{ROOT}/outputs/{both['id']}/approve", payload={"confirmed": True, "acknowledgedAlerts": [a["key"] for a in alerts]})
+    def test_prescriptions_have_no_automated_drug_check(self):
+        both = self.prescription("Levothyroxine 50 mcg, Tab. Calcium carbonate 500 mg")  # a combination the old check used to flag
+        # The safety-check endpoint and drug-safety lists no longer exist
+        self.request("GET", f"{ROOT}/outputs/{both['id']}/safety-check", expected=404)
+        self.resource("interaction", {"pairs": [{"a": {"name": "a"}, "b": {"name": "b"}, "severity": "minor", "effect": "x", "sourceUrl": "https://dailymed.nlm.nih.gov/"}]}, expected=422)
+        self.assertEqual([r for r in self.request("GET", "/api/v2/library") if r["kind"] == "interaction"], [])
+        # Signing needs only the complete fields the doctor entered. No alert has to be read, and none can block it.
+        self.request("POST", f"{ROOT}/outputs/{both['id']}/approve", payload={"confirmed": True, "acknowledgedAlerts": []}, expected=422)  # the old field is gone
+        signed = self.request("POST", f"{ROOT}/outputs/{both['id']}/approve", payload={"confirmed": True})
+        self.assertEqual(signed["status"], "APPROVED")
         with SessionLocal() as db:
-            entry = db.query(models.AuditLog).filter_by(action="prescription_safety_check_recorded", object_id=both["id"]).one()
-            self.assertIn("Drug safety list (test)", entry.details)
-        # Pregnancy caution, and an interaction with an earlier approved prescription
-        caution = self.prescription("Enalapril 5 mg")
-        self.assertEqual([a["kind"] for a in self.request("GET", f"{ROOT}/outputs/{caution['id']}/safety-check")["alerts"]], ["pregnancy"])
-        earlier = self.prescription("Calcium carbonate 500 mg")
-        with_earlier = self.request("GET", f"{ROOT}/outputs/{earlier['id']}/safety-check")["alerts"]
-        self.assertTrue(with_earlier and with_earlier[0]["withEarlier"])
-        # Recorded allergy
-        with SessionLocal() as db:
-            episode = db.get(models.PregnancyEpisode, self.ep)
-            original = list(episode.allergies or [])
-            episode.allergies = ["Penicillin (Hives)", "Latex (Mild)", "Penicillin (Hives)"]  # the format seeded patients use; a repeated entry alerts once
-            db.commit()
-        try:
-            for medicine, expected in (("Penicillin V 250 mg", ["A recorded allergy matches this medicine: Penicillin (Hives)."]), ("Paracetamol 500 mg", [])):
-                alerts = self.request("GET", f"{ROOT}/outputs/{self.prescription(medicine)['id']}/safety-check")["alerts"]
-                self.assertEqual([a["message"] for a in alerts if a["kind"] == "allergy"], expected)
-            from backend.app import drug_safety
-            self.assertEqual([a["kind"] for a in drug_safety.check("Tab. Penicillin V", [], ["Penicillins"], [])["alerts"]], ["allergy"])  # plural
-        finally:
-            with SessionLocal() as db:
-                db.get(models.PregnancyEpisode, self.ep).allergies = original
-                db.commit()
-        self.assertTrue(safety["id"])
-
-    def test_seeded_drug_safety_list_is_valid_and_matches_real_prescriptions(self):
-        seeded = next(r for r in self.request("GET", "/api/v2/library?kind=interaction") if r["familyId"] == "starter-drug-safety-labels")
-        self.assertEqual((seeded["status"], seeded["usable"]), ("DRAFT", False))
-        pairs, cautions = seeded["configuration"]["pairs"], seeded["configuration"]["cautions"]
-        self.assertGreaterEqual(len(pairs), 15)
-        self.assertGreaterEqual(len(cautions), 25)
-        self.assertTrue(all(x["sourceUrl"].startswith("https://dailymed.nlm.nih.gov/") and x["quote"] for x in pairs + cautions))
-        self.approve_resource(seeded)
-        def kinds(medicine):
-            # Other tests leave their own safety sets and approved prescriptions in this shared episode, so look at the seeded set
-            # and at this prescription alone (the check against earlier prescriptions is covered by the test above).
-            alerts = self.request("GET", f"{ROOT}/outputs/{self.prescription(medicine)['id']}/safety-check")["alerts"]
-            return [(a["kind"], a["severity"]) for a in alerts if a["setTitle"] == seeded["title"] and not a.get("withEarlier")]
-        self.assertEqual(kinds("Paracetamol 500 mg"), [])
-        self.assertIn(("pregnancy", "major"), kinds("Tab. Misoprostol 200 mcg"))
-        self.assertEqual(kinds("Lisinopril 5 mg"), [("pregnancy", "major")])
-        self.assertEqual(kinds("Labetalol 100 mg, Nifedipine 10 mg"), [("interaction", "minor")])
-        self.assertEqual(kinds("Levothyroxine 50 mcg + Ferrous sulphate 200 mg"), [("interaction", "moderate")])
-        self.assertEqual(kinds("Methyldopa 250 mg, Ferrous gluconate"), [("interaction", "moderate")])
-        self.assertEqual(kinds("Aspirin 75 mg"), [])  # doctor-directed low-dose aspirin is not flagged on its own
+            self.assertEqual(db.query(models.AuditLog).filter_by(action="prescription_safety_check_recorded").count(), 0)
+        # Incomplete prescriptions are still refused: that is a completeness check, not a clinical one
+        incomplete = self.edit_output(self.create_output("prescription", sourceType="consultation", sourceId=self.approved_consultation("Synthetic incomplete prescription.")["id"]), content="Reviewed prescription.")
+        self.request("POST", f"{ROOT}/outputs/{incomplete['id']}/approve", payload={"confirmed": True}, expected=400)
 
     # ---- ICD-10 candidates ----
     def test_icd10_sets_are_seeded_valid_and_prefer_the_most_specific_phrase(self):
@@ -976,10 +941,11 @@ class PlainLanguageUnitTests(unittest.TestCase):
 
     def test_single_line_rows(self):
         rows = self.parse(self.REPORT)
-        self.assertEqual(rows["Haemoglobin"]["position"], "below")
-        self.assertEqual(rows["Haemoglobin"]["printedFlag"], "low")
-        self.assertEqual(rows["TSH"]["position"], "within")
-        self.assertEqual(rows["Total Leucocyte Count"]["position"], "above")
+        # Value, unit and the printed range are read; a "Low" printed after a value is skipped, never read as a unit or reported
+        self.assertEqual((rows["Haemoglobin"]["valueText"], rows["Haemoglobin"]["unit"], rows["Haemoglobin"]["rangeText"]), ("10.8", "g/dL", "11.0–14.0"))
+        self.assertEqual((rows["TSH"]["valueText"], rows["TSH"]["rangeText"]), ("2.1", "0.4–4.0"))
+        self.assertEqual((rows["Total Leucocyte Count"]["valueText"], rows["Total Leucocyte Count"]["unit"]), ("14,800", "/cumm"))
+        self.assertTrue(all("position" not in row and "printedFlag" not in row for row in rows.values()))
         self.assertEqual(rows["HbA1c"]["rangeText"], "< 5.7")
         self.assertEqual(rows["Blood Group"]["valueText"], "B Positive")
         self.assertIsNone(rows["Bilirubin Total"]["testId"])
@@ -988,7 +954,7 @@ class PlainLanguageUnitTests(unittest.TestCase):
     def test_cell_per_line_layout_and_no_invented_values(self):
         rows = self.parse("Haemoglobin\n10.8\ng/dL\n11.0 - 14.0\nLow\nFasting Blood Sugar\n92\nmg/dL\n70 - 100\nTSH\n")
         self.assertEqual(rows["Haemoglobin"]["unit"], "g/dL")
-        self.assertEqual(rows["Fasting Blood Sugar"]["position"], "within")
+        self.assertEqual((rows["Fasting Blood Sugar"]["valueText"], rows["Fasting Blood Sugar"]["rangeText"]), ("92", "70–100"))
         self.assertNotIn("TSH", rows)  # a name with no value is never filled in
         self.assertEqual(self.parse("Haemoglobin was discussed at the visit. Page 2"), {})
 

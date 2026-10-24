@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { api } from "../../api/client";
 import { ROOT, formatTime, getContext } from "../../api/continuity";
-import type { DailyLog, Flag, Tier, Trends } from "../../api/continuity";
+import type { DailyLog, Flag, Trends } from "../../api/continuity";
 import { Badge, Empty, Feedback, Panel, useAction } from "./shared";
 
 function Chart({
@@ -80,12 +80,6 @@ function Chart({
   );
 }
 
-const tierLabels: Record<Tier, string> = {
-  urgent: "Urgent review",
-  soon: "Review soon",
-  routine: "Routine review",
-};
-
 function FlagCard({
   flag: f,
   members,
@@ -113,8 +107,7 @@ function FlagCard({
     <div className="continuity-note" id={`flag-${f.id}`}>
       <strong>
         {f.ruleTitle} · v{f.version}
-      </strong>{" "}
-      <Badge>{tierLabels[f.tier]}</Badge>
+      </strong>
       <p>
         {f.metric.replaceAll("_", " ")}: {f.value}{" "}
         {f.operator === "gt" ? ">" : "<"} {f.threshold} ·{" "}
@@ -122,20 +115,16 @@ function FlagCard({
       </p>
       {f.nextAction && (
         <p>
-          <strong>Next action in the rule:</strong> {f.nextAction}
+          <strong>Follow-up in the rule:</strong> {f.nextAction}
         </p>
       )}
       <p className="continuity-muted">
         Rule approved by {f.reviewer}. {f.context}
       </p>
-      <a href={f.sourceUrl} target="_blank" rel="noreferrer">
-        Rule source
-      </a>
-      {f.sourceId && f.metric !== "overdue_task_days" && (
-        <>
-          {" "}
-          · <a href={`#trend-${f.sourceId}`}>Recorded value</a>
-        </>
+      {f.sourceUrl && (
+        <a href={f.sourceUrl} target="_blank" rel="noreferrer">
+          Rule source
+        </a>
       )}
       {f.confirmed && (
         <p className="continuity-success" style={{ marginBottom: 0 }}>
@@ -208,8 +197,7 @@ function FlagCard({
               checked={reviewed}
               onChange={(e) => setReviewed(e.target.checked)}
             />
-            I reviewed this flag and the recorded value. This is my clinical
-            decision.
+            I reviewed this flag. This is my decision.
           </label>
           <button className="btn-primary" disabled={busy || !reviewed}>
             Record my decision
@@ -337,41 +325,37 @@ export function TrendsPanel({
             </table>
           </div>
           {!data.logs.length && <Empty>No entries during this period.</Empty>}
-          <h3 style={{ marginTop: 20 }} id="risk-review">
-            Risk review · what needs a clinician to look
+          <h3 style={{ marginTop: 20 }} id="follow-up-flags">
+            Follow-up flags · check-ins and tasks that need attention
           </h3>
           <p className="continuity-muted">
-            Flags come only from rules a doctor approved in the Reference
-            Library, and show the rule, its source and the recorded value. The
-            priority is the order to review in. It is not a clinical risk score
-            and does not diagnose. Nothing is sent to the patient or assigned
-            until a doctor confirms.
+            Flags come only from rules a doctor approved in Clinical Settings,
+            and only about missed check-ins and overdue tasks. They never look
+            at a blood pressure, a weight or any other clinical value, they do
+            not rank patients by urgency or risk, and they do not diagnose.
+            Nothing is sent to the patient or assigned until a doctor confirms.
           </p>
           {data.activeRuleCount > 0 && (
             <p>
-              <strong>Review priority: </strong>
+              <strong>Waiting for a doctor: </strong>
               <Badge>
-                {data.reviewPriority === "none"
-                  ? "Nothing waiting for review"
-                  : tierLabels[data.reviewPriority]}
-              </Badge>{" "}
-              <span className="continuity-muted">
-                {data.tierCounts.urgent} urgent · {data.tierCounts.soon} soon ·{" "}
-                {data.tierCounts.routine} routine, not yet reviewed
-              </span>
+                {data.openFlagCount === 0
+                  ? "Nothing waiting"
+                  : `${data.openFlagCount} flag${data.openFlagCount === 1 ? "" : "s"}`}
+              </Badge>
             </p>
           )}
           <Feedback error={action.error} message={action.message} />
           {!data.activeRuleCount && (
             <Empty>
-              No approved review rules are configured. A doctor can approve the
-              starter rules under Clinical Settings → Review rules.
+              No follow-up rules are approved. A doctor can approve the starter
+              rules under Clinical Settings → Follow-up rules.
             </Empty>
           )}
           {data.activeRuleCount > 0 && !data.flags.length && (
             <Empty>
-              No configured rule matched recorded values. This is not a clinical
-              assessment.
+              No missed check-in or overdue task needs following up right now.
+              This is not a clinical assessment.
             </Empty>
           )}
           {data.flags.map((f) => (
@@ -383,7 +367,7 @@ export function TrendsPanel({
               busy={action.busy}
               confirm={(body) =>
                 action.run(async () => {
-                  await api.post(`${ROOT}/episodes/${episodeId}/risk-flags/confirm`, {
+                  await api.post(`${ROOT}/episodes/${episodeId}/follow-up-flags/confirm`, {
                     flagId: f.id,
                     confirmed: true,
                     ...body,

@@ -294,8 +294,6 @@ export interface EpisodeDetail {
   gravidaPara: string;
   bloodType: string;
   allergies: string[];
-  riskCategory: string;
-  riskNotes: string;
   facility: string;
   isReadyForTodaysBrief: boolean;
   createdAt: string;
