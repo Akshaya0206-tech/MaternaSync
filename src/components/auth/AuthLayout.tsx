@@ -1,4 +1,5 @@
 import { HeartPulse } from 'lucide-react';
+import { LanguageSwitcher } from '../shared/LanguageSwitcher';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       }}
     >
       <div style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <LanguageSwitcher tone="page" />
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
           <div
             style={{

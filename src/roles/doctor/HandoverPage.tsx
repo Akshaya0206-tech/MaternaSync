@@ -7,16 +7,18 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { friendlyHandoverStatus, HANDOVER_STATUS_TONE, formatFriendlyDateTime } from './format';
 import { HandoverPausedNotice } from '../../components/HandoverPausedNotice';
 import { useHandoverPaused } from '../../components/useHandoverPaused';
+import { tx, useLanguage } from '../../i18n';
 
 const SECTIONS: { key: keyof Pick<Handover, 'context' | 'whatHappened' | 'whatRemains' | 'whoOwnsIt' | 'whatToDiscuss'>; label: string }[] = [
-  { key: 'context', label: 'Context' },
-  { key: 'whatHappened', label: 'What Happened' },
-  { key: 'whatRemains', label: 'What Remains' },
-  { key: 'whoOwnsIt', label: 'Who Owns It' },
-  { key: 'whatToDiscuss', label: 'What to Discuss' },
+  { key: 'context', label: tx('Context') },
+  { key: 'whatHappened', label: tx('What Happened') },
+  { key: 'whatRemains', label: tx('What Remains') },
+  { key: 'whoOwnsIt', label: tx('Who Owns It') },
+  { key: 'whatToDiscuss', label: tx('What to Discuss') },
 ];
 
 export function HandoverPage() {
+  const { t } = useLanguage();
   const paused = useHandoverPaused();
   const [patients, setPatients] = useState<DoctorPatientRow[]>([]);
   const [selectedEpisodeId, setSelectedEpisodeId] = useState('');
@@ -40,7 +42,7 @@ export function HandoverPage() {
         if (list.length > 0) setSelectedEpisodeId(list[0].episodeId);
         else setIsLoading(false);
       })
-      .catch(() => { setError("We couldn't load your patients."); setIsLoading(false); });
+      .catch(() => { setError(tx("We couldn't load your patients.")); setIsLoading(false); });
   }, []);
 
   const loadHandover = (episodeId: string) => {
@@ -57,7 +59,7 @@ export function HandoverPage() {
           setLastSavedDrafts(content);
         }
       })
-      .catch(() => setError("We couldn't load the handover for this patient."))
+      .catch(() => setError(tx("We couldn't load the handover for this patient.")))
       .finally(() => setIsLoading(false));
   };
 
@@ -80,7 +82,7 @@ export function HandoverPage() {
       setJustGenerated(true);
       window.setTimeout(() => setJustGenerated(false), 4000);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not generate a handover draft.');
+      setError(err instanceof ApiError ? err.message : tx('Could not generate a handover draft.'));
     } finally {
       setIsActing(false);
     }
@@ -105,7 +107,7 @@ export function HandoverPage() {
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save your edits.');
+      setError(err instanceof ApiError ? err.message : tx('Could not save your edits.'));
     } finally {
       setIsActing(false);
     }
@@ -119,7 +121,7 @@ export function HandoverPage() {
       const h = await shareHandover(handover.id);
       setHandover(h);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not share this handover.');
+      setError(err instanceof ApiError ? err.message : tx('Could not share this handover.'));
     } finally {
       setIsActing(false);
     }
@@ -142,13 +144,13 @@ export function HandoverPage() {
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '700px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 18px 0' }}>Handover</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 18px 0' }}>{t('Handover')}</h1>
       {paused && <HandoverPausedNotice />}
 
       {patients.length > 0 && (
         <div style={{ marginBottom: '18px' }}>
           <select
-            aria-label="Choose a patient"
+            aria-label={t('Choose a patient')}
             value={selectedEpisodeId}
             onChange={(e) => setSelectedEpisodeId(e.target.value)}
             style={{ padding: '9px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', minWidth: '220px' }}
@@ -159,19 +161,19 @@ export function HandoverPage() {
       )}
 
       {patients.length === 0 && !isLoading && (
-        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>No patients are assigned to you yet.</div>
+        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>{t('No patients are assigned to you yet.')}</div>
       )}
 
-      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>}
-      {error && !isLoading && <div className="glass-panel" style={{ padding: '18px', color: 'var(--rose-urgent)', textAlign: 'center', marginBottom: '14px' }}>{error}</div>}
+      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading…')}</div>}
+      {error && !isLoading && <div className="glass-panel" style={{ padding: '18px', color: 'var(--rose-urgent)', textAlign: 'center', marginBottom: '14px' }}>{t(error)}</div>}
 
       {!isLoading && selectedPatient && !handover && (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '16px' }}>
-            No handover exists yet for {selectedPatient.patientName}.
+            {t('No handover exists yet for {name}.', { name: selectedPatient.patientName })}
           </p>
           <button onClick={doGenerate} disabled={isActing || paused} className="btn-primary">
-            <Sparkles size={15} /> Generate Handover Draft
+            <Sparkles size={15} /> {t('Generate Handover Draft')}
           </button>
         </div>
       )}
@@ -181,45 +183,41 @@ export function HandoverPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <StatusBadge label={friendlyHandoverStatus(handover.status)} tone={HANDOVER_STATUS_TONE[handover.status] ?? 'neutral'} />
             <button onClick={handleRegenerateClick} disabled={isActing || paused} className="btn-secondary" style={{ fontSize: '0.78rem' }}>
-              <Sparkles size={13} /> Regenerate
+              <Sparkles size={13} /> {t('Regenerate')}
             </button>
           </div>
 
           <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', margin: '0 0 6px 0' }}>
-            Regenerate creates a fresh handover draft from the latest available patient journey, approved
-            documentation, open tasks, referrals and unanswered questions. It does not approve or share the
-            draft. Review the result before using it.
+            {t('Regenerate creates a fresh handover draft from the latest available patient journey, approved documentation, open tasks, referrals and unanswered questions. It does not approve or share the draft. Review the result before using it.')}
           </p>
 
           {justGenerated && (
             <div style={{ fontSize: '0.78rem', color: 'var(--emerald-raw)', fontWeight: 600, marginBottom: '8px' }}>
-              New draft generated. Review the content before approval.
-              {handover.sourceDataChanged === false && ' No new information since the previous version.'}
+              {t('New draft generated. Review the content before approval.')}
+              {handover.sourceDataChanged === false && ' ' + t('No new information since the previous version.')}
             </div>
           )}
 
           {showRegenerateConfirm && (
             <div className="glass-panel" style={{ padding: '14px 16px', marginBottom: '14px', background: 'var(--amber-pending-bg)' }}>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-primary)', margin: '0 0 10px 0' }}>
-                Your unsaved edits to this draft won't be included in the new version — they'll remain on
-                version {handover.version} if you want to view them later, but it will no longer be the
-                current version. Continue?
+                {t("Your unsaved edits to this draft won't be included in the new version — they'll remain on version {version} if you want to view them later, but it will no longer be the current version. Continue?", { version: handover.version })}
               </p>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => setShowRegenerateConfirm(false)} className="btn-secondary" style={{ fontSize: '0.78rem' }}>Cancel</button>
-                <button onClick={doGenerate} disabled={isActing} className="btn-primary" style={{ fontSize: '0.78rem' }}>Regenerate Anyway</button>
+                <button onClick={() => setShowRegenerateConfirm(false)} className="btn-secondary" style={{ fontSize: '0.78rem' }}>{t('Cancel')}</button>
+                <button onClick={doGenerate} disabled={isActing} className="btn-primary" style={{ fontSize: '0.78rem' }}>{t('Regenerate Anyway')}</button>
               </div>
             </div>
           )}
 
           <button onClick={toggleHistory} className="btn-secondary" style={{ fontSize: '0.76rem', marginBottom: '14px' }}>
-            Version {handover.version}{history.length ? ` of ${history.length}` : ''} · {historyOpen ? 'Hide history' : 'View history'}
+            {history.length ? t('Version {version} of {count}', { version: handover.version, count: history.length }) : t('Version {version}', { version: handover.version })} · {historyOpen ? t('Hide history') : t('View history')}
             {historyOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </button>
 
           {historyOpen && (
             <div style={{ marginBottom: '16px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-              {history.length === 0 && <div style={{ padding: '14px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading history…</div>}
+              {history.length === 0 && <div style={{ padding: '14px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Loading history…')}</div>}
               {history.map((v, i) => {
                 const isOpen = expandedVersionId === v.id;
                 return (
@@ -232,7 +230,7 @@ export function HandoverPage() {
                       <StatusBadge label={friendlyHandoverStatus(v.status)} tone={HANDOVER_STATUS_TONE[v.status] ?? 'neutral'} />
                       <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', flex: 1 }}>
                         {formatFriendlyDateTime(v.createdAt)} · {v.createdByName}
-                        {v.sourceDataChanged === false && ' · No change from previous version'}
+                        {v.sourceDataChanged === false && ' · ' + t('No change from previous version')}
                       </span>
                       {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </button>
@@ -240,7 +238,7 @@ export function HandoverPage() {
                       <div style={{ padding: '0 14px 14px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {SECTIONS.map((s) => (
                           <div key={s.key}>
-                            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{s.label}</div>
+                            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t(s.label)}</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>{v[s.key]}</div>
                           </div>
                         ))}
@@ -255,9 +253,9 @@ export function HandoverPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {SECTIONS.map((s) => (
               <div key={s.key}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '5px' }}>{s.label}</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: '5px' }}>{t(s.label)}</div>
                 <textarea
-                  aria-label={s.label}
+                  aria-label={t(s.label)}
                   value={drafts[s.key] ?? ''}
                   onChange={(e) => setDrafts((prev) => ({ ...prev, [s.key]: e.target.value }))}
                   disabled={handover.status !== 'DRAFT' || paused}
@@ -269,11 +267,11 @@ export function HandoverPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '18px' }}>
-            <button onClick={handleSave} disabled={isActing || paused || handover.status !== 'DRAFT'} className="btn-secondary"><Save size={14} /> Save</button>
+            <button onClick={handleSave} disabled={isActing || paused || handover.status !== 'DRAFT'} className="btn-secondary"><Save size={14} /> {t('Save')}</button>
             <button onClick={handleShare} disabled={isActing || paused || handover.status !== 'DRAFT'} className="btn-primary">
-              <Share2 size={14} /> {handover.status === 'FINAL' ? 'Shared Internally' : 'Share Internally'}
+              <Share2 size={14} /> {handover.status === 'FINAL' ? t('Shared Internally') : t('Share Internally')}
             </button>
-            {saved && <span style={{ fontSize: '0.8rem', color: 'var(--emerald-raw)', fontWeight: 600 }}>Saved</span>}
+            {saved && <span style={{ fontSize: '0.8rem', color: 'var(--emerald-raw)', fontWeight: 600 }}>{t('Saved')}</span>}
           </div>
         </div>
       )}

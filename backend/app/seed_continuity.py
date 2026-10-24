@@ -4,10 +4,12 @@ Official links are pointers, not redistributed guidance or claims of currency.
 Nothing clinical is pre-approved on behalf of a real clinician.
 """
 import json
+import re
 from datetime import timedelta
 from pathlib import Path
 from . import models
 from .continuity_service import now
+from .plain_language import LAB_TEST_NAMES, LAB_TESTS
 
 
 EDUCATION_TOPICS = [("Nutrition", "first"), ("Safe movement", "second"), ("Labour preparation", "third"),
@@ -107,6 +109,15 @@ def remove_withdrawn_features(db):
     """The app no longer checks prescriptions for drug interactions, and no longer flags blood pressure or weight.
     Lists and rules made for those checks (starter or doctor-made) can no longer be used, so they are removed
     from existing databases, together with anything attached to them."""
+    # Handover text written before risk labels were removed says "GA 38w5d, risk: moderate." Keep the gestational age, drop the label.
+    scrubbed = 0
+    for handover in db.query(models.Handover).filter(models.Handover.context.like("%risk:%")).all():
+        cleaned = re.sub(r",\s*risk:[^.]*\.", ".", handover.context or "")
+        if cleaned != handover.context:
+            handover.context, scrubbed = cleaned, scrubbed + 1
+    if scrubbed:
+        db.commit()
+        print(f"Removed the risk label from {scrubbed} earlier handover(s).")
     clinical_metrics = ("systolic", "diastolic", "weight_kg")
     rules = db.query(models.ClinicalResource).filter(models.ClinicalResource.kind.in_(["interaction", "rule"])).all()
     gone = [r for r in rules if r.kind == "interaction" or (r.configuration or {}).get("metric") in clinical_metrics]
@@ -189,6 +200,13 @@ def run_seed_continuity(db):
             resources.append(dict(key=f"education-{topic}-{language}", kind="education", language=language, title=EDUCATION_TITLE[language].format(topic=name),
                 issuer="Clinic education owner", topic=topic, stage=stage, source_url="https://www.who.int/publications/i/item/9789241549912",
                 section="Local patient education draft", content=EDUCATION_BODY[language].format(topic=name)))
+    # The general "About this test" notes for the lab explanation. Like every education note they stay drafts until a doctor
+    # approves them, and a lab explanation uses only approved ones. They describe what a test measures, never a result.
+    for test in LAB_TESTS:
+        for language in ("en", "hi", "ta", "te"):
+            resources.append(dict(key=f"labtest-{test['id']}-{language}", kind="education", language=language, title=f"About this test: {LAB_TEST_NAMES[test['id']]}",
+                issuer="Clinic education owner", topic="About lab tests", stage="all", source_url="https://medlineplus.gov/lab-tests/",
+                section="General description of what the test measures", content=test[language], configuration={"testId": test["id"]}))
     for item in resources:
         key = "starter-" + item.pop("key")
         if not db.query(models.ClinicalResource).filter_by(family_id=key).first():

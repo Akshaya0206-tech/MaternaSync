@@ -172,7 +172,7 @@ def _build_episode(db: Session, ep_json: dict, patient_user: models.User, doctor
 
     db.add(models.Handover(
         episode_id=episode.id,
-        context=f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d, risk: {episode.risk_category}.",
+        context=f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d.",
         what_happened="Most recent verified consultation and documented events (see journey).",
         what_remains="See open tasks and referrals for this patient.",
         who_owns_it=f"{care_team_user.full_name} (coordination), {doctor_user.full_name} (clinical).",
@@ -391,7 +391,7 @@ def ensure_additional_demo_accounts(db: Session) -> None:
     ))
 
     db.add(models.Handover(
-        episode_id=priya_episode.id, context="GA 24w2d, risk: routine.",
+        episode_id=priya_episode.id, context="GA 24w2d.",
         what_happened="20-week anatomy scan reviewed and verified.",
         what_remains="Glucose tolerance test to be scheduled; air travel question awaiting response.",
         who_owns_it=f"{james.full_name} (coordination), {dr_vance2.full_name} (clinical).",
@@ -445,7 +445,7 @@ def ensure_additional_demo_accounts(db: Session) -> None:
     ))
 
     db.add(models.Handover(
-        episode_id=ananya_episode.id, context="GA 30w0d, risk: high_risk (gestational diabetes).",
+        episode_id=ananya_episode.id, context="GA 30w0d.",
         what_happened="Glucose tolerance test results pending care team review.",
         what_remains="Maternal-fetal medicine referral in progress; pending test review.",
         who_owns_it=f"{kavya.full_name} (coordination), {dr_menon.full_name} (clinical).",
@@ -543,7 +543,7 @@ def ensure_additional_demo_accounts(db: Session) -> None:
     ))
 
     db.add(models.Handover(
-        episode_id=meera_episode.id, context="GA 18w5d, risk: routine.",
+        episode_id=meera_episode.id, context="GA 18w5d.",
         what_happened="First trimester screening reviewed and verified; nausea question answered.",
         what_remains="20-week anatomy scan appointment confirmed.",
         who_owns_it=f"{brenda.full_name} (coordination), {dr_vance2.full_name} (clinical).",

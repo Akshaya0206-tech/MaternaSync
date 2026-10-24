@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { fetchUpdates, markUpdateRead } from '../../api/doctorPortal';
 import type { CareTeamNotification } from '../../api/doctorPortal';
+import { tx, useLanguage } from '../../i18n';
 import { formatFriendlyDateTime } from './format';
 
 export function UpdatesPage() {
+  const { t } = useLanguage();
   const [updates, setUpdates] = useState<CareTeamNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +14,7 @@ export function UpdatesPage() {
   useEffect(() => {
     fetchUpdates()
       .then(setUpdates)
-      .catch(() => setError("We couldn't load your updates. Please try again."))
+      .catch(() => setError(tx("We couldn't load your updates. Please try again.")))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -25,12 +27,12 @@ export function UpdatesPage() {
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>Updates</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('Updates')}</h1>
 
-      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>}
-      {error && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{error}</div>}
+      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading…')}</div>}
+      {error && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>}
       {!isLoading && !error && updates.length === 0 && (
-        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>No updates yet.</div>
+        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>{t('No updates yet.')}</div>
       )}
 
       {!isLoading && !error && updates.length > 0 && (

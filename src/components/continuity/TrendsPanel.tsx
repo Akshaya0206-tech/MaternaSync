@@ -4,7 +4,47 @@ import { useAuth } from "../../auth/AuthContext";
 import { api } from "../../api/client";
 import { ROOT, formatTime, getContext } from "../../api/continuity";
 import type { DailyLog, Flag, Trends } from "../../api/continuity";
+import { currentLanguage, currentLocale, tx, useLanguage } from "../../i18n";
 import { Badge, Empty, Feedback, Panel, useAction } from "./shared";
+
+// Codes the server sends, shown as words. The English wording is exactly what this panel always showed.
+const WORDS: Record<string, string> = {
+  not_recorded: tx("not recorded"),
+  good: tx("good"),
+  okay: tx("okay"),
+  low: tx("low"),
+  anxious: tx("anxious"),
+  done: tx("done"),
+  skipped: tx("skipped"),
+  needs_help: tx("needs help"),
+  not_applicable: tx("not applicable"),
+  missing_days: tx("missing days"),
+  overdue_task_days: tx("overdue task days"),
+};
+type Translate = ReturnType<typeof useLanguage>["t"];
+const word = (t: Translate, value: string) =>
+  t(Object.hasOwn(WORDS, value) ? WORDS[value] : value.replaceAll("_", " "));
+
+// Dates keep the browser's own format in English; the other languages use their locale.
+const shortDate = (value: string) =>
+  new Date(value).toLocaleDateString(
+    currentLanguage() === "en" ? undefined : currentLocale(),
+  );
+
+// The server writes this sentence in English: the task title is the only part that varies.
+const flagContext = (t: Translate, context: string) => {
+  if (context === "Follow-up flag about check-ins or tasks only.")
+    return t("Follow-up flag about check-ins or tasks only.");
+  const task =
+    /^Task: ([\s\S]*)\. Follow-up flag about check-ins or tasks only\.$/.exec(
+      context,
+    );
+  return task
+    ? t("Task: {title}. Follow-up flag about check-ins or tasks only.", {
+        title: task[1],
+      })
+    : context;
+};
 
 function Chart({
   logs,
@@ -15,11 +55,14 @@ function Chart({
   metric: "systolic" | "weightKg";
   label: string;
 }) {
+  const { t } = useLanguage();
   const points = logs.filter((l) => !l.skipped && l[metric] != null);
   if (points.length < 2)
     return (
       <Empty>
-        {label}: at least two dated values are needed to draw a trend.
+        {t("{label}: at least two dated values are needed to draw a trend.", {
+          label,
+        })}
       </Empty>
     );
   const min = Math.min(...points.map((p) => p[metric]!));
@@ -35,13 +78,20 @@ function Chart({
   return (
     <figure style={{ margin: "10px 0" }}>
       <figcaption className="continuity-muted">
-        {label} · patient-reported · observed range {min}–{max}
+        {t("{label} · patient-reported · observed range {min}–{max}", {
+          label,
+          min,
+          max,
+        })}
       </figcaption>
       <svg
         className="continuity-chart"
         viewBox="0 0 580 150"
         role="img"
-        aria-label={`${label} over recorded dates. All values are available in the table below.`}
+        aria-label={t(
+          "{label} over recorded dates. All values are available in the table below.",
+          { label },
+        )}
       >
         <line x1="42" x2="542" y1="120" y2="120" stroke="var(--border-color)" />
         <polyline
@@ -64,7 +114,7 @@ function Chart({
           </circle>
         ))}
         <text x="42" y="142" fill="currentColor" fontSize="10">
-          {new Date(points[0].recordedAt).toLocaleDateString()}
+          {shortDate(points[0].recordedAt)}
         </text>
         <text
           x="542"
@@ -73,7 +123,7 @@ function Chart({
           fill="currentColor"
           fontSize="10"
         >
-          {new Date(points[points.length - 1].recordedAt).toLocaleDateString()}
+          {shortDate(points[points.length - 1].recordedAt)}
         </text>
       </svg>
     </figure>
@@ -97,6 +147,7 @@ function FlagCard({
     note: string;
   }) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [decision, setDecision] = useState<"create_task" | "no_action_needed">(
     "create_task",
   );
@@ -109,29 +160,34 @@ function FlagCard({
         {f.ruleTitle} · v{f.version}
       </strong>
       <p>
-        {f.metric.replaceAll("_", " ")}: {f.value}{" "}
+        {word(t, f.metric)}: {f.value}{" "}
         {f.operator === "gt" ? ">" : "<"} {f.threshold} ·{" "}
         {formatTime(f.recordedAt)}
       </p>
       {f.nextAction && (
         <p>
-          <strong>Follow-up in the rule:</strong> {f.nextAction}
+          <strong>{t("Follow-up in the rule:")}</strong> {f.nextAction}
         </p>
       )}
       <p className="continuity-muted">
-        Rule approved by {f.reviewer}. {f.context}
+        {t("Rule approved by {name}.", { name: f.reviewer })}{" "}
+        {flagContext(t, f.context)}
       </p>
       {f.sourceUrl && (
         <a href={f.sourceUrl} target="_blank" rel="noreferrer">
-          Rule source
+          {t("Rule source")}
         </a>
       )}
       {f.confirmed && (
         <p className="continuity-success" style={{ marginBottom: 0 }}>
-          Reviewed by {f.confirmed.by} on {formatTime(f.confirmed.at)} ·{" "}
+          {t("Reviewed by {name} on {time}", {
+            name: f.confirmed.by,
+            time: formatTime(f.confirmed.at),
+          })}{" "}
+          ·{" "}
           {f.confirmed.decision === "create_task"
-            ? "follow-up task created"
-            : "no action needed"}
+            ? t("follow-up task created")
+            : t("no action needed")}
           {f.confirmed.note ? ` · “${f.confirmed.note}”` : ""}
         </p>
       )}
@@ -149,26 +205,26 @@ function FlagCard({
         >
           <div className="continuity-fields">
             <label className="continuity-field">
-              <span>Your decision</span>
+              <span>{t("Your decision")}</span>
               <select
                 value={decision}
                 onChange={(e) =>
                   setDecision(e.target.value as "create_task" | "no_action_needed")
                 }
               >
-                <option value="create_task">Create a follow-up task</option>
-                <option value="no_action_needed">No action needed</option>
+                <option value="create_task">{t("Create a follow-up task")}</option>
+                <option value="no_action_needed">{t("No action needed")}</option>
               </select>
             </label>
             {decision === "create_task" && (
               <label className="continuity-field">
-                <span>Task owner</span>
+                <span>{t("Task owner")}</span>
                 <select
                   required
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
                 >
-                  <option value="">Choose who follows up</option>
+                  <option value="">{t("Choose who follows up")}</option>
                   {members.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
@@ -180,8 +236,8 @@ function FlagCard({
             <label className="continuity-field">
               <span>
                 {decision === "create_task"
-                  ? "Note for the task (optional)"
-                  : "Why no action is needed"}
+                  ? t("Note for the task (optional)")
+                  : t("Why no action is needed")}
               </span>
               <input
                 required={decision === "no_action_needed"}
@@ -197,10 +253,10 @@ function FlagCard({
               checked={reviewed}
               onChange={(e) => setReviewed(e.target.checked)}
             />
-            I reviewed this flag. This is my decision.
+            {t("I reviewed this flag. This is my decision.")}
           </label>
           <button className="btn-primary" disabled={busy || !reviewed}>
-            Record my decision
+            {t("Record my decision")}
           </button>
         </form>
       )}
@@ -215,6 +271,7 @@ export function TrendsPanel({
   episodeId: string;
   initial?: Trends;
 }) {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const action = useAction();
   const [data, setData] = useState<Trends | null>(initial ?? null);
@@ -256,37 +313,46 @@ export function TrendsPanel({
   }, [episodeId, initial]);
   return (
     <Panel
-      title="Last 30 days · patient-reported trends"
-      aside={<Badge>For review</Badge>}
+      title={t("Last 30 days · patient-reported trends")}
+      aside={<Badge>{t("For review")}</Badge>}
     >
       <Feedback error={error} />
-      {!data && !error && <p role="status">Loading trends…</p>}
+      {!data && !error && <p role="status">{t("Loading trends…")}</p>}
       {data && (
         <>
           <p className="continuity-muted">
-            {data.daysWithLogs} days with entries · {data.missingDays} days
-            without entries. Missing data does not establish non-adherence or a
-            clinical problem. Corrections replace plotted values and retain
-            their audit history.
+            {t(
+              "Shown as entered. MaternaSync does not interpret these values or compare them with a range. That is for the doctor.",
+            )}
+          </p>
+          <p className="continuity-muted">
+            {t(
+              "{logged} days with entries · {missing} days without entries. Missing data does not establish non-adherence or a clinical problem. Corrections replace plotted values and retain their audit history.",
+              { logged: data.daysWithLogs, missing: data.missingDays },
+            )}
           </p>
           <div className="continuity-grid">
             <Chart
               logs={data.logs}
               metric="systolic"
-              label="Systolic BP (mmHg)"
+              label={t("Systolic BP (mmHg)")}
             />
-            <Chart logs={data.logs} metric="weightKg" label="Weight (kg)" />
+            <Chart
+              logs={data.logs}
+              metric="weightKg"
+              label={t("Weight (kg)")}
+            />
           </div>
           <div className="continuity-table-wrap">
             <table className="continuity-table">
               <thead>
                 <tr>
-                  <th>Source / date</th>
-                  <th>BP · mmHg</th>
-                  <th>Weight · kg</th>
-                  <th>Symptoms / mood</th>
-                  <th>Movements</th>
-                  <th>Adherence</th>
+                  <th>{t("Source / date")}</th>
+                  <th>{t("BP · mmHg")}</th>
+                  <th>{t("Weight · kg")}</th>
+                  <th>{t("Symptoms / mood")}</th>
+                  <th>{t("Movements")}</th>
+                  <th>{t("Adherence")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -298,64 +364,75 @@ export function TrendsPanel({
                       </a>
                       <br />
                       <small>
-                        Patient log · v{log.revision}
-                        {log.skipped ? " · skipped" : ""}
-                        {log.enteredWithHelp ? ` · with help from ${log.enteredWithHelp}` : ""}
+                        {t("Patient log · v{revision}", {
+                          revision: log.revision,
+                        })}
+                        {log.skipped ? ` · ${t("skipped")}` : ""}
+                        {log.enteredWithHelp
+                          ? ` · ${t("with help from {name}", { name: log.enteredWithHelp })}`
+                          : ""}
                       </small>
                     </td>
                     <td>
                       {log.systolic != null
                         ? `${log.systolic}/${log.diastolic}`
-                        : "Missing"}
+                        : t("Missing")}
                     </td>
-                    <td>{log.weightKg ?? "Missing"}</td>
+                    <td>{log.weightKg ?? t("Missing")}</td>
                     <td style={{ whiteSpace: "normal", minWidth: 140 }}>
-                      {log.symptoms || "Not recorded"} /{" "}
-                      {log.mood.replaceAll("_", " ")}
+                      {log.symptoms || t("Not recorded")} /{" "}
+                      {word(t, log.mood)}
                     </td>
                     <td>
                       {log.movementCount != null
-                        ? `${log.movementCount} in ${log.movementMinutes} min`
-                        : "Missing"}
+                        ? t("{count} in {minutes} min", {
+                            count: log.movementCount,
+                            minutes: log.movementMinutes ?? "",
+                          })
+                        : t("Missing")}
                     </td>
-                    <td>{log.adherence.replaceAll("_", " ")}</td>
+                    <td>{word(t, log.adherence)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {!data.logs.length && <Empty>No entries during this period.</Empty>}
+          {!data.logs.length && (
+            <Empty>{t("No entries during this period.")}</Empty>
+          )}
           <h3 style={{ marginTop: 20 }} id="follow-up-flags">
-            Follow-up flags · check-ins and tasks that need attention
+            {t("Follow-up flags · check-ins and tasks that need attention")}
           </h3>
           <p className="continuity-muted">
-            Flags come only from rules a doctor approved in Clinical Settings,
-            and only about missed check-ins and overdue tasks. They never look
-            at a blood pressure, a weight or any other clinical value, they do
-            not rank patients by urgency or risk, and they do not diagnose.
-            Nothing is sent to the patient or assigned until a doctor confirms.
+            {t(
+              "Flags come only from rules a doctor approved in Clinical Settings, and only about missed check-ins and overdue tasks. They never look at a blood pressure, a weight or any other clinical value, they do not rank patients by urgency or risk, and they do not diagnose. Nothing is sent to the patient or assigned until a doctor confirms.",
+            )}
           </p>
           {data.activeRuleCount > 0 && (
             <p>
-              <strong>Waiting for a doctor: </strong>
+              <strong>{t("Waiting for a doctor:")} </strong>
               <Badge>
                 {data.openFlagCount === 0
-                  ? "Nothing waiting"
-                  : `${data.openFlagCount} flag${data.openFlagCount === 1 ? "" : "s"}`}
+                  ? t("Nothing waiting")
+                  : data.openFlagCount === 1
+                    ? t("{count} flag", { count: data.openFlagCount })
+                    : t("{count} flags", { count: data.openFlagCount })}
               </Badge>
             </p>
           )}
           <Feedback error={action.error} message={action.message} />
           {!data.activeRuleCount && (
             <Empty>
-              No follow-up rules are approved. A doctor can approve the starter
-              rules under Clinical Settings → Follow-up rules.
+              {t(
+                "No follow-up rules are approved. A doctor can approve the starter rules under Clinical Settings → Follow-up rules.",
+              )}
             </Empty>
           )}
           {data.activeRuleCount > 0 && !data.flags.length && (
             <Empty>
-              No missed check-in or overdue task needs following up right now.
-              This is not a clinical assessment.
+              {t(
+                "No missed check-in or overdue task needs following up right now. This is not a clinical assessment.",
+              )}
             </Empty>
           )}
           {data.flags.map((f) => (
@@ -373,7 +450,7 @@ export function TrendsPanel({
                     ...body,
                   });
                   setData(await api.get<Trends>(`${ROOT}/episodes/${episodeId}/trends`));
-                }, body.decision === "create_task" ? "Follow-up task created and assigned." : "Decision recorded.")
+                }, body.decision === "create_task" ? t("Follow-up task created and assigned.") : t("Decision recorded."))
               }
             />
           ))}
@@ -382,7 +459,7 @@ export function TrendsPanel({
               className="btn-secondary"
               to={`/${user?.role === "doctor" ? "doctor" : "care-team"}/care-workspace?episodeId=${episodeId}`}
             >
-              Open connected care workspace
+              {t("Open connected care workspace")}
             </Link>
           </div>
         </>

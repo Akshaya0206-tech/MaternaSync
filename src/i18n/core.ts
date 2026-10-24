@@ -1,8 +1,16 @@
 import { createContext, useContext } from "react";
 import { translations } from "./translations";
+import type { Entry } from "./translations";
 
 export type Language = "en" | "hi" | "ta" | "te";
 export type Values = Record<string, string | number>;
+
+// The patient and caregiver wording is always loaded. The sign-in pages and the doctor screens keep theirs in separate files
+// (see dictionaries.ts) that are downloaded only when a person actually chooses Hindi, Tamil or Telugu, so English users never pay for them.
+const registry: Record<string, Entry> = { ...translations };
+export function registerTranslations(more: Record<string, Entry>) {
+  Object.assign(registry, more);
+}
 
 export const LOCALES: Record<Language, string> = {
   en: "en-IN",
@@ -35,7 +43,7 @@ export function translateTo(
   text: string,
   values?: Values,
 ): string {
-  const entry = translations[text];
+  const entry = registry[text];
   const translated = language === "en" || !entry ? undefined : entry[language];
   return fill(translated ?? text, values);
 }

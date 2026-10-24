@@ -31,7 +31,7 @@ from .guideline import GuidelineSource, GuidelineChunk, GuidelineReview
 from .reference import ReferenceItem, ReferenceChunk, ReferenceNote
 from .emergency import PatientEmergencyProfile
 from .caregiver import CaregiverLink
-from .ai import AIRun, AIAction, ExceptionItem
+from .ai import AIRun, AIAction, ExceptionItem, AssistantSetting
 
 __all__ = [
     # legacy
@@ -73,5 +73,5 @@ __all__ = [
     # trusted family members
     "CaregiverLink",
     # the care assistant
-    "AIRun", "AIAction", "ExceptionItem",
+    "AIRun", "AIAction", "ExceptionItem", "AssistantSetting",
 ]

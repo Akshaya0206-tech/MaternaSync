@@ -4,6 +4,8 @@ import { SignUp } from '../components/auth/SignUp';
 import { useAuth } from '../auth/AuthContext';
 import { homePathForRole } from '../auth/roleHome';
 import { LoadingScreen } from '../components/shared/LoadingScreen';
+import { LanguageProvider } from '../i18n';
+import { loadAuthDictionary } from '../i18n/dictionaries';
 
 export function SignUpPage() {
   const { user, isLoading, login } = useAuth();
@@ -15,14 +17,16 @@ export function SignUpPage() {
   if (user) return <Navigate to={landOn ?? homePathForRole(user.role)} replace />;
 
   return (
-    <SignUp
-      onAuthenticated={(token, authenticatedUser, options) => {
-        const destination = options?.landOn ?? homePathForRole(authenticatedUser.role);
-        setLandOn(destination);
-        login(token, authenticatedUser);
-        navigate(destination, { replace: true });
-      }}
-      onSwitchToSignIn={() => navigate('/signin')}
-    />
+    <LanguageProvider variant="local" load={loadAuthDictionary}>
+      <SignUp
+        onAuthenticated={(token, authenticatedUser, options) => {
+          const destination = options?.landOn ?? homePathForRole(authenticatedUser.role);
+          setLandOn(destination);
+          login(token, authenticatedUser);
+          navigate(destination, { replace: true });
+        }}
+        onSwitchToSignIn={() => navigate('/signin')}
+      />
+    </LanguageProvider>
   );
 }

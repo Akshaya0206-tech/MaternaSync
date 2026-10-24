@@ -14,10 +14,31 @@ import { DOCUMENT_STATUS_TONE, QUESTION_STATUS_TONE, TASK_STATUS_TONE, friendlyQ
 import { TodaysBriefPanel } from './TodaysBriefPanel';
 import { CreateReferralModal } from './CreateReferralModal';
 import { CareWorkspaceLink } from '../../components/continuity/CareWorkspacePage';
+import { tx, useLanguage } from '../../i18n';
 
 type Tab = 'brief' | 'journey' | 'documents' | 'consultations' | 'questions' | 'followups' | 'handover' | 'referrals';
 
+// Journey event codes are shown as lower-case words (the screen capitalises them), so the keys are lower-case too.
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  document: tx('document'),
+  consultation: tx('consultation'),
+  milestone: tx('milestone'),
+  referral: tx('referral'),
+  approved_output: tx('approved_output'),
+};
+
+// Referral status codes are shown as plain upper-case words.
+const REFERRAL_STATUS_LABELS: Record<string, string> = {
+  DRAFT: tx('DRAFT'),
+  SENT: tx('SENT'),
+  ACKNOWLEDGED: tx('ACKNOWLEDGED'),
+  APPOINTMENT_SCHEDULED: tx('APPOINTMENT SCHEDULED'),
+  RESPONSE_RECEIVED: tx('RESPONSE RECEIVED'),
+  CLOSED: tx('CLOSED'),
+};
+
 export function PatientWorkspacePage() {
+  const { t } = useLanguage();
   const { episodeId } = useParams<{ episodeId: string }>();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('brief');
@@ -38,13 +59,13 @@ export function PatientWorkspacePage() {
     Promise.all([
       fetchEpisode(id), fetchEpisodeJourney(id), fetchDocuments({ episodeId: id }),
       fetchQuestions().then((qs) => qs.filter((q) => q.episodeId === id)),
-      fetchFollowUps().then((ts) => ts.filter((t) => t.episodeId === id)),
+      fetchFollowUps().then((ts) => ts.filter((task) => task.episodeId === id)),
       fetchHandover(id), fetchReferrals(id),
     ])
-      .then(([ep, j, d, q, t, h, r]) => {
-        setEpisode(ep); setJourney(j); setDocuments(d); setQuestions(q); setFollowUps(t); setHandover(h); setReferrals(r);
+      .then(([ep, j, d, q, fu, h, r]) => {
+        setEpisode(ep); setJourney(j); setDocuments(d); setQuestions(q); setFollowUps(fu); setHandover(h); setReferrals(r);
       })
-      .catch(() => setError("We couldn't load this patient. You may not be assigned to them."))
+      .catch(() => setError(tx("We couldn't load this patient. You may not be assigned to them.")))
       .finally(() => setIsLoading(false));
   };
 
@@ -64,28 +85,28 @@ export function PatientWorkspacePage() {
       const blob = await fetchBlobWithAuth(documentFileUrl(docId));
       window.open(URL.createObjectURL(blob), '_blank');
     } catch {
-      setNotice('The original file for this document is not available.');
+      setNotice(tx('The original file for this document is not available.'));
       window.setTimeout(() => setNotice(null), 4000);
     }
   };
 
   const handleVerify = async (docId: string) => {
-    try { await verifyDocument(docId); refresh(); } catch (err) { setNotice(err instanceof ApiError ? err.message : 'Could not verify this document.'); }
+    try { await verifyDocument(docId); refresh(); } catch (err) { setNotice(err instanceof ApiError ? err.message : tx('Could not verify this document.')); }
   };
 
   const handleReject = async (docId: string) => {
-    try { await rejectDocument(docId); refresh(); } catch (err) { setNotice(err instanceof ApiError ? err.message : 'Could not reject this document.'); }
+    try { await rejectDocument(docId); refresh(); } catch (err) { setNotice(err instanceof ApiError ? err.message : tx('Could not reject this document.')); }
   };
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'brief', label: "Today's Brief" },
-    { key: 'journey', label: 'Journey' },
-    { key: 'documents', label: 'Documents' },
-    { key: 'consultations', label: 'Consultations' },
-    { key: 'questions', label: 'Questions' },
-    { key: 'followups', label: 'Follow-ups' },
-    { key: 'referrals', label: 'Referrals' },
-    { key: 'handover', label: 'Handover' },
+    { key: 'brief', label: t("Today's Brief") },
+    { key: 'journey', label: t('Journey') },
+    { key: 'documents', label: t('Documents') },
+    { key: 'consultations', label: t('Consultations') },
+    { key: 'questions', label: t('Questions') },
+    { key: 'followups', label: t('Follow-ups') },
+    { key: 'referrals', label: t('Referrals') },
+    { key: 'handover', label: t('Handover') },
   ];
 
   return (
@@ -94,11 +115,11 @@ export function PatientWorkspacePage() {
         onClick={() => navigate('/doctor/patients')}
         style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', color: 'var(--teal-primary)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, padding: 0, marginBottom: '14px' }}
       >
-        <ArrowLeft size={15} /> Back to My Patients
+        <ArrowLeft size={15} /> {t('Back to My Patients')}
       </button>
 
-      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading patient workspace…</div>}
-      {error && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{error}</div>}
+      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading patient workspace…')}</div>}
+      {error && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>}
 
       {episode && !isLoading && (
         <>
@@ -107,28 +128,28 @@ export function PatientWorkspacePage() {
             <div>
               <div className="page-title" style={{ fontSize: '1.25rem' }}>{episode.patientName}</div>
               <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                {episode.age != null ? `Age ${episode.age}` : 'Age not recorded'} · EDD: {formatFriendlyDate(episode.edd)} · GA {episode.gestationalAgeWeeks}w{episode.gestationalAgeDays}d
+                {episode.age != null ? t('Age {age}', { age: episode.age }) : t('Age not recorded')} · EDD: {formatFriendlyDate(episode.edd)} · GA {episode.gestationalAgeWeeks}w{episode.gestationalAgeDays}d
               </div>
             </div>
-            <button onClick={handleStartConsultation} className="btn-primary"><Stethoscope size={15} /> Start Consultation</button>
+            <button onClick={handleStartConsultation} className="btn-primary"><Stethoscope size={15} /> {t('Start Consultation')}</button>
           </div>
 
-          {notice && <div className="glass-panel" style={{ padding: '10px 16px', marginBottom: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{notice}</div>}
+          {notice && <div className="glass-panel" style={{ padding: '10px 16px', marginBottom: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{t(notice)}</div>}
 
           <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap' }}>
-            {tabs.map((t) => (
+            {tabs.map((tabItem) => (
               <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
+                key={tabItem.key}
+                onClick={() => setTab(tabItem.key)}
                 style={{
                   padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit',
-                  fontSize: '0.85rem', fontWeight: tab === t.key ? 700 : 500,
-                  color: tab === t.key ? 'var(--teal-primary)' : 'var(--text-secondary)',
-                  borderBottom: tab === t.key ? '2px solid var(--teal-primary)' : '2px solid transparent',
+                  fontSize: '0.85rem', fontWeight: tab === tabItem.key ? 700 : 500,
+                  color: tab === tabItem.key ? 'var(--teal-primary)' : 'var(--text-secondary)',
+                  borderBottom: tab === tabItem.key ? '2px solid var(--teal-primary)' : '2px solid transparent',
                   marginBottom: '-1px',
                 }}
               >
-                {t.label}
+                {tabItem.label}
               </button>
             ))}
           </div>
@@ -137,14 +158,14 @@ export function PatientWorkspacePage() {
 
           {tab === 'journey' && (
             journey.length === 0 ? (
-              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No journey events recorded yet.</div>
+              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>{t('No journey events recorded yet.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {journey.map((e) => (
                   <div key={e.id} className="glass-panel" style={{ padding: '14px 18px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)' }}>{formatFriendlyDate(e.eventDate)}</div>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{e.eventType}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{t(EVENT_TYPE_LABELS[e.eventType] ?? e.eventType)}</span>
                     </div>
                     <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{e.title}</div>
                     {e.summary && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>{e.summary}</div>}
@@ -156,25 +177,25 @@ export function PatientWorkspacePage() {
 
           {tab === 'documents' && (
             documents.length === 0 ? (
-              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No documents yet.</div>
+              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>{t('No documents yet.')}</div>
             ) : (
               <div className="glass-panel" style={{ padding: '4px 0' }}>
                 {documents.map((d, i) => (
                   <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '14px 20px', borderBottom: i === documents.length - 1 ? 'none' : '1px solid var(--border-color)' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{d.filename}</div>
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>Uploaded by {d.uploadedByName}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{t('Uploaded by {name}', { name: d.uploadedByName })}</div>
                     </div>
-                    <StatusBadge label={d.statusLabel} tone={DOCUMENT_STATUS_TONE[d.status]} />
-                    <button onClick={() => handleViewOriginal(d.id)} title="View original" style={{ background: 'none', border: 'none', color: 'var(--teal-primary)', cursor: 'pointer', display: 'flex' }}>
+                    <StatusBadge label={t(d.statusLabel)} tone={DOCUMENT_STATUS_TONE[d.status]} />
+                    <button onClick={() => handleViewOriginal(d.id)} title={t('View original')} style={{ background: 'none', border: 'none', color: 'var(--teal-primary)', cursor: 'pointer', display: 'flex' }}>
                       <Eye size={16} />
                     </button>
                     {d.status === 'NEEDS_REVIEW' && (
                       <>
-                        <button onClick={() => handleVerify(d.id)} title="Verify" style={{ background: 'none', border: 'none', color: 'var(--emerald-raw)', cursor: 'pointer', display: 'flex' }}>
+                        <button onClick={() => handleVerify(d.id)} title={t('Verify')} style={{ background: 'none', border: 'none', color: 'var(--emerald-raw)', cursor: 'pointer', display: 'flex' }}>
                           <CheckCircle2 size={16} />
                         </button>
-                        <button onClick={() => handleReject(d.id)} title="Reject" style={{ background: 'none', border: 'none', color: 'var(--rose-urgent)', cursor: 'pointer', display: 'flex' }}>
+                        <button onClick={() => handleReject(d.id)} title={t('Reject')} style={{ background: 'none', border: 'none', color: 'var(--rose-urgent)', cursor: 'pointer', display: 'flex' }}>
                           <XCircle size={16} />
                         </button>
                       </>
@@ -187,14 +208,14 @@ export function PatientWorkspacePage() {
 
           {tab === 'consultations' && (
             <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '14px' }}>Start or continue a consultation for this patient.</p>
-              <button onClick={handleStartConsultation} className="btn-primary"><Stethoscope size={15} /> Start Consultation</button>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '14px' }}>{t('Start or continue a consultation for this patient.')}</p>
+              <button onClick={handleStartConsultation} className="btn-primary"><Stethoscope size={15} /> {t('Start Consultation')}</button>
             </div>
           )}
 
           {tab === 'questions' && (
             questions.length === 0 ? (
-              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No questions for this patient.</div>
+              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>{t('No questions for this patient.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {questions.map((q) => (
@@ -212,23 +233,23 @@ export function PatientWorkspacePage() {
 
           {tab === 'followups' && (
             followUps.length === 0 ? (
-              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No follow-ups for this patient.</div>
+              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>{t('No follow-ups for this patient.')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {followUps.map((t) => (
-                  <div key={t.id} className="glass-panel" style={{ padding: '14px 18px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                {followUps.map((task) => (
+                  <div key={task.id} className="glass-panel" style={{ padding: '14px 18px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t.title}</div>
-                        {t.autoGenerated && (
+                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{task.title}</div>
+                        {task.autoGenerated && (
                           <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent-teal, #0d9488)', background: 'rgba(13,148,136,0.12)', border: '1px solid rgba(13,148,136,0.3)', borderRadius: '999px', padding: '1px 8px', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
-                            Auto
+                            {t('Auto')}
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '3px' }}>{t.dueDate && <>Due {formatFriendlyDate(t.dueDate)}</>}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '3px' }}>{task.dueDate && <>{t('Due {date}', { date: formatFriendlyDate(task.dueDate) })}</>}</div>
                     </div>
-                    <StatusBadge label={friendlyTaskStatus(t.status)} tone={TASK_STATUS_TONE[t.status]} />
+                    <StatusBadge label={friendlyTaskStatus(task.status)} tone={TASK_STATUS_TONE[task.status]} />
                   </div>
                 ))}
               </div>
@@ -238,10 +259,10 @@ export function PatientWorkspacePage() {
           {tab === 'referrals' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <button onClick={() => setIsCreateReferralOpen(true)} className="btn-primary"><Plus size={15} /> Create Referral</button>
+                <button onClick={() => setIsCreateReferralOpen(true)} className="btn-primary"><Plus size={15} /> {t('Create Referral')}</button>
               </div>
               {referrals.length === 0 ? (
-                <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>No referrals for this patient yet.</div>
+                <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>{t('No referrals for this patient yet.')}</div>
               ) : (
                 referrals.map((r) => (
                   <button
@@ -253,9 +274,9 @@ export function PatientWorkspacePage() {
                     <div>
                       <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>{r.referenceCode}</div>
                       <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{r.title}</div>
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{r.destination ?? 'Destination not specified'}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{r.destination ?? t('Destination not specified')}</div>
                     </div>
-                    <StatusBadge label={r.status.replace(/_/g, ' ')} tone="amber" />
+                    <StatusBadge label={t(REFERRAL_STATUS_LABELS[r.status] ?? r.status.replace(/_/g, ' '))} tone="amber" />
                   </button>
                 ))
               )}
@@ -265,18 +286,18 @@ export function PatientWorkspacePage() {
           {tab === 'handover' && (
             handover ? (
               <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <StatusBadge label={handover.status === 'DRAFT' ? 'AI-Generated Draft' : 'Final · Shared Internally'} tone={handover.status === 'DRAFT' ? 'purple' : 'green'} />
-                <HandoverField label="Context" value={handover.context} />
-                <HandoverField label="What Happened" value={handover.whatHappened} />
-                <HandoverField label="What Remains" value={handover.whatRemains} />
-                <HandoverField label="Who Owns It" value={handover.whoOwnsIt} />
-                <HandoverField label="What to Discuss" value={handover.whatToDiscuss} />
-                <button onClick={() => navigate('/doctor/handover')} className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: '0.8rem' }}>Edit in Handover</button>
+                <StatusBadge label={handover.status === 'DRAFT' ? t('AI-Generated Draft') : t('Final · Shared Internally')} tone={handover.status === 'DRAFT' ? 'purple' : 'green'} />
+                <HandoverField label={t('Context')} value={handover.context} />
+                <HandoverField label={t('What Happened')} value={handover.whatHappened} />
+                <HandoverField label={t('What Remains')} value={handover.whatRemains} />
+                <HandoverField label={t('Who Owns It')} value={handover.whoOwnsIt} />
+                <HandoverField label={t('What to Discuss')} value={handover.whatToDiscuss} />
+                <button onClick={() => navigate('/doctor/handover')} className="btn-secondary" style={{ alignSelf: 'flex-start', fontSize: '0.8rem' }}>{t('Edit in Handover')}</button>
               </div>
             ) : (
               <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '14px' }}>No handover exists yet for this patient.</p>
-                <button onClick={() => navigate('/doctor/handover')} className="btn-primary">Go to Handover</button>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '14px' }}>{t('No handover exists yet for this patient.')}</p>
+                <button onClick={() => navigate('/doctor/handover')} className="btn-primary">{t('Go to Handover')}</button>
               </div>
             )
           )}

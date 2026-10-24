@@ -108,16 +108,31 @@ def handle_patient_question_created(db, *, episode_id, actor_user_id, source_id,
         ))
 
 
+def _assistant_is_handling(db, episode_id) -> bool:
+    """False when the assistant will not pick the work up now: switched off, shadow mode, or paused by a doctor."""
+    from ..ai_coordinator import controls
+    return config.AI_COORDINATOR_MODE == "assist" and not controls.is_held(db, episode_id)
+
+
 def queue_for_assistant_document(db, *, episode_id, source_id, **_kwargs):
     """Hand the new document to the care assistant. This only adds a queued job row to the same transaction; the
-    assistant does the work later, so a slow model can never hold up an upload."""
-    from ..ai_coordinator import orchestrator
+    assistant does the work later, so a slow model can never hold up an upload. If the assistant is not handling work
+    right now, the doctor is told about the upload by the fixed rule instead, so it is never missed."""
+    from ..ai_coordinator import orchestrator, tools
     orchestrator.enqueue(db, "document_intake", episode_id=episode_id, source_type="MedicalDocument", source_id=source_id)
+    if not config.CARE_TEAM_ENABLED and not _assistant_is_handling(db, episode_id):
+        document = db.get(models.MedicalDocument, source_id)
+        if document is not None:
+            tools.notify_doctors_of_document(db, document)
 
 
 def queue_for_assistant_question(db, *, episode_id, source_id, **_kwargs):
-    from ..ai_coordinator import orchestrator
+    from ..ai_coordinator import orchestrator, tools
     orchestrator.enqueue(db, "question_routing", episode_id=episode_id, source_type="PatientQuestion", source_id=source_id)
+    if not config.CARE_TEAM_ENABLED and not _assistant_is_handling(db, episode_id):
+        question = db.get(models.PatientQuestion, source_id)
+        if question is not None:
+            tools.route_question_to_doctor(db, question)
 
 
 REGISTRY = {

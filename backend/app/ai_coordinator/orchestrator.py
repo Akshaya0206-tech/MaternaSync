@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from .. import config, models
 from ..database import SessionLocal
-from . import prompts, workflows
+from . import controls, prompts, tools, workflows
 from .providers import get_provider
 
 WORKFLOWS = {"document_intake": workflows.run_document_intake, "question_routing": workflows.run_question_routing}
@@ -41,11 +41,19 @@ def _stamp(run: models.AIRun, provider) -> None:
     run.framework, run.prompt_version = "langgraph", PROMPT_VERSIONS.get(run.workflow, "none")
 
 
+def _route_if_question(db, run: models.AIRun) -> None:
+    """A question the assistant did not handle (skipped, failed) must still reach a doctor, by the fixed rule."""
+    if run.workflow == "question_routing":
+        question = db.get(models.PatientQuestion, run.source_id)
+        if question is not None and question.status not in ("ANSWERED", "CLOSED"):
+            tools.route_question_to_doctor(db, question)
+
+
 def _fail(db, run_id: str, exc: Exception) -> None:
-    from . import tools
     db.rollback()
     run = db.get(models.AIRun, run_id)
     run.status, run.error, run.finished_at = "FAILED", str(exc)[:500], _now()
+    _route_if_question(db, run)
     tools.raise_exception(db, episode_id=run.episode_id, run_id=run.id, kind="attention", urgency="normal", title="The care assistant hit a problem",
                           summary=f"{run.workflow.replace('_', ' ')}: {str(exc)[:200]}", recommended_action="Please handle this item yourself.",
                           source_type=run.source_type, source_id=run.source_id)
@@ -63,7 +71,18 @@ def process_queue(session_factory=None, limit: int = 25) -> int:
                 run = db.get(models.AIRun, run_id)
                 if config.AI_COORDINATOR_MODE == "off":
                     run.status, run.summary, run.finished_at = "SKIPPED", "The care assistant is switched off.", _now()
+                    _route_if_question(db, run)
                     db.commit()
+                    continue
+                if controls.is_held(db, run.episode_id):
+                    # A doctor paused the assistant. The work stays queued and runs when they resume; only a warning-sign
+                    # question gets its fixed emergency steps now, and every held question is handed to the doctor by rule.
+                    try:
+                        if run.workflow == "question_routing" and workflows.run_held_question(db, run):
+                            run.status, run.finished_at = "DONE", _now()
+                        db.commit()
+                    except Exception as exc:  # noqa: BLE001
+                        _fail(db, run_id, exc)
                     continue
                 provider = get_provider()
                 run.status, run.started_at = "RUNNING", _now()
@@ -89,6 +108,10 @@ def run_sweeps(session_factory=None) -> dict:
     with _LOCK:
         db = factory()
         try:
+            state = controls.load(db)
+            if state["paused"]:  # a doctor paused everything: no reminders until they resume
+                return {"missedCheckIns": 0, "overdueTasks": 0, "paused": True}
+            skip = frozenset(state["paused_episodes"])
             provider = get_provider()
 
             def make_run(workflow, episode_id, source_type, source_id, key):
@@ -101,7 +124,7 @@ def run_sweeps(session_factory=None) -> dict:
                 db.flush()
                 return run
 
-            counts = {"missedCheckIns": workflows.sweep_missed_checkins(db, make_run), "overdueTasks": workflows.sweep_overdue_tasks(db, make_run)}
+            counts = {"missedCheckIns": workflows.sweep_missed_checkins(db, make_run, skip), "overdueTasks": workflows.sweep_overdue_tasks(db, make_run, skip=skip)}
             db.commit()
             return counts
         except Exception:  # noqa: BLE001: a failed sweep must not stop the scheduler

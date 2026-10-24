@@ -1,49 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation as useRoute } from 'react-router-dom';
-import { HeartPulse, FolderHeart, MessageCircle, Calendar, Bell, UserCircle, Languages, PhoneCall, BookOpen } from 'lucide-react';
+import { HeartPulse, FolderHeart, MessageCircle, Calendar, Bell, UserCircle, PhoneCall, BookOpen } from 'lucide-react';
 import { RoleSidebar } from '../../components/shared/RoleSidebar';
+import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher';
 import { useAuth } from '../../auth/AuthContext';
 import { getContext } from '../../api/continuity';
 import { LanguageProvider, useLanguage } from '../../i18n';
-import type { Language } from '../../i18n';
 import { TourProvider } from '../../tour/TourProvider';
 import { TextSizeControl } from '../../accessibility/TextSizeControl';
 import { LocationProvider } from './location';
 import { usePatientLocation } from './locationContext';
 import { patientTourLabels, patientTourSteps } from './tour';
 
-const LANGUAGE_NAMES: Record<Language, string> = {
-  en: 'English',
-  hi: 'हिन्दी',
-  ta: 'தமிழ்',
-  te: 'తెలుగు',
-};
-
 // Pages that show a pregnancy record. A new account has none until the care team links one.
 const NEEDS_RECORD = new Set([
   '/patient/dashboard', '/patient/daily-log', '/patient/guided-check-in', '/patient/care-plan', '/patient/consent', '/patient/records',
   '/patient/questions', '/patient/appointments', '/patient/updates', '/patient/journey',
 ]);
-
-function LanguageSwitcher() {
-  const { language, setLanguage, t } = useLanguage();
-  return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px 8px', color: 'var(--sidebar-text)', fontSize: '0.75rem' }}>
-      <Languages size={16} aria-hidden="true" />
-      <span style={{ flexShrink: 0 }}>{t('Language')}</span>
-      <select
-        value={language}
-        onChange={(event) => void setLanguage(event.target.value as Language)}
-        aria-label={t('Language')}
-        style={{ flex: 1, minWidth: 0, padding: '5px 6px', borderRadius: 'var(--radius-md)', border: '1px solid var(--sidebar-border)', background: 'var(--sidebar-bg)', color: 'var(--cream-soft)', fontSize: '0.8rem' }}
-      >
-        {Object.entries(LANGUAGE_NAMES).map(([key, label]) => (
-          <option key={key} value={key}>{label}</option>
-        ))}
-      </select>
-    </label>
-  );
-}
 
 function NoRecordYet() {
   const { t } = useLanguage();

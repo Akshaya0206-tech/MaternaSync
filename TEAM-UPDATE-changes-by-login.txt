@@ -22,13 +22,19 @@ BEFORE YOU PULL / RUN  (important for [B])
        Care Team  brenda.miller@maternasync.app   BrendaDemo123! (REFUSED unless the flag below is on)
 
 -------------------------------------------------------------------------------------
-THE FIVE BIG CHANGES IN ONE GLANCE
+THE BIG CHANGES IN ONE GLANCE
 -------------------------------------------------------------------------------------
   1. [B] Care-team login is SWITCHED OFF (code kept). Replaced by an AI care assistant + doctor.
   2. [B] NEW "Caregiver" login for a relative or friend the pregnant woman invites.
   3. [B] NEW AI care assistant (LangGraph) doing routine admin work, doctor approves in the app.
   4. [B] Scope clean-up for the hackathon: risk labels, drug-safety check, BP/weight rules removed.
   5. [A] Patient app: Emergency help, Location, References, step-by-step check-in, tour, text size.
+  6. [B] NEW Human override on every assistant step: Undo, Pause (all or one patient), Review every step.
+  7. [B] NEW Four languages (English, Hindi, Tamil, Telugu) on the landing page, sign-in, sign-up and the
+         WHOLE doctor app, not only the patient and caregiver apps.
+  8. [B] NEW "No interpretation of medical data" clean-up: the app no longer reads a note to pick
+         conditions or codes, no longer explains what a lab value means, and has an automatic guard
+         test for it (see "No interpretation" below).
 
 =====================================================================================
 SIGN-IN AND SIGN-UP PAGES (everyone)
@@ -44,11 +50,17 @@ SIGN-IN AND SIGN-UP PAGES (everyone)
       A "Demo Caregiver" button was added. A care-team login shows a plain message:
       "The care-team sign-in is switched off..."
   [B] An old care-team session token is signed out automatically (403 clears the token).
+  [B] NEW A language menu on the landing, sign-in and sign-up pages (English, Hindi, Tamil, Telugu). The
+      choice becomes the account's language once the person signs in. The landing page now shows a
+      Caregiver card (and the Care Team card only when that login is switched on).
 
 =====================================================================================
 PATIENT LOGIN
 =====================================================================================
   Sidebar / pages added or changed
+  [B] CHANGED My Care Plan -> "Approved summaries & instructions" (and the caregiver's Care plan): in a
+           lab explanation the "About these tests" part is a closed "show more" block, so the
+           patient reads her own results first. It is labelled general information.
   [A] NEW  Emergency help - red button at the top of the sidebar, always visible.
            Shows numbers to call (112, 108, 102, 181), her own emergency contact, preferred
            hospital and nearby hospitals (OpenStreetMap). Pressing it alerts nobody.
@@ -118,13 +130,22 @@ DOCTOR LOGIN
   [A] CHANGED Handover is PAUSED (page says so; server refuses with HTTP 423).
   [A] NEW  Tour + "Start a tour" on Profile; text size control.
   [A] FIXED Reference Library search no longer shows stale results while typing.
-  [B] NEW  Care Assistant tab (sidebar, between Patient Questions and Documentation, shows
-           "N open"). Cards:
+  [B] NEW  Care Assistant tab (sidebar, between Patient Questions and Documentation, shows the
+           number of open items). Cards:
              Status            - mode, model step, waiting count, handled today, "Check now"
              Needs you         - proposals (Approve / Dismiss) and hand-offs (I have seen this)
              Recently decided  - who decided and when
-             What the assistant did - full log of every step
+             Your controls     - Pause / Resume the assistant, "Ask me to approve every step first",
+                                 Pause for one patient (and resume)
+             What the assistant did - full log of every step, each with an Undo button where possible
            Approving runs the step under the DOCTOR's own name.
+  [B] NEW  HUMAN OVERRIDE on every step (see "Human override" below).
+  [B] NEW  The whole doctor app (menu, tour, every page) is available in Hindi, Tamil and Telugu. A
+           language menu sits at the bottom of the menu and is saved to the doctor's account.
+           What people write (names, notes, transcripts), reference documents and the server's own
+           notification text stay as written.
+  [B] FIXED The tour no longer says Document Studio runs "prescriptions with a safety check" (that check
+           was removed earlier). Old demo handover text no longer shows "risk: moderate".
   [B] NEW  Dashboard card "Care Assistant: needs you"; tour has a new Care Assistant step (17 steps).
   [B] REMOVED Risk labels and "Risk: ..." text in Today's Brief, Consultations, patient headers,
            top utility bar, patients list and visit context.
@@ -138,6 +159,31 @@ DOCTOR LOGIN
            MaternaSync does not check medicines, doses, allergies or interactions.
   [B] Patient Questions page: unchanged for doctors, but clinical questions now arrive already
            assigned to them by the assistant (no care-team triage task).
+
+  NO INTERPRETATION OF MEDICAL DATA  (all [B])
+  [B] CHANGED Document Studio -> "Patient explanation": a new "Topics to explain" list (tick boxes) shows
+           the clinic-approved education topics in the chosen language. The draft contains ONLY the
+           ticked topics. REMOVED: the automatic scan of the note for conditions (gestational
+           diabetes, blood pressure, anaemia, scans). With nothing ticked the draft says so.
+  [B] CHANGED Document Studio -> ICD-10: the "Find candidate ICD-10 codes" button is gone. There is now
+           a search box "Look up an ICD-10 code": type a code (O24) or a phrase (gestational); results
+           come from the approved code sets with a source link. Nothing reads the note. The doctor
+           ticks each code. The old endpoint /outputs/{id}/codes was REMOVED.
+  [B] CHANGED Document Studio -> "Lab report explanation": each result is shown as printed (value,
+           unit, the range printed on the report, original line). No label, no comparison, and the
+           words around a value never depend on the value. The general "what this test measures"
+           text moved into a separate "About these tests" section, filled ONLY from notes a doctor
+           approved. If none is approved the test is left out and the doctor is told which ones.
+  [B] NEW  Clinical Settings -> Patient education -> topic "About lab tests": 84 starter notes
+           (21 tests x English/Hindi/Tamil/Telugu). All are DRAFTS; a doctor must review and approve
+           them (Approve selected works) before any of them appears in a lab explanation.
+  [B] NEW  A short statement "Shown as entered. MaternaSync does not interpret these values or compare
+           them with a range. That is for the doctor." on Today's Brief and Connected Care -> Trends
+           (card "Last 30 days - patient-reported trends"). Translated into all four languages.
+  [B] FIXED Today's Brief: the patient drop-down had no accessible name (screen readers); now labelled.
+  [B] CHANGED The Claude option of the care assistant can only answer with fixed choices (record type,
+           category, yes/no, confidence, reason code). The sentence a doctor reads is looked up from a
+           fixed table, so the model never writes text. Prompt versions are now intake@v2, triage@v2.
 
 =====================================================================================
 CARE TEAM LOGIN  (switched off, kept)
@@ -177,6 +223,31 @@ THE AI CARE ASSISTANT  (system behind the doctor's Care Assistant tab, all [B])
   Runs in the background: queue every 5 seconds, follow-up checks every 30 minutes.
 
 =====================================================================================
+HUMAN OVERRIDE (Care Assistant tab -> Your controls, and the log below it, all [B])
+=====================================================================================
+  Undo     Every finished step that can be reversed has an Undo button in "What the assistant did".
+           It says what will change first, asks for an optional reason, and is logged. It undoes:
+             - a reminder or the fixed emergency message: withdrawn from her Updates
+             - an assignment of a question: put back as it was
+             - a verified or rejected document: back under review (and gone from her journey)
+             - a sent reply: withdrawn, question open again
+             - a hand-off to the doctor: dismissed
+           It refuses when the item has moved on since (answered, reassigned, document changed).
+           Proposals a doctor approved can be undone too. Steps from before this change cannot.
+  Pause    Pause for everyone, or for one patient. Work stays queued and runs when resumed.
+           While paused: every new question is still handed to the doctor by a fixed rule, and a
+           question with a warning sign still gets the fixed emergency message (the one thing a
+           pause never delays; the doctor can still withdraw it).
+  Review   "Ask me to approve every step first": reminders wait as proposals. Handing a question to a
+           doctor and the emergency message are never held back.
+  Safety   If the assistant is switched off, in shadow mode, paused or fails, a new question is
+  net      assigned to the patient's doctor and an upload is notified to the doctor by a fixed rule,
+           so nothing becomes invisible (the doctor's question list only shows assigned questions).
+  Code     ai_coordinator/controls.py, tools.undo, routers/assistant.py (settings, patients/.../pause,
+           actions/.../undo). New table assistant_settings; new columns on ai_actions are added
+           automatically at start.
+
+=====================================================================================
 SETTINGS (environment variables)
 =====================================================================================
   MATERNASYNC_CARE_TEAM_ENABLED    default false. true = care-team login back on.
@@ -201,6 +272,10 @@ BACKEND CHANGES AT A GLANCE (for developers)
                  caregiver_service.py, seed_assistant.py, models/ai.py, models/caregiver.py
   Key frontend:  src/roles/caregiver/, src/roles/doctor/AssistantPage.tsx,
                  src/roles/patient/TrustedPeopleCard.tsx, GuidedCheckInForm.tsx (shared)
+  Languages:     src/i18n/dicts/*.ts (auth + doctor wording, downloaded only for Hindi/Tamil/Telugu),
+                 src/components/shared/LanguageSwitcher.tsx, LanguageProvider (variants)
+                 Check:  node tests/i18n-coverage.mjs   (and --unwrapped to list untranslated text)
+  Also changed:  PATCH /api/v2/continuity/preferences now works for doctors, not only patients.
   Removed files: backend/app/drug_safety.py and data/drug_safety_labels.json. On start-up the app
                  also deletes leftover drug-safety lists and BP/weight rules from old databases.
   Sign-in check lives in one place: deps.refuse_sign_in.
@@ -208,9 +283,12 @@ BACKEND CHANGES AT A GLANCE (for developers)
 =====================================================================================
 TESTS - WHAT WAS RUN
 =====================================================================================
-  Backend: 100 unit/integration tests pass (46 existing + 54 new).
+  Backend: 130 unit/integration tests pass (46 existing + 84 new, including the scope-guard tests).
     Run:  backend/venv/Scripts/python.exe -m unittest discover -s backend/tests
-    New file: backend/tests/test_assistant_caregiver.py ; shared setup: backend/tests/testenv.py
+    New files: backend/tests/test_assistant_caregiver.py, backend/tests/test_scope_guard.py ;
+    shared setup: backend/tests/testenv.py
+  Scope guard on the screens: node tests/scope-guard.mjs (fails on words such as abnormal, normal range,
+    high risk, suggests, diagnosis in any translated screen text; shown to fail on bad wording).
   Frontend: type-check, production build and translation check (node tests/i18n-coverage.mjs)
     pass; lint shows warnings only, no errors.
   Browser (Playwright): full flow tested - invite, caregiver sign-up, permissions, step-by-step
@@ -222,19 +300,28 @@ TESTS - WHAT WAS RUN
 KNOWN GAPS / THINGS THE TEAM SHOULD KNOW
 =====================================================================================
   - NOT BUILT as assistant workflows: scheduling, referrals, WhatsApp outreach, paperwork drafts,
-    outcomes reporting, handover. No autonomous mode. No per-step undo. No evaluation set yet.
+    outcomes reporting, handover. No autonomous mode. No evaluation set yet.
   - The default demo "AI" is rules-based. The Claude provider is written but untested live. If
     used for real, names are removed but document text is still sent: needs a data agreement.
   - Hindi / Tamil / Telugu text (about 100 new strings) was written by Claude and needs a native
-    speaker's review. Sign-in, sign-up and doctor screens are English only.
+    speaker's review: about 1,100 new strings across sign-in and the doctor app, written by Claude.
+    A few terms differ between screens (for example Tamil "Follow-up" is one word on the doctor
+    screens and another on the patient screens).
+  - Not translated, on purpose: names, notes, transcripts, reference documents and publisher names, the
+    server's own notification and handover text, and the care-team screens (that login is off).
   - A caregiver needs an email + password. No SMS/WhatsApp alerts to caregivers.
   - A caregiver's question and its reply are visible to the caregiver and the doctor; the woman
     sees it under Profile -> Trusted people -> "See what they did".
   - First download grew about 8 kB (sign-in about 133 kB compressed) because translations are bundled.
   - Still missing against the hackathon rules: a 60-90 day impact measurement plan, and light
     integration with existing systems (the app is standalone).
-  - Nearest item to the "no interpretation / no decision support" line: ICD-10 candidate codes
-    (phrase matching on the doctor's own note; the doctor ticks each code).
+  - "No interpretation" is now covered by design (nothing reads a note or labels a value) and by the
+    guard tests, but the tests check wording and structure only; they cannot prove the absence of
+    every possible interpretation. Reference-document category labels "High Risk" / "High-risk
+    pregnancy" remain (they group guideline documents and grade no patient).
+  - The 84 "About lab tests" notes and the new Hindi/Tamil/Telugu wording need a native speaker's and
+    a doctor's review before real use. Until a doctor approves them, lab explanations have no
+    general test descriptions at all.
   - All [B] work is uncommitted. Ask Andry to commit and push before you rely on it.
 
 =====================================================================================

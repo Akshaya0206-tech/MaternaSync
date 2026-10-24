@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { api, fetchBlobWithAuth } from "../../api/client";
 import { getLibrary, languages, formatTime } from "../../api/continuity";
 import type { Language, Resource } from "../../api/continuity";
+import { tx, useLanguage } from "../../i18n";
 import {
   Badge,
   Empty,
@@ -17,14 +19,70 @@ import {
 // The lists other parts of the app read from. Each must be approved by a doctor before it is used.
 // (Reference documents are not here: they live on the doctor's own Reference Library page.)
 const kinds = {
-  rule: "Follow-up rules",
-  coding: "ICD-10 code sets",
-  education: "Patient education",
-  pathway: "Care pathways",
-  template: "Note templates",
+  rule: tx("Follow-up rules"),
+  coding: tx("ICD-10 code sets"),
+  education: tx("Patient education"),
+  pathway: tx("Care pathways"),
+  template: tx("Note templates"),
 };
 
+// Status codes are shown as written in English; only the words are translated.
+const statusLabels: Record<string, string> = {
+  DRAFT: tx("DRAFT"),
+  APPROVED: tx("APPROVED"),
+  SUPERSEDED: tx("SUPERSEDED"),
+  RETIRED: tx("RETIRED"),
+};
+const statusOptions = ["DRAFT", "APPROVED", "SUPERSEDED", "RETIRED"];
+const statusLabel = (status: string, t: (text: string) => string) =>
+  statusLabels[status] ? t(statusLabels[status]) : status;
+
+const stages: Record<string, string> = {
+  all: tx("all"),
+  first: tx("first"),
+  second: tx("second"),
+  third: tx("third"),
+  postpartum: tx("postpartum"),
+};
+
+const addTitles: Record<string, string> = {
+  rule: tx("Add rule"),
+  coding: tx("Add coding"),
+  education: tx("Add education"),
+  pathway: tx("Add pathway"),
+  template: tx("Add template"),
+};
+
+// The two things a follow-up rule can watch, as the doctor reads them.
+const metricOptions = [
+  ["overdue_task_days", tx("Overdue task (days)")],
+  ["missing_days", tx("Missing agreed check-in (days)")],
+];
+const metricNames: Record<string, string> = {
+  "overdue task days": tx("overdue task days"),
+  "missing days": tx("missing days"),
+};
+
+// "overdue_task_days" is read as "overdue task days"; the two known names are translated.
+function ruleMetric(metric: unknown, t: (text: string) => string) {
+  const name = String(metric).replaceAll("_", " ");
+  return metricNames[name] ? t(metricNames[name]) : name;
+}
+
+// Puts a link into the middle of a translated sentence: the translation holds {link} where the link goes.
+function withLink(text: string, link: ReactNode) {
+  const [before, after = ""] = text.split("{link}");
+  return (
+    <>
+      {before}
+      {link}
+      {after}
+    </>
+  );
+}
+
 export function LibraryPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const doctor = user?.role === "doctor";
   const action = useAction();
@@ -80,8 +138,10 @@ export function LibraryPage() {
   const choose = (resource: Resource) => setSelected(resource);
   return (
     <Page
-      title="Clinical settings"
-      subtitle="The lists other parts of the app read from: follow-up rules, ICD-10 code sets, patient education, care pathways and note layouts. A doctor approves each one before it is used, and every approval records the reviewer and version."
+      title={t("Clinical settings")}
+      subtitle={t(
+        "The lists other parts of the app read from: follow-up rules, ICD-10 code sets, patient education, care pathways and note layouts. A doctor approves each one before it is used, and every approval records the reviewer and version.",
+      )}
     >
       <Feedback error={action.error} message={action.message} />
       <div className="continuity-tabs">
@@ -98,15 +158,18 @@ export function LibraryPage() {
               setBulkConfirmed(false);
             }}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
       <div className="continuity-note">
-        These lists change what the app flags, suggests or shows to patients, so
-        only a current, approved version is used. Starter entries are drafts: check
-        the source, the wording and whether it applies to your patients before
-        approving. Looking something up? Use the <Link to="/doctor/library">Reference Library</Link>.
+        {t(
+          "These lists change what the app flags or shows to patients, so only a current, approved version is used. Starter entries are drafts: check the source, the wording and whether it applies to your patients before approving.",
+        )}{" "}
+        {withLink(
+          t("Looking something up? Use the {link}."),
+          <Link to="/doctor/library">{t("Reference Library")}</Link>,
+        )}
       </div>
       <form
         onSubmit={(e) => {
@@ -123,28 +186,28 @@ export function LibraryPage() {
                 ...(date ? { published_after: date } : {}),
               }).toString(),
             );
-          }, `Showing ${results.length} matching references.`);
+          }, t("Showing {count} matching references.", { count: results.length }));
         }}
       >
         <div className="continuity-fields">
-          <Field label="Search title, topic or passage">
+          <Field label={t("Search title, topic or passage")}>
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </Field>
-          <Field label="Issuing organization">
+          <Field label={t("Issuing organization")}>
             <select value={issuer} onChange={(e) => setIssuer(e.target.value)}>
-              <option value="">All organizations</option>
+              <option value="">{t("All organizations")}</option>
               {[...new Set(items.map((r) => r.issuer))].sort().map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>
           </Field>
-          <Field label="Topic">
+          <Field label={t("Topic")}>
             <select value={topic} onChange={(e) => setTopic(e.target.value)}>
-              <option value="">All topics</option>
+              <option value="">{t("All topics")}</option>
               {[
                 ...new Set(
                   items.filter((r) => r.kind === kind).map((r) => r.topic),
@@ -156,12 +219,12 @@ export function LibraryPage() {
                 ))}
             </select>
           </Field>
-          <Field label="Jurisdiction">
+          <Field label={t("Jurisdiction")}>
             <select
               value={jurisdiction}
               onChange={(e) => setJurisdiction(e.target.value)}
             >
-              <option value="">All jurisdictions</option>
+              <option value="">{t("All jurisdictions")}</option>
               {[...new Set(items.map((r) => r.jurisdiction))]
                 .sort()
                 .map((s) => (
@@ -169,15 +232,17 @@ export function LibraryPage() {
                 ))}
             </select>
           </Field>
-          <Field label="Review status">
+          <Field label={t("Review status")}>
             <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">All statuses</option>
-              {["DRAFT", "APPROVED", "SUPERSEDED", "RETIRED"].map((s) => (
-                <option key={s}>{s}</option>
+              <option value="">{t("All statuses")}</option>
+              {statusOptions.map((s) => (
+                <option key={s} value={s}>
+                  {statusLabel(s, t)}
+                </option>
               ))}
             </select>
           </Field>
-          <Field label="Published on or after">
+          <Field label={t("Published on or after")}>
             <input
               type="date"
               value={date}
@@ -187,7 +252,7 @@ export function LibraryPage() {
         </div>
         <div className="continuity-actions">
           <button className="btn-secondary" disabled={action.busy}>
-            Search references
+            {t("Search references")}
           </button>
           {doctor && (
             <button
@@ -195,7 +260,7 @@ export function LibraryPage() {
               className="btn-primary"
               onClick={() => setEditor("new")}
             >
-              Add resource
+              {t("Add resource")}
             </button>
           )}
         </div>
@@ -214,11 +279,13 @@ export function LibraryPage() {
         />
       )}
       <div className="continuity-grid">
-        <Panel title={`${results.length} resources`}>
-          {loading && <p role="status">Loading library…</p>}
+        <Panel title={t("{count} resources", { count: results.length })}>
+          {loading && <p role="status">{t("Loading library…")}</p>}
           {!loading && !results.length && (
             <Empty>
-              No matching resources. Clear filters or add a reviewed source.
+              {t(
+                "No matching resources. Clear filters or add a reviewed source.",
+              )}
             </Empty>
           )}
           {doctor && drafts.length > 0 && (
@@ -231,7 +298,9 @@ export function LibraryPage() {
                     setPicked(e.target.checked ? drafts.map((d) => d.id) : [])
                   }
                 />
-                Select all {drafts.length} drafts in this view
+                {t("Select all {count} drafts in this view", {
+                  count: drafts.length,
+                })}
               </label>
               <label className="continuity-check">
                 <input
@@ -239,8 +308,9 @@ export function LibraryPage() {
                   checked={bulkConfirmed}
                   onChange={(e) => setBulkConfirmed(e.target.checked)}
                 />
-                I read each selected resource, its source and its review date,
-                and approve it with my professional signature.
+                {t(
+                  "I read each selected resource, its source and its review date, and approve it with my professional signature.",
+                )}
               </label>
               <button
                 className="btn-primary"
@@ -260,12 +330,21 @@ export function LibraryPage() {
                     await reload();
                     if (result.failed.length)
                       throw new Error(
-                        `${result.approved.length} approved. ${result.failed.length} could not be approved: ${[...new Set(result.failed.map((f) => f.reason))].join("; ")}`,
+                        t(
+                          "{approved} approved. {failed} could not be approved: {reasons}",
+                          {
+                            approved: result.approved.length,
+                            failed: result.failed.length,
+                            reasons: [
+                              ...new Set(result.failed.map((f) => f.reason)),
+                            ].join("; "),
+                          },
+                        ),
                       );
-                  }, `Approved ${chosen.length} resources. Each approval records you as the reviewer.`)
+                  }, t("Approved {count} resources. Each approval records you as the reviewer.", { count: chosen.length }))
                 }
               >
-                Approve {chosen.length} selected
+                {t("Approve {count} selected", { count: chosen.length })}
               </button>
             </div>
           )}
@@ -274,7 +353,7 @@ export function LibraryPage() {
               <h3>{r.title}</h3>
               <p className="continuity-muted">
                 {r.issuer} · {r.jurisdiction} · v{r.version} ·{" "}
-                {r.publicationDate || "Publication date unverified"}
+                {r.publicationDate || t("Publication date unverified")}
                 {r.kind === "education" && ` · ${languages[r.language]}`}
               </p>
               {doctor && r.status === "DRAFT" && (
@@ -290,13 +369,13 @@ export function LibraryPage() {
                       )
                     }
                   />
-                  Select for approval
+                  {t("Select for approval")}
                 </label>
               )}
               <Badge>
-                {r.status}
+                {statusLabel(r.status, t)}
                 {r.status === "APPROVED" && !r.usable
-                  ? " · review overdue"
+                  ? ` · ${t("review overdue")}`
                   : ""}
               </Badge>
               <p className="continuity-muted">
@@ -304,7 +383,7 @@ export function LibraryPage() {
                 {r.content.length > 220 ? "…" : ""}
               </p>
               <button className="btn-secondary" onClick={() => choose(r)}>
-                Read source & history
+                {t("Read source & history")}
               </button>
             </article>
           ))}
@@ -319,7 +398,7 @@ export function LibraryPage() {
             </p>
             {selected.sourceUrl && (
               <a href={selected.sourceUrl} target="_blank" rel="noreferrer">
-                Open official source ↗
+                {t("Open official source ↗")}
               </a>
             )}
             {typeof selected.configuration.documentUrl === "string" &&
@@ -331,18 +410,24 @@ export function LibraryPage() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Open the document ↗
+                    {t("Open the document ↗")}
                   </a>
                 </>
               )}
             <p className="continuity-muted">
-              Review: {selected.status} ·{" "}
-              {selected.approvedByName || "No reviewer yet"}
+              {t("Review: {status}", {
+                status: statusLabel(selected.status, t),
+              })}{" "}
+              · {selected.approvedByName || t("No reviewer yet")}
               <br />
-              Last checked: {formatTime(selected.lastCheckedAt)} · Review due:{" "}
-              {selected.reviewDue || "Not set"}
+              {t("Last checked: {time} · Review due: {date}", {
+                time: formatTime(selected.lastCheckedAt),
+                date: selected.reviewDue || t("Not set"),
+              })}
               <br />
-              Usage rights: {selected.rightsNote || "Not recorded"}
+              {t("Usage rights: {rights}", {
+                rights: selected.rightsNote || t("Not recorded"),
+              })}
             </p>
             <div
               className="continuity-copy"
@@ -353,29 +438,38 @@ export function LibraryPage() {
             {selected.kind === "pathway" &&
               selected.configuration.steps?.map((step, i) => (
                 <p key={i}>
-                  {i + 1}. {step.title} · day {step.days}
+                  {i + 1}. {step.title} · {t("day {days}", { days: step.days })}
                 </p>
               ))}
             {selected.kind === "template" && (
               <p className="continuity-muted">
-                Fields: {selected.configuration.fields?.join(" · ")}
+                {t("Fields: {fields}", {
+                  fields: selected.configuration.fields?.join(" · ") ?? "",
+                })}
               </p>
             )}
             {selected.kind === "rule" && (
               <p className="continuity-muted">
-                Flags when {String(selected.configuration.metric).replaceAll("_", " ")}{" "}
-                {selected.configuration.operator === "gt" ? ">" : "<"}{" "}
-                {String(selected.configuration.threshold)}
+                {t("Flags when {metric} {comparison} {threshold}", {
+                  metric: ruleMetric(selected.configuration.metric, t),
+                  comparison: selected.configuration.operator === "gt" ? ">" : "<",
+                  threshold: String(selected.configuration.threshold),
+                })}
                 {selected.configuration.nextAction
-                  ? ` · Follow-up: ${selected.configuration.nextAction}`
+                  ? ` · ${t("Follow-up: {action}", { action: String(selected.configuration.nextAction) })}`
                   : ""}
               </p>
             )}
             {selected.kind === "coding" && (
               <p className="continuity-muted">
-                {(selected.configuration.entries as unknown[] | undefined)?.length ?? 0}{" "}
-                phrase-to-code entries. Review the phrases before approving; a
-                phrase only suggests a candidate and never assigns a code.
+                {t(
+                  "{count} phrase-to-code entries. Review the phrases before approving. A doctor looks codes up by typing a code or a phrase; nothing reads a patient's note and no code is assigned automatically.",
+                  {
+                    count:
+                      (selected.configuration.entries as unknown[] | undefined)
+                        ?.length ?? 0,
+                  },
+                )}
               </p>
             )}
             <div className="continuity-actions">
@@ -396,7 +490,7 @@ export function LibraryPage() {
                     }, "")
                   }
                 >
-                  Download original PDF
+                  {t("Download original PDF")}
                 </button>
               )}
               {doctor && (
@@ -404,16 +498,16 @@ export function LibraryPage() {
                   className="btn-secondary"
                   onClick={() => setEditor(selected)}
                 >
-                  Create next version
+                  {t("Create next version")}
                 </button>
               )}
             </div>
             {doctor && selected.status === "DRAFT" && (
               <>
                 <p className="continuity-muted">
-                  Approve only after checking the original source, permissions,
-                  version and applicability. This records your professional
-                  review.
+                  {t(
+                    "Approve only after checking the original source, permissions, version and applicability. This records your professional review.",
+                  )}
                 </p>
                 <button
                   className="btn-primary"
@@ -426,10 +520,10 @@ export function LibraryPage() {
                       );
                       setSelected(updated);
                       await reload();
-                    }, "Resource approved. Its version and reviewer are recorded.")
+                    }, t("Resource approved. Its version and reviewer are recorded."))
                   }
                 >
-                  Confirm review & approve
+                  {t("Confirm review & approve")}
                 </button>
               </>
             )}
@@ -445,20 +539,22 @@ export function LibraryPage() {
                       }),
                     );
                     await reload();
-                  }, "Resource retired. Existing citations retain their original version.")
+                  }, t("Resource retired. Existing citations retain their original version."))
                 }
               >
-                Retire resource
+                {t("Retire resource")}
               </button>
             )}
             <details>
-              <summary className="continuity-muted">Version history</summary>
+              <summary className="continuity-muted">
+                {t("Version history")}
+              </summary>
               {items
                 .filter((r) => r.familyId === selected.familyId)
                 .map((r) => (
                   <p key={r.id}>
-                    v{r.version} · {r.status} ·{" "}
-                    {r.approvedByName || "Unreviewed"}
+                    v{r.version} · {statusLabel(r.status, t)} ·{" "}
+                    {r.approvedByName || t("Unreviewed")}
                   </p>
                 ))}
             </details>
@@ -480,6 +576,7 @@ function ResourceEditor({
   close: () => void;
   saved: () => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const action = useAction();
   const type = initial?.kind || kind;
   const [title, setTitle] = useState(initial?.title || "");
@@ -534,7 +631,15 @@ function ResourceEditor({
       .map((v) => v.trim())
       .filter(Boolean);
   return (
-    <Panel title={initial ? `New version of ${initial.title}` : `Add ${type}`}>
+    <Panel
+      title={
+        initial
+          ? t("New version of {title}", { title: initial.title })
+          : addTitles[type]
+            ? t(addTitles[type])
+            : t("Add {type}", { type })
+      }
+    >
       <Feedback error={action.error} />
       <form
         onSubmit={(e) => {
@@ -583,35 +688,35 @@ function ResourceEditor({
         }}
       >
         <div className="continuity-fields">
-          <Field label="Title">
+          <Field label={t("Title")}>
             <input
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </Field>
-          <Field label="Issuing body / clinical owner">
+          <Field label={t("Issuing body / clinical owner")}>
             <input
               required
               value={issuer}
               onChange={(e) => setIssuer(e.target.value)}
             />
           </Field>
-          <Field label="Topic">
+          <Field label={t("Topic")}>
             <input
               required
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
             />
           </Field>
-          <Field label="Jurisdiction">
+          <Field label={t("Jurisdiction")}>
             <input
               required
               value={jurisdiction}
               onChange={(e) => setJurisdiction(e.target.value)}
             />
           </Field>
-          <Field label="Official source URL">
+          <Field label={t("Official source URL")}>
             <input
               type="url"
               required={type !== "template" && type !== "rule"}
@@ -620,21 +725,21 @@ function ResourceEditor({
               placeholder="https://"
             />
           </Field>
-          <Field label="Section / page">
+          <Field label={t("Section / page")}>
             <input
               value={section}
               required={type === "guideline"}
               onChange={(e) => setSection(e.target.value)}
             />
           </Field>
-          <Field label="Publication / update date">
+          <Field label={t("Publication / update date")}>
             <input
               type="date"
               value={published}
               onChange={(e) => setPublished(e.target.value)}
             />
           </Field>
-          <Field label="Next clinical review date">
+          <Field label={t("Next clinical review date")}>
             <input
               type="date"
               required
@@ -642,7 +747,7 @@ function ResourceEditor({
               onChange={(e) => setReview(e.target.value)}
             />
           </Field>
-          <Field label="Language">
+          <Field label={t("Language")}>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as Language)}
@@ -655,10 +760,12 @@ function ResourceEditor({
             </select>
           </Field>
           {type === "education" && (
-            <Field label="Stage">
+            <Field label={t("Stage")}>
               <select value={stage} onChange={(e) => setStage(e.target.value)}>
-                {["all", "first", "second", "third", "postpartum"].map((s) => (
-                  <option key={s}>{s}</option>
+                {Object.entries(stages).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {t(label)}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -667,8 +774,8 @@ function ResourceEditor({
         <Field
           label={
             type === "guideline"
-              ? "Permitted source passage / document text"
-              : "Reviewed content / description"
+              ? t("Permitted source passage / document text")
+              : t("Reviewed content / description")
           }
         >
           <textarea
@@ -679,7 +786,7 @@ function ResourceEditor({
           />
         </Field>
         {type === "guideline" && (
-          <Field label="Usage rights / permission to store original">
+          <Field label={t("Usage rights / permission to store original")}>
             <textarea
               rows={2}
               required
@@ -691,7 +798,7 @@ function ResourceEditor({
         {type === "template" && (
           <>
             <div className="continuity-fields">
-              <Field label="Field names, one per line">
+              <Field label={t("Field names, one per line")}>
                 <textarea
                   rows={4}
                   required
@@ -699,7 +806,7 @@ function ResourceEditor({
                   onChange={(e) => setFields(e.target.value)}
                 />
               </Field>
-              <Field label="Required fields, one per line">
+              <Field label={t("Required fields, one per line")}>
                 <textarea
                   rows={4}
                   value={required}
@@ -713,20 +820,20 @@ function ResourceEditor({
                 checked={isDefault}
                 onChange={(e) => setDefault(e.target.checked)}
               />
-              Use as an organization default
+              {t("Use as an organization default")}
             </label>
           </>
         )}
         {type === "pathway" && (
           <>
             <div className="continuity-note">
-              Administrative coordination tasks only. Clinical orders and
-              treatment decisions must be documented separately by the
-              clinician.
+              {t(
+                "Administrative coordination tasks only. Clinical orders and treatment decisions must be documented separately by the clinician.",
+              )}
             </div>
             {steps.map((step, i) => (
               <div className="continuity-fields" key={i}>
-                <Field label={`Task ${i + 1}`}>
+                <Field label={t("Task {number}", { number: i + 1 })}>
                   <input
                     required
                     value={step.title}
@@ -739,7 +846,7 @@ function ResourceEditor({
                     }
                   />
                 </Field>
-                <Field label="Days after start">
+                <Field label={t("Days after start")}>
                   <input
                     type="number"
                     min="0"
@@ -762,46 +869,40 @@ function ResourceEditor({
               className="btn-secondary"
               onClick={() => setSteps((s) => [...s, { title: "", days: 1 }])}
             >
-              Add task
+              {t("Add task")}
             </button>
           </>
         )}
         {type === "rule" && (
           <>
             <div className="continuity-note">
-              A follow-up rule watches only whether check-ins and tasks are
-              happening. It cannot read a blood pressure, a weight or any other
-              clinical value, and it does not rank patients by urgency or risk.
-              A rule shows flags only after a doctor approves it, and a flag asks
-              a person to follow up; it does not diagnose, message the patient or
-              assign work by itself.
+              {t(
+                "A follow-up rule watches only whether check-ins and tasks are happening. It cannot read a blood pressure, a weight or any other clinical value, and it does not rank patients by urgency or risk. A rule shows flags only after a doctor approves it, and a flag asks a person to follow up; it does not diagnose, message the patient or assign work by itself.",
+              )}
             </div>
             <div className="continuity-fields">
-              <Field label="Recorded metric">
+              <Field label={t("Recorded metric")}>
                 <select
                   value={metric}
                   onChange={(e) => setMetric(e.target.value)}
                 >
-                  {[
-                    ["overdue_task_days", "Overdue task (days)"],
-                    ["missing_days", "Missing agreed check-in (days)"],
-                  ].map(([key, label]) => (
+                  {metricOptions.map(([key, label]) => (
                     <option key={key} value={key}>
-                      {label}
+                      {t(label)}
                     </option>
                   ))}
                 </select>
               </Field>
-              <Field label="Comparison">
+              <Field label={t("Comparison")}>
                 <select
                   value={operator}
                   onChange={(e) => setOperator(e.target.value)}
                 >
-                  <option value="gt">Greater than</option>
-                  <option value="lt">Less than</option>
+                  <option value="gt">{t("Greater than")}</option>
+                  <option value="lt">{t("Less than")}</option>
                 </select>
               </Field>
-              <Field label="Threshold (days)">
+              <Field label={t("Threshold (days)")}>
                 <input
                   type="number"
                   step="any"
@@ -811,7 +912,11 @@ function ResourceEditor({
                 />
               </Field>
             </div>
-            <Field label="Follow-up shown to the doctor (administrative wording, up to 300 characters)">
+            <Field
+              label={t(
+                "Follow-up shown to the doctor (administrative wording, up to 300 characters)",
+              )}
+            >
               <input
                 maxLength={300}
                 value={nextAction}
@@ -821,7 +926,11 @@ function ResourceEditor({
           </>
         )}
         {type === "coding" && (
-          <Field label="Verified code | label | phrase to match (one entry per line)">
+          <Field
+            label={t(
+              "Verified code | label | phrase to match (one entry per line)",
+            )}
+          >
             <textarea
               rows={5}
               required
@@ -832,10 +941,10 @@ function ResourceEditor({
         )}
         <div className="continuity-actions">
           <button className="btn-primary" disabled={action.busy}>
-            Save draft for review
+            {t("Save draft for review")}
           </button>
           <button type="button" className="btn-secondary" onClick={close}>
-            Cancel
+            {t("Cancel")}
           </button>
         </div>
       </form>

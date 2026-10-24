@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 
 from . import models
 from .deps import require_episode_access
-from .plain_language import (SECTIONED_KINDS, build_explanation, build_lab_explanation, build_visit_summary, detect_conditions,
+from .plain_language import (LAB_NOTE_PREFIX, SECTIONED_KINDS, build_explanation, build_lab_explanation, build_visit_summary,
                              format_when, review_notes, section_kinds, stage_for_weeks)
 
 
@@ -153,22 +153,28 @@ def suggested_appointment(db, ep, payload):
 def plain_language_draft(db, ep, payload, snapshot):
     """Build the sectioned plain-language draft; the doctor still edits and signs it."""
     if payload.kind == "lab_explanation":
-        return build_lab_explanation(language=payload.language, text=snapshot["text"], document_title=snapshot["title"])
+        # The general "about this test" text comes only from education notes a doctor approved; nothing is written from the values.
+        about = {}
+        for r in db.query(models.ClinicalResource).filter_by(kind="education", status="APPROVED", language=payload.language).all():
+            test_id = (r.configuration or {}).get("testId")
+            if test_id and r.family_id.startswith(LAB_NOTE_PREFIX) and test_id not in about and current_resource(r):
+                about[test_id] = {"content": r.content, "version": r.version}
+        return build_lab_explanation(language=payload.language, text=snapshot["text"], document_title=snapshot["title"], about=about)
     approved = db.get(models.ApprovedConsultation, payload.source_id)
     if payload.kind == "explanation":
-        text = " ".join(str(v) for v in (approved.final_content or {}).values())
-        detected = detect_conditions(text)
+        # The doctor chooses the topics. The note is not read to work out which conditions it is about.
+        chosen = list(dict.fromkeys(payload.topics))
         by_topic = {}
         for r in db.query(models.ClinicalResource).filter_by(kind="education", status="APPROVED", language=payload.language).all():
-            if r.topic in detected and r.topic not in by_topic and current_resource(r):
+            if r.topic in chosen and r.topic not in by_topic and current_resource(r) and not r.family_id.startswith(LAB_NOTE_PREFIX):
                 by_topic[r.topic] = {"title": r.title, "content": r.content, "issuer": r.issuer, "version": r.version, "reviewer": name(db, r.approved_by_user_id)}
         upcoming = sorted((a for a in db.query(models.Appointment).filter_by(episode_id=ep.id, status="scheduled").all() if utc(a.scheduled_at) > now()), key=lambda a: utc(a.scheduled_at))
         return build_explanation(language=payload.language, episode=ep, approved_content=approved.final_content or {}, consult_date=format_when(approved.approved_at),
-                                 detected=detected, modules=by_topic,
+                                 chosen=chosen, modules=by_topic,
                                  next_appointment={"when": format_when(upcoming[0].scheduled_at), "kind": upcoming[0].appointment_type} if upcoming else None)
     stage = stage_for_weeks(ep.gestational_age_weeks)
     modules = [r for r in db.query(models.ClinicalResource).filter_by(kind="education", status="APPROVED", language=payload.language).all()
-               if current_resource(r) and r.stage in (stage, "all") and not r.family_id.startswith("starter-condition-")][:3]
+               if current_resource(r) and r.stage in (stage, "all") and not r.family_id.startswith(("starter-condition-", LAB_NOTE_PREFIX))][:3]
     education = [{"title": r.title, "content": r.content, "issuer": r.issuer, "version": r.version,
                   "reviewer": name(db, r.approved_by_user_id)} for r in modules]
     upcoming = sorted((a for a in db.query(models.Appointment).filter_by(episode_id=ep.id, status="scheduled").all() if utc(a.scheduled_at) > now()),
@@ -265,19 +271,37 @@ ADMIN_REPLIES = {
 }
 
 
-def candidate_codes(db, text):
-    found = []
+def _coding_entries(db):
     for resource in db.query(models.ClinicalResource).filter_by(kind="coding", status="APPROVED").all():
         if current_resource(resource):
             for item in resource.configuration.get("entries", []):
-                if re.search(r"(?<!\w)" + re.escape(item["match"]) + r"(?!\w)", text, re.I):
-                    found.append({**item, "resourceId": resource.id, "sourceUrl": resource.source_url, "version": resource.version})
-    # One candidate per code (its longest matching phrase), and the most specific wording wins: if "secondary postpartum
-    # haemorrhage" matched, the code for plain "postpartum haemorrhage" is not offered as well.
-    best = {}
-    for item in found:
+                yield {**item, "resourceId": resource.id, "sourceUrl": resource.source_url, "version": resource.version}
+
+
+def known_codes(db):
+    """Every code in a reviewed, in-date code set. A doctor may select only these."""
+    return {item["code"] for item in _coding_entries(db)}
+
+
+def search_codes(db, query, limit=25):
+    """A lookup, not a suggestion: the doctor types a code or a phrase and gets the matching entries from the reviewed
+    code sets. Nothing reads the note, so nothing is proposed from what it says."""
+    needle = (query or "").strip().lower()
+    if len(needle) < 2:
+        return []
+    ranked = {}
+    for item in _coding_entries(db):
+        code, label, phrase = item["code"].lower(), item.get("label", "").lower(), item.get("match", "").lower()
+        if code == needle:
+            rank = 0
+        elif code.startswith(needle):
+            rank = 1
+        elif needle in label or needle in phrase:
+            rank = 2
+        else:
+            continue
         key = (item["resourceId"], item["code"])
-        if key not in best or len(item["match"]) > len(best[key]["match"]):
-            best[key] = item
-    kept = list(best.values())
-    return [c for c in kept if not any(o["code"] != c["code"] and len(o["match"]) > len(c["match"]) and c["match"].lower() in o["match"].lower() for o in kept)]
+        if key not in ranked or rank < ranked[key][0]:
+            ranked[key] = (rank, item)
+    ordered = sorted(ranked.values(), key=lambda pair: (pair[0], pair[1]["code"]))
+    return [item for _rank, item in ordered][:limit]

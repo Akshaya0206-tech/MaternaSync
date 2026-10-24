@@ -258,13 +258,26 @@ export function SummaryList({
                       className={`continuity-section continuity-section-${o.sectionKinds?.[key] ?? "plain"}`}
                       lang={o.language}
                     >
-                      <h4>{key}</h4>
-                      {SECTION_NOTES[o.sectionKinds?.[key] ?? ""] && (
-                        <p className="continuity-section-note">
-                          {t(SECTION_NOTES[o.sectionKinds?.[key] ?? ""])}
-                        </p>
+                      {o.sectionKinds?.[key] === "measure" ? (
+                        // General test descriptions are collapsed: the patient's own results come first, and these are reference text.
+                        <details>
+                          <summary>
+                            <h4>{key}</h4>
+                          </summary>
+                          <p className="continuity-section-note">{t(SECTION_NOTES.measure)}</p>
+                          <div className="continuity-copy">{value}</div>
+                        </details>
+                      ) : (
+                        <>
+                          <h4>{key}</h4>
+                          {SECTION_NOTES[o.sectionKinds?.[key] ?? ""] && (
+                            <p className="continuity-section-note">
+                              {t(SECTION_NOTES[o.sectionKinds?.[key] ?? ""])}
+                            </p>
+                          )}
+                          <div className="continuity-copy">{value}</div>
+                        </>
                       )}
-                      <div className="continuity-copy">{value}</div>
                     </section>
                   ) : (
                     <p key={key}>

@@ -1,4 +1,5 @@
 import type { WorkflowStatus } from '../types/patient';
+import { tx, useLanguage } from '../i18n';
 
 export type BadgeTone = 'green' | 'amber' | 'red' | 'blue' | 'purple' | 'neutral';
 
@@ -13,11 +14,11 @@ const TONE_STYLES: Record<BadgeTone, { bg: string; color: string; border: string
 };
 
 export const WORKFLOW_STATUS_META: Record<WorkflowStatus, { label: string; tone: BadgeTone }> = {
-  pending: { label: 'Pending', tone: 'amber' },
-  in_progress: { label: 'In Progress', tone: 'blue' },
-  scheduled: { label: 'Scheduled', tone: 'blue' },
-  verified: { label: 'Verified', tone: 'green' },
-  completed: { label: 'Completed', tone: 'green' }
+  pending: { label: tx('Pending'), tone: 'amber' },
+  in_progress: { label: tx('In Progress'), tone: 'blue' },
+  scheduled: { label: tx('Scheduled'), tone: 'blue' },
+  verified: { label: tx('Verified'), tone: 'green' },
+  completed: { label: tx('Completed'), tone: 'green' }
 };
 
 interface StatusBadgeProps {
@@ -54,6 +55,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ label, tone, icon, siz
 };
 
 export const WorkflowStatusBadge: React.FC<{ status: WorkflowStatus; size?: 'sm' | 'md' }> = ({ status, size }) => {
+  const { t } = useLanguage();
   const meta = WORKFLOW_STATUS_META[status] ?? { label: status, tone: 'neutral' as BadgeTone };
-  return <StatusBadge label={meta.label} tone={meta.tone} size={size} />;
+  return <StatusBadge label={t(meta.label)} tone={meta.tone} size={size} />;
 };

@@ -108,10 +108,10 @@ T = {
         "te": "మీ నివేదికలోని ఫలితాలు",
     },
     "sec_measure": {
-        "en": "What these tests measure",
-        "hi": "ये जाँचें क्या मापती हैं",
-        "ta": "இந்தப் பரிசோதனைகள் எதை அளவிடுகின்றன",
-        "te": "ఈ పరీక్షలు ఏమి కొలుస్తాయి",
+        "en": "About these tests (general information, not about your result)",
+        "hi": "इन जाँचों के बारे में (सामान्य जानकारी, आपके परिणाम के बारे में नहीं)",
+        "ta": "இந்தப் பரிசோதனைகள் பற்றி (பொதுவான தகவல், உங்கள் முடிவைப் பற்றியது அல்ல)",
+        "te": "ఈ పరీక్షల గురించి (సాధారణ సమాచారం, మీ ఫలితం గురించి కాదు)",
     },
     "sec_means": {
         "en": "What this means for you",
@@ -302,25 +302,9 @@ def build_visit_summary(*, kind, language, episode, approved_content, consult_da
     return {"title": title, "content": tr("intro_visit", language, date=consult_date), "structured": sections, "notes": notes}
 
 
-# Conditions a note may discuss. Detection looks for these English terms and abbreviations, then the explanation uses
-# the clinic-approved education module whose topic matches. Plain "BP" or "blood sugar" are deliberately not triggers:
-# they appear in almost every routine note.
-CONDITIONS = [
-    ("Gestational diabetes", ("gdm", "gestational diabetes", "ogtt", "glucose tolerance")),
-    ("High blood pressure in pregnancy", ("hypertension", "pre-eclampsia", "preeclampsia", "pih", "raised bp", "high bp", "gestational hypertension")),
-    ("Anaemia in pregnancy", ("anaemia", "anemia", "low hb", "ifa", "iron and folic", "iron tablets")),
-    ("Ultrasound scans in pregnancy", ("usg", "ultrasound", "scan", "anomaly scan", "growth scan")),
-]
-
-
-def detect_conditions(text):
-    lowered = (text or "").lower()
-    return [topic for topic, words in CONDITIONS
-            if any(re.search(r"(?<![a-z0-9])" + re.escape(word) + r"(?![a-z0-9])", lowered) for word in words)]
-
-
-def build_explanation(*, language, episode, approved_content, consult_date, detected, modules, next_appointment=None):
-    """Counselling text for the topics a note actually discusses, built from approved education, not written by a model."""
+def build_explanation(*, language, episode, approved_content, consult_date, chosen, modules, next_appointment=None):
+    """Counselling text for the topics the DOCTOR chose, built from approved education. Nothing reads the note to decide which
+    conditions it is about, and nothing is written by a model."""
     notes = []
     discussion = _documented(approved_content.get("documentedDiscussion"))
     follow_up = _documented(approved_content.get("followUpNextSteps"))
@@ -333,15 +317,15 @@ def build_explanation(*, language, episode, approved_content, consult_date, dete
 
     sections = {tr("sec_discussed", language): simple(discussion) if discussion else PH_DISCUSSED}
     found = 0
-    for topic in detected:
+    for topic in chosen:
         module = modules.get(topic)
         if not module:
             notes.append(f"No approved explanation of “{topic}” exists in this language, so that part was left out. Add one in Clinical Settings (Patient education) or write it here.")
             continue
         found += 1
         sections[module["title"]] = f"{module['content']}\n— {module['issuer']} · v{module['version']} · {module['reviewer']}"
-    if not detected:
-        notes.append("No known condition topic was found in this note (looked for gestational diabetes, high blood pressure, anaemia and scans). Add explanations yourself, or choose another consultation.")
+    if not chosen:
+        notes.append("No topic was chosen. Pick the topics to explain when you prepare the draft, or write the explanations here yourself.")
     elif found:
         notes.append("Topic explanations come from reviewed clinic education. They are general and do not describe this patient's own results.")
     steps = simple(follow_up) if follow_up else PH_NEXT
@@ -380,6 +364,16 @@ LAB_TESTS = [
     {"id": "hbsag", "text": True, "sensitive": True, "aliases": ["hepatitis b surface antigen", "hbsag"], "en": "Screens for hepatitis B infection.", "hi": "हेपेटाइटिस बी संक्रमण की जाँच करता है।", "ta": "ஹெப்பாடைடிஸ் பி தொற்றுக்கான பரிசோதனை.", "te": "హెపటైటిస్ బి ఇన్ఫెక్షన్ కోసం స్క్రీనింగ్."},
     {"id": "vdrl", "text": True, "sensitive": True, "aliases": ["syphilis", "vdrl", "rpr"], "en": "Screens for syphilis infection.", "hi": "सिफलिस संक्रमण की जाँच करता है।", "ta": "சிபிலிஸ் தொற்றுக்கான பரிசோதனை.", "te": "సిఫిలిస్ ఇన్ఫెక్షన్ కోసం స్క్రీనింగ్."},
 ]
+# Starter "About this test" notes are education resources whose family id starts with this.
+LAB_NOTE_PREFIX = "starter-labtest-"
+
+# Display names for the starter "About this test" notes in Clinical Settings. Their text is the general description above.
+LAB_TEST_NAMES = {
+    "hb": "Haemoglobin", "pcv": "Packed cell volume", "plt": "Platelet count", "wbc": "White blood cell count", "rbc": "Red blood cell count",
+    "mcv": "Mean corpuscular volume", "fbs": "Fasting blood sugar", "ppbs": "Post-meal blood sugar", "rbs": "Random blood sugar", "hba1c": "HbA1c",
+    "tsh": "TSH", "ferritin": "Ferritin", "b12": "Vitamin B12", "vitd": "Vitamin D", "creat": "Creatinine", "liver": "Liver enzymes",
+    "uprotein": "Urine protein", "bloodgroup": "Blood group", "hiv": "HIV screening", "hbsag": "Hepatitis B screening", "vdrl": "Syphilis screening",
+}
 _ALIASES = sorted(((alias, test) for test in LAB_TESTS for alias in test["aliases"]), key=lambda pair: len(pair[0]), reverse=True)
 _NAME_START = [(re.compile(r"^" + re.escape(alias).replace(r"\ ", r"\s+") + r"(?![A-Za-z0-9])\s*(?:\([^)]{0,30}\))?", re.I), test) for alias, test in _ALIASES]
 
@@ -496,7 +490,10 @@ def _result_line(row, language):
     return f"{row['name']}: {value}{range_part}"
 
 
-def build_lab_explanation(*, language, text, document_title):
+def build_lab_explanation(*, language, text, document_title, about=None):
+    """`about` maps a test id to the clinic-approved education note for it. Nothing in this document depends on a value:
+    each result is shown as printed, beside the range printed on the report, and the general notes sit in a separate section."""
+    about = about or {}
     results = parse_lab_results(text)
     notes = ["Values were read automatically from the document text. Compare every value with the original report before approving."]
     if not results:
@@ -504,15 +501,20 @@ def build_lab_explanation(*, language, text, document_title):
     if any(next((t for t in LAB_TESTS if t["id"] == r["testId"]), {}).get("sensitive") for r in results):
         notes.append("This report includes infection screening results. Confirm the patient should receive them in this written format.")
     if any(r["kind"] == "number" and r["testId"] is None for r in results):
-        notes.append("Some rows are tests without a general description in the library; they are listed without a 'what this measures' note.")
+        notes.append("Some rows are tests without a general description in the library; they are listed without an “About these tests” note.")
     results_text = ("\n".join(_result_line(r, language) for r in results) + "\n\n" + tr("range_note", language)) if results else tr("no_results", language) + "\n" + PH_RESULTS
-    measured, seen = [], set()
+    measured, missing, seen = [], [], set()
     for row in results:
         if not row["testId"] or row["testId"] in seen:
             continue
         seen.add(row["testId"])
-        test = next(t for t in LAB_TESTS if t["id"] == row["testId"])
-        measured.append(f"{row['name']}: {test[language]}")
+        module = about.get(row["testId"])
+        if module:
+            measured.append(f"{row['name']}: {module['content']}")
+        else:
+            missing.append(row["name"])
+    if missing:
+        notes.append(f"No approved “About this test” note exists in this language for: {', '.join(missing)}. Approve them in Clinical Settings (Patient education, topic “About lab tests”), or leave this section out.")
     sections = {tr("sec_results", language): results_text}
     if measured:
         sections[tr("sec_measure", language)] = "\n".join(measured)

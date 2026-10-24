@@ -331,6 +331,17 @@ class CaregiverTests(Base):
             db.commit()
         self.call("GET", f"{LOG}/{self.ravi_link}/emergency", "ravi", expected=403)
 
+    def test_handover_text_no_longer_names_a_risk_level(self):
+        from backend.app.seed_continuity import remove_withdrawn_features
+        with SessionLocal() as db:
+            handovers = db.query(models.Handover).all()
+            self.assertTrue(handovers)
+            self.assertFalse([h.id for h in handovers if "risk:" in (h.context or "")])  # none of the demo handovers carry it
+            handovers[0].context = "GA 38w5d, risk: moderate."  # an older database
+            db.commit()
+            remove_withdrawn_features(db)
+            self.assertEqual(db.get(models.Handover, handovers[0].id).context, "GA 38w5d.")
+
     def test_the_demo_caregiver_link_has_a_join_date(self):
         listed = self.call("GET", MINE, "patient")["items"]
         demo = next(i for i in listed if i["id"] == self.ravi_link)
@@ -657,6 +668,305 @@ class AssistantTests(Base):
             self.assertTrue(db.query(models.Notification).filter_by(recipient_user_id=self.doctor_id, type="assistant_exception").count())
 
 
+# =============================================================================== human override: pause, review every step, undo
+ASSIST = "/api/v2/assistant"
+
+
+class OverrideTests(Base):
+    def setUp(self):
+        self.restore_ravi()
+        self.reset_controls()
+
+    def tearDown(self):
+        self.reset_controls()
+
+    def reset_controls(self):
+        with SessionLocal() as db:
+            for key in ("paused", "review_all", "paused_episodes"):
+                row = db.get(models.AssistantSetting, key)
+                if row is not None:
+                    db.delete(row)
+            db.commit()
+
+    def settings(self, who="doctor", expected=200, **payload):
+        return self.call("PATCH", f"{ASSIST}/settings", who, payload, expected=expected)
+
+    def act_directly(self, tool, args, key=None):
+        """Run one tool through the policy engine the way a workflow would; returns (action id, action snapshot)."""
+        with SessionLocal() as db:
+            run = models.AIRun(workflow="question_routing", episode_id=self.ep, source_type="Test", source_id="override", status="DONE",
+                               trigger_key=f"override:{datetime.now().timestamp()}:{tool}")
+            db.add(run)
+            db.flush()
+            action = tools.act(db, run, tool, args, key=key)
+            db.commit()
+            return action.id, {"status": action.status, "policy": action.policy, "undo": action.undo, "exception_id": action.exception_id}
+
+    def action_for(self, source_id, tool):
+        with SessionLocal() as db:
+            row = (db.query(models.AIAction).join(models.AIRun, models.AIRun.id == models.AIAction.run_id)
+                   .filter(models.AIRun.source_id == source_id, models.AIAction.tool == tool).order_by(models.AIAction.created_at.desc()).first())
+            return row.id if row else None
+
+    def listed(self, action_id):
+        return next(a for a in self.call("GET", f"{ASSIST}/activity?limit=200", "doctor") if a["id"] == action_id)
+
+    def undo(self, action_id, expected=200, who="doctor", note="Changed my mind"):
+        return self.call("POST", f"{ASSIST}/actions/{action_id}/undo", who, {"note": note}, expected=expected)
+
+    def notification_exists(self, notification_id):
+        with SessionLocal() as db:
+            return db.get(models.Notification, notification_id) is not None
+
+    # ---- undo, tool by tool
+    def test_a_reminder_can_be_withdrawn_once_and_only_by_her_doctor(self):
+        aid, snapshot = self.act_directly("notify_user", {"user_id": self.sarah_id, "title": "Reminder", "body": "Please fill in a check-in.", "kind": "assistant_reminder"},
+                                          key=f"undo-reminder:{datetime.now().timestamp()}")
+        self.assertEqual(snapshot["status"], "DONE")
+        nid = snapshot["undo"]["notification_ids"][0]
+        self.assertTrue(self.listed(aid)["undoable"])
+        self.undo(aid, who="other_doctor", expected=403)
+        self.undo(aid, who="patient", expected=403)
+        self.assertTrue(self.notification_exists(nid))
+        done = self.undo(aid, note="Sent by mistake")
+        self.assertEqual((done["status"], done["undoneBy"], done["undoNote"]), ("UNDONE", "Dr. Eleanor Vance", "Sent by mistake"))
+        self.assertFalse(self.notification_exists(nid))  # it is gone from her Updates
+        self.assertFalse(self.listed(aid)["undoable"])
+        self.undo(aid, expected=409)
+        with SessionLocal() as db:
+            row = db.query(models.AuditLog).filter_by(action="assistant_undo_notify_user", object_id=aid).first()
+            self.assertEqual(row.actor_user_id, self.doctor_id)
+
+    def test_the_fixed_emergency_message_can_be_withdrawn_but_is_logged(self):
+        qid = self.new_question("I have heavy bleeding")
+        orchestrator.process_queue()
+        aid = self.action_for(qid, "send_urgent_message")
+        with SessionLocal() as db:
+            nid = db.get(models.AIAction, aid).undo["notification_ids"][0]
+        self.assertTrue(self.notification_exists(nid))
+        self.undo(aid, note="She is on the phone with me")
+        self.assertFalse(self.notification_exists(nid))
+        with SessionLocal() as db:
+            self.assertTrue(db.query(models.AuditLog).filter_by(action="assistant_undo_send_urgent_message", object_id=aid).count())
+
+    def test_an_assignment_is_put_back_unless_the_question_has_moved_on(self):
+        first = self.new_question("My stomach hurts after taking the tablets")
+        second = self.new_question("My head hurts when I stand up")
+        orchestrator.process_queue()
+        aid_first, aid_second = self.action_for(first, "assign_question_to_doctor"), self.action_for(second, "assign_question_to_doctor")
+        with SessionLocal() as db:
+            self.assertEqual(db.get(models.PatientQuestion, first).assigned_to_user_id, self.doctor_id)
+        self.undo(aid_first)
+        with SessionLocal() as db:
+            question = db.get(models.PatientQuestion, first)
+            self.assertEqual((question.assigned_to_user_id, question.status), (None, "NEW"))
+        with SessionLocal() as db:  # the doctor has since answered the second one: leave it alone
+            db.get(models.PatientQuestion, second).status = "ANSWERED"
+            db.commit()
+        self.undo(aid_second, expected=409)
+        with SessionLocal() as db:
+            self.assertEqual(db.get(models.PatientQuestion, second).assigned_to_user_id, self.doctor_id)
+
+    def test_a_hand_off_to_the_doctor_can_be_dismissed_through_undo(self):
+        qid = self.new_question("Can I take paracetamol for my headache?")
+        orchestrator.process_queue()
+        aid = self.action_for(qid, "create_attention")
+        self.undo(aid)
+        self.assertEqual([i.status for i in self.items_for(qid)], ["DISMISSED"])
+
+    def test_a_verified_document_goes_back_under_review(self):
+        did = self.make_document(text=f"Antenatal ultrasound report for {self.patient_name}. Visit note: scan completed and filed. Copy {datetime.now().timestamp()}", found_name=self.patient_name)
+        orchestrator.process_queue()
+        item = self.items_for(did)[0]
+        aid = self.action_for(did, "verify_document")
+        self.assertFalse(self.listed(aid)["undoable"])  # only a step that actually ran can be undone
+        self.call("POST", f"{ASSIST}/exceptions/{item.id}/decide", "doctor", {"decision": "approve"})
+        row = self.listed(aid)
+        self.assertEqual((row["status"], row["executedBy"], row["undoable"]), ("DONE", "Dr. Eleanor Vance", True))
+        with SessionLocal() as db:
+            self.assertEqual(db.query(models.JourneyEvent).filter_by(source_document_id=did).count(), 1)
+        self.undo(aid, note="Wrong scan attached")
+        with SessionLocal() as db:
+            self.assertEqual(db.get(models.MedicalDocument, did).status, "NEEDS_REVIEW")
+            self.assertEqual(db.query(models.JourneyEvent).filter_by(source_document_id=did).count(), 0)  # gone from her journey
+            self.assertEqual(db.query(models.DocumentReview).filter_by(document_id=did, action="REVERT").count(), 1)
+            self.assertEqual(db.query(models.Notification).filter_by(related_entity_id=did, type="document_verified").count(), 0)
+
+    def test_a_rejected_document_goes_back_under_review(self):
+        did = self.make_document(text="x", found_name=None, record_type="unknown")
+        orchestrator.process_queue()
+        self.call("POST", f"{ASSIST}/exceptions/{self.items_for(did)[0].id}/decide", "doctor", {"decision": "approve"})
+        with SessionLocal() as db:
+            self.assertEqual(db.get(models.MedicalDocument, did).status, "REJECTED")
+        self.undo(self.action_for(did, "reject_document"))
+        with SessionLocal() as db:
+            self.assertEqual(db.get(models.MedicalDocument, did).status, "NEEDS_REVIEW")
+            self.assertEqual(db.query(models.Notification).filter_by(related_entity_id=did, type="document_rejected").count(), 0)
+
+    def test_a_sent_reply_can_be_withdrawn_and_she_no_longer_sees_it(self):
+        qid = self.new_question("When is my next appointment?")
+        orchestrator.process_queue()
+        self.call("POST", f"{ASSIST}/exceptions/{self.items_for(qid)[0].id}/decide", "doctor", {"decision": "approve"})
+        mine = next(q for q in self.call("GET", "/api/v2/patient/questions", "patient") if q["id"] == qid)
+        self.assertEqual((mine["status"], len(mine["responses"])), ("ANSWERED", 1))
+        self.undo(self.action_for(qid, "answer_question"), note="I want to word it myself")
+        mine = next(q for q in self.call("GET", "/api/v2/patient/questions", "patient") if q["id"] == qid)
+        self.assertEqual((mine["status"], len(mine["responses"])), ("NEW", 0))
+        with SessionLocal() as db:
+            self.assertEqual(db.query(models.QuestionResponse).filter_by(question_id=qid).count(), 0)
+            audit = db.query(models.AuditLog).filter_by(action="assistant_undo_answer_question").order_by(models.AuditLog.timestamp.desc()).first()
+            self.assertIn("Reply withdrawn", audit.details)  # the wording that was withdrawn is kept in the audit log
+
+    # ---- pause
+    def test_pausing_the_assistant_holds_the_work_but_never_hides_a_question(self):
+        status = self.settings(paused=True)
+        self.assertTrue(status["paused"])
+        self.assertEqual(status["pausedBy"], "Dr. Eleanor Vance")
+        calm = self.new_question("When is my next appointment?")
+        urgent = self.new_question("I have heavy bleeding and bad pain")
+        orchestrator.process_queue()
+        self.assertEqual(self.run_for(calm).status, "QUEUED")  # held, not lost
+        self.assertEqual(self.items_for(calm), [])  # no proposal while paused
+        with SessionLocal() as db:
+            self.assertEqual(db.get(models.PatientQuestion, calm).assigned_to_user_id, self.doctor_id)  # but it is not invisible: the fixed rule handed it over
+            self.assertEqual(db.query(models.AuditLog).filter_by(action="question_routed_by_rule", object_id=calm).count(), 1)
+            self.assertTrue(db.query(models.Notification).filter_by(related_entity_id=urgent, type="assistant_urgent", recipient_user_id=self.sarah_id).count())
+        self.assertEqual(self.run_for(urgent).status, "DONE")  # the emergency message is the one thing a pause never delays
+        self.assertTrue([i for i in self.items_for(urgent) if i.urgency == "urgent"])
+        self.assertTrue(orchestrator.run_sweeps()["paused"])
+        self.settings(paused=False)
+        orchestrator.process_queue()
+        self.assertEqual(self.run_for(calm).status, "DONE")  # resumed: the held work now runs
+        self.assertEqual(self.items_for(calm)[0].kind, "proposal")
+        with SessionLocal() as db:
+            actions = {r.action for r in db.query(models.AuditLog).filter(models.AuditLog.action.in_(["assistant_paused", "assistant_resumed"])).all()}
+        self.assertEqual(actions, {"assistant_paused", "assistant_resumed"})
+
+    def test_pausing_one_patient_only_holds_that_patient(self):
+        self.call("POST", f"{ASSIST}/patients/{self.ep}/pause", "other_doctor", expected=403)  # not her doctor
+        status = self.call("POST", f"{ASSIST}/patients/{self.ep}/pause", "doctor")
+        self.assertEqual([p["patientName"] for p in status["pausedPatients"]], [self.patient_name])
+        self.assertFalse(status["paused"])
+        qid = self.new_question("When is my next appointment?")
+        orchestrator.process_queue()
+        self.assertEqual(self.run_for(qid).status, "QUEUED")
+        status = self.call("POST", f"{ASSIST}/patients/{self.ep}/resume", "doctor")
+        self.assertEqual(status["pausedPatients"], [])
+        orchestrator.process_queue()
+        self.assertEqual(self.run_for(qid).status, "DONE")
+
+    def test_only_a_doctor_can_change_the_switches(self):
+        for who in ("patient", "ravi"):
+            self.call("PATCH", f"{ASSIST}/settings", who, {"paused": True}, expected=403)
+            self.call("POST", f"{ASSIST}/patients/{self.ep}/pause", who, expected=403)
+        self.call("PATCH", f"{ASSIST}/settings", "doctor", {"bogus": True}, expected=422)
+
+    def test_sweeps_skip_a_paused_patient(self):
+        with SessionLocal() as db:
+            plan = db.get(models.MonitoringPlan, self.ep)
+            if plan is None:
+                plan = models.MonitoringPlan(episode_id=self.ep, interval_days=1, active=True, owner_user_id=self.doctor_id)
+                db.add(plan)
+            plan.active, plan.interval_days, plan.agreed_at = True, 1, datetime.utcnow() - timedelta(days=9)
+            db.query(models.DailyLog).filter_by(episode_id=self.ep).delete()
+            db.commit()
+            before = db.query(models.Notification).filter_by(type="assistant_reminder", recipient_user_id=self.sarah_id).count()
+        try:
+            self.call("POST", f"{ASSIST}/patients/{self.ep}/pause", "doctor")
+            orchestrator.run_sweeps()
+            with SessionLocal() as db:
+                self.assertEqual(db.query(models.Notification).filter_by(type="assistant_reminder", recipient_user_id=self.sarah_id).count(), before)
+        finally:
+            with SessionLocal() as db:
+                db.get(models.MonitoringPlan, self.ep).active = False
+                db.commit()
+
+    # ---- review every step
+    def test_review_every_step_makes_routine_steps_wait_but_not_the_emergency_ones(self):
+        self.review_title = f"Review-all reminder {datetime.now().timestamp()}"
+        self.assertTrue(self.settings(reviewAll=True)["reviewAll"])
+        aid, snapshot = self.act_directly("notify_user", {"user_id": self.sarah_id, "title": self.review_title, "body": "Please fill in a check-in.", "kind": "assistant_reminder"},
+                                          key=f"review-all:{datetime.now().timestamp()}")
+        self.assertEqual((snapshot["status"], snapshot["policy"]), ("PROPOSED", "propose"))
+        with SessionLocal() as db:
+            item = db.get(models.ExceptionItem, snapshot["exception_id"])
+            self.assertEqual((item.kind, item.proposed_tool), ("proposal", "notify_user"))
+        shown = next(i for i in self.call("GET", f"{ASSIST}/exceptions", "doctor") if i["id"] == snapshot["exception_id"])
+        self.assertEqual(shown["preview"], "Please fill in a check-in.")  # the doctor reads exactly what would be sent
+        with SessionLocal() as db:
+            self.assertEqual(db.query(models.Notification).filter_by(title=self.review_title).count(), 0)  # nothing sent yet
+        self.call("POST", f"{ASSIST}/exceptions/{snapshot['exception_id']}/decide", "doctor", {"decision": "approve"})
+        with SessionLocal() as db:
+            self.assertEqual(db.query(models.Notification).filter_by(title=self.review_title, recipient_user_id=self.sarah_id).count(), 1)
+        row = self.listed(aid)
+        self.assertEqual((row["status"], row["undoable"]), ("DONE", True))  # an approved step can still be undone
+        # The hand-off to a doctor and the emergency message are never held back.
+        urgent = self.new_question("I have heavy bleeding")
+        clinical = self.new_question("My stomach hurts after taking the tablets")
+        orchestrator.process_queue()
+        with SessionLocal() as db:
+            self.assertTrue(db.query(models.Notification).filter_by(related_entity_id=urgent, type="assistant_urgent").count())
+            self.assertEqual(db.get(models.PatientQuestion, clinical).assigned_to_user_id, self.doctor_id)
+        self.assertTrue(self.items_for(clinical))
+
+    def test_status_reports_the_switches(self):
+        status = self.call("GET", f"{ASSIST}/status", "doctor")
+        for key in ("paused", "reviewAll", "pausedPatients", "waiting"):
+            self.assertIn(key, status)
+
+    # ---- when the assistant is not doing the work, a doctor still sees it
+    def test_switched_off_a_new_question_is_still_assigned_to_the_doctor(self):
+        with patch.object(config, "AI_COORDINATOR_MODE", "off"), patch.object(config, "CARE_TEAM_ENABLED", False):  # the real default
+            qid = self.new_question("When is my next appointment?")
+        with SessionLocal() as db:
+            question = db.get(models.PatientQuestion, qid)
+            self.assertEqual((question.assigned_to_user_id, question.status), (self.doctor_id, "ASSIGNED"))
+            self.assertEqual(db.query(models.Notification).filter_by(related_entity_id=qid, recipient_user_id=self.doctor_id).count(), 1)
+        listed = {q["id"] for q in self.call("GET", "/api/v2/doctor/questions", "doctor")}
+        self.assertIn(qid, listed)  # it is on the doctor's Patient Questions page
+
+    def test_a_question_whose_routing_crashes_still_reaches_the_doctor(self):
+        qid = self.new_question("When is my next appointment?")
+        with SessionLocal() as db:
+            self.assertIsNone(db.get(models.PatientQuestion, qid).assigned_to_user_id)
+        boom = {"question_routing": lambda db, run, provider: (_ for _ in ()).throw(RuntimeError("model unavailable"))}
+        with patch.dict(orchestrator.WORKFLOWS, boom):
+            orchestrator.process_queue()
+        with SessionLocal() as db:
+            self.assertEqual(db.get(models.PatientQuestion, qid).assigned_to_user_id, self.doctor_id)
+
+    def test_an_upload_while_the_assistant_is_off_still_notifies_the_doctor(self):
+        from backend.app.automation import handlers
+        did = self.make_document(text="Antenatal report for " + self.patient_name + " filed.", found_name=self.patient_name)
+        with patch.object(config, "AI_COORDINATOR_MODE", "off"), patch.object(config, "CARE_TEAM_ENABLED", False), SessionLocal() as db:
+            handlers.queue_for_assistant_document(db, episode_id=self.ep, source_id=did)
+            db.commit()
+            self.assertEqual(db.query(models.Notification).filter_by(related_entity_id=did, type="DOCUMENT_UPLOADED", recipient_user_id=self.doctor_id).count(), 1)
+
+    def test_new_columns_are_added_to_an_existing_ai_actions_table(self):
+        import sqlite3
+        import tempfile
+        from sqlalchemy import create_engine
+        from backend.app import migrations
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as folder:
+            path = folder.replace("\\", "/") + "/old.db"
+            connection = sqlite3.connect(path)
+            connection.execute("CREATE TABLE ai_actions (id VARCHAR PRIMARY KEY, tool VARCHAR)")
+            connection.commit()
+            connection.close()
+            engine = create_engine(f"sqlite:///{path}")
+            try:
+                with patch.object(migrations, "ADDITIVE_COLUMNS", {"ai_actions": migrations.ADDITIVE_COLUMNS["ai_actions"]}):
+                    migrations.run_additive_migrations(engine)
+                    migrations.run_additive_migrations(engine)  # a second start changes nothing
+                with engine.connect() as conn:
+                    from sqlalchemy import text
+                    columns = {row[1] for row in conn.execute(text("PRAGMA table_info(ai_actions)"))}
+            finally:
+                engine.dispose()
+        self.assertTrue({"undo", "undone_at", "undone_by_user_id", "undo_note", "executed_by_user_id"} <= columns)
+
+
 # =============================================================================== the model step, without a network
 class FakeClient:
     """Stands in for anthropic.Anthropic: records what it was sent and returns a canned answer."""
@@ -677,8 +987,8 @@ class ProviderTests(unittest.TestCase):
         return providers.ClaudeProvider(client_factory=lambda: client)
 
     def doc(self, **kwargs):
-        base = dict(record_type="Ultrasound", readable=True, looks_urgent=False, confidence=0.9, reason="fine")
-        return providers.DocumentAnalysis(**{**base, **kwargs})
+        base = dict(record_type="ultrasound report", readable=True, looks_urgent=False, confidence=0.9, reason_code="clear")
+        return providers.DocumentAnswer(**{**base, **kwargs})
 
     def test_name_and_record_number_are_removed_before_anything_is_sent(self):
         client = FakeClient(self.doc())
@@ -689,7 +999,7 @@ class ProviderTests(unittest.TestCase):
             self.assertNotIn(secret, sent)
         self.assertIn("[PATIENT]", sent)
         self.assertEqual(client.sent[0]["model"], config.AI_MODEL)
-        self.assertIs(client.sent[0]["output_format"], providers.DocumentAnalysis)
+        self.assertIs(client.sent[0]["output_format"], providers.DocumentAnswer)
 
     def test_every_failure_becomes_a_provider_error_for_a_doctor_to_handle(self):
         for client in (FakeClient(error=ConnectionError("down")), FakeClient(stop_reason="refusal"), FakeClient(parsed=None)):
@@ -699,16 +1009,32 @@ class ProviderTests(unittest.TestCase):
             providers.ClaudeProvider().classify_document("some text", "a.pdf", {})  # package not installed
 
     def test_the_model_can_make_the_assistant_more_careful_but_never_less(self):
-        said_admin = providers.QuestionAnalysis(category="administrative", intent="next_appointment", confidence=0.99, reason="model")
+        said_admin = providers.QuestionAnswer(category="administrative", intent="next_appointment", confidence=0.99, reason_code="appointment")
         # The fixed warning-sign list still wins when the model under-reacts.
         urgent = self.provider(FakeClient(said_admin)).classify_question("I have heavy bleeding, when is my next appointment", "en")
         self.assertEqual(urgent.category, "urgent")
         clinical = self.provider(FakeClient(said_admin)).classify_question("Can I take paracetamol for a headache", "en")
         self.assertEqual(clinical.category, "clinical")
         # And the model may raise the level on its own.
-        said_clinical = providers.QuestionAnalysis(category="clinical", intent="other", confidence=0.9, reason="model")
+        said_clinical = providers.QuestionAnswer(category="clinical", intent="other", confidence=0.9, reason_code="clinical")
         raised = self.provider(FakeClient(said_clinical)).classify_question("When is my next appointment?", "en")
         self.assertEqual(raised.category, "clinical")
+
+    def test_the_model_can_only_answer_with_fixed_choices_never_a_sentence(self):
+        from pydantic import ValidationError
+        # A free-text document type, or a reason it wrote itself, is refused by the answer schema before anything uses it.
+        with self.assertRaises(ValidationError):
+            providers.DocumentAnswer(record_type="This report shows a low haemoglobin, which suggests anaemia", readable=True, looks_urgent=False, confidence=0.9, reason_code="clear")
+        with self.assertRaises(ValidationError):
+            self.doc(reason_code="The patient looks anaemic")
+        with self.assertRaises(ValidationError):
+            providers.QuestionAnswer(category="clinical", intent="other", confidence=0.5, reason_code="She is probably having a miscarriage")
+        # The sentence a doctor reads is looked up from a fixed table, so it can never describe a result.
+        analysis = self.provider(FakeClient(self.doc(reason_code="little_text", readable=False))).classify_document("some text", "a.pdf", {})
+        self.assertEqual(analysis.reason, providers.DOCUMENT_REASONS["little_text"])
+        question = self.provider(FakeClient(providers.QuestionAnswer(category="clinical", intent="other", confidence=0.9, reason_code="clinical"))).classify_question("My head hurts", "en")
+        self.assertIn(question.reason, providers.QUESTION_REASONS.values())
+        self.assertEqual(set(providers.DocumentAnswer.model_fields), {"record_type", "readable", "looks_urgent", "confidence", "reason_code"})  # no free-text field exists
 
     def test_provider_choice_follows_the_setting(self):
         with patch.object(config, "AI_PROVIDER", "rules"):

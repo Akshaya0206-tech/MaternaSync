@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { HeartPulse, LogOut, Menu, X } from 'lucide-react';
+import { useLanguage } from '../../i18n';
 
 export interface RoleNavItem {
   label: string;
@@ -33,6 +34,7 @@ interface RoleSidebarProps {
  * this is what makes browser back/forward and direct URL entry work for
  * free, unlike the old phase-based Sidebar it's modeled on. */
 export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLogout, logoutLabel = 'Logout', footerExtra, topExtra, skipLabel = 'Skip to main content' }: RoleSidebarProps) {
+  const { t } = useLanguage();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { pathname } = useLocation();
   const initials = userName.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
@@ -81,7 +83,7 @@ export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLo
           cursor: 'pointer',
           boxShadow: 'var(--shadow-md)',
         }}
-        aria-label="Open navigation"
+        aria-label={t('Open navigation')}
       >
         <Menu size={18} />
       </button>
@@ -114,7 +116,7 @@ export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLo
                 onClick={() => setIsMobileOpen(false)}
                 className="sidebar-mobile-toggle"
                 style={{ background: 'none', border: 'none', color: 'var(--sidebar-text)', cursor: 'pointer' }}
-                aria-label="Close navigation"
+                aria-label={t('Close navigation')}
               >
                 <X size={18} />
               </button>

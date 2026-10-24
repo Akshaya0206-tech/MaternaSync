@@ -252,8 +252,9 @@ class ContinuityTests(unittest.TestCase):
         code_set = self.resource("coding", {"entries": [{"code": "TEST.1", "label": "Synthetic test only", "match": "Synthetic coded visit"}]})
         self.approve_resource(code_set)
         output = self.create_output("prescription", sourceType="consultation", sourceId=approved["id"])
-        candidates = self.request("GET", f"{ROOT}/outputs/{output['id']}/codes")
-        self.assertEqual(candidates[0]["code"], "TEST.1")
+        found = self.request("GET", f"{ROOT}/codes/search?q=TEST.1")
+        self.assertEqual(found[0]["code"], "TEST.1")
+        self.request("PATCH", f"{ROOT}/outputs/{output['id']}", payload={"content": "x", "structuredData": {}, "selectedCodes": ["NOT.A.CODE"], "revision": output["revision"]}, expected=400)  # only reviewed codes
         output = self.edit_output(output, selectedCodes=["TEST.1"])
         self.request("POST", f"{ROOT}/outputs/{output['id']}/approve", payload={"confirmed": True}, expected=400)
         output = self.edit_output(output, structuredData={"Medicine": "Synthetic medicine", "Dose": "Test entry", "Route": "Test route", "Frequency": "Test frequency", "Duration": "Test duration"}, selectedCodes=["TEST.1"])
@@ -367,6 +368,11 @@ class ContinuityTests(unittest.TestCase):
             self.assertNotIn(judgement, results)
         self.assertIn("HBsAg: Non-reactive", results)
         self.assertTrue(any("infection screening" in note["text"] for note in output["reviewNotes"]))
+        # No "About these tests" text exists until a doctor approves the general notes: nothing is taken from code.
+        from backend.app.plain_language import tr
+        about_heading = tr("sec_measure", "ta")
+        self.assertNotIn(about_heading, output["structuredData"])
+        self.assertTrue(any("No approved “About this test” note" in note["text"] for note in output["reviewNotes"]))
         means_key, next_key = "இது உங்களுக்கு என்ன பொருள்", "உறுதி செய்யப்பட்ட உங்கள் அடுத்த படிகள்"
         self.assertIn("[Clinician to", output["structuredData"][means_key])
         saved = self.edit_output(output, content=output["content"], structuredData=output["structuredData"])
@@ -377,6 +383,19 @@ class ContinuityTests(unittest.TestCase):
         released = self.patient_output(output)
         self.assertEqual(released["structuredData"][means_key], sections[means_key])
         self.assertNotIn("sourceSnapshot", released)
+        # Once the clinic approves the Tamil "About this test" notes, they appear in their own section, apart from the results.
+        notes = [r for r in self.request("GET", "/api/v2/library?kind=education") if r["familyId"].startswith("starter-labtest-") and r["language"] == "ta"]
+        self.assertEqual(len(notes), 21)
+        self.assertEqual({r["topic"] for r in notes}, {"About lab tests"})
+        self.request("POST", "/api/v2/library/approve-batch", payload={"ids": [r["id"] for r in notes], "confirmed": True})
+        again = self.create_output("lab_explanation", sourceType="document", sourceId=doc["id"], language="ta")
+        self.assertIn("ஆக்சிஜனைக்", again["structuredData"][about_heading])
+        self.assertEqual(again["sectionKinds"][about_heading], "measure")
+        self.assertNotIn("ஆக்சிஜனைக்", again["structuredData"]["உங்கள் அறிக்கையில் உள்ள முடிவுகள்"])  # the results section holds no description
+        self.assertFalse(any("No approved “About this test” note" in note["text"] for note in again["reviewNotes"]))
+        # The care companion never serves these notes: they belong to a lab explanation a doctor signs.
+        asked = self.request("POST", f"{ROOT}/companion/ask", "patient", {"question": "ஹீமோகுளோபின் haemoglobin", "language": "ta"})
+        self.assertFalse(any("ஆக்சிஜனைக்" in str(m) for m in asked.get("education", [])))
 
     def ask(self, question, language="en", role="patient", expected=200):
         return self.request("POST", f"{ROOT}/companion/ask", role, {"question": question, "language": language}, expected)
@@ -580,17 +599,24 @@ class ContinuityTests(unittest.TestCase):
             self.assertEqual(self.post_webhook(statuses("wamid.HOOK", "read")).status_code, 403)  # webhook is off outside cloud_api mode
 
     # ---- patient explanation generator ----
-    def test_explanation_uses_only_approved_condition_text(self):
+    def test_explanation_covers_only_the_topics_the_doctor_chose(self):
         self.approve_resource(self.resource("education", {}, language="en", stage="all", topic="Gestational diabetes", title="About gestational diabetes (test)", content="Gestational diabetes means higher blood sugar first found in pregnancy."))
         approved = self.approved_consultation("GDM screening discussed. Anaemia reviewed. USG planned.", follow_up="Repeat OGTT in 2 weeks.")
-        output = self.create_output("explanation", sourceType="consultation", sourceId=approved["id"], language="en")
+        topics = {t["topic"] for t in self.request("GET", f"{ROOT}/education-topics?language=en")}
+        self.assertIn("Gestational diabetes", topics)
+        self.assertNotIn("About lab tests", topics)  # the lab-test notes are not patient-explanation topics
+        self.request("GET", f"{ROOT}/education-topics", "patient", expected=403)
+        # Nothing chosen: the note is NOT read to pick conditions, even though it mentions three of them.
+        empty = self.create_output("explanation", sourceType="consultation", sourceId=approved["id"], language="en")
+        self.assertNotIn("About gestational diabetes (test)", empty["structuredData"])
+        self.assertTrue(any("No topic was chosen" in n["text"] for n in empty["reviewNotes"]))
+        output = self.create_output("explanation", sourceType="consultation", sourceId=approved["id"], language="en", topics=["Gestational diabetes", "Anaemia in pregnancy"])
         sections = output["structuredData"]
         self.assertIn("higher blood sugar first found in pregnancy", sections["About gestational diabetes (test)"])
         self.assertEqual(output["sectionKinds"]["About gestational diabetes (test)"], "about")
         notes = " ".join(n["text"] for n in output["reviewNotes"])
-        self.assertIn("Anaemia in pregnancy", notes)
-        self.assertIn("Ultrasound scans in pregnancy", notes)
-        self.assertNotIn("Gestational diabetes”", notes)
+        self.assertIn("No approved explanation of “Anaemia in pregnancy”", notes)  # chosen, but none approved: flagged, not invented
+        self.assertNotIn("Ultrasound", notes + " ".join(sections))  # the note mentions a scan, but nobody chose it
         self.assertNotIn("Anaemia in pregnancy", " ".join(sections))
         self.assertIn("Repeat OGTT", sections["Your confirmed next steps"])
         saved = self.edit_output(output, content=output["content"], structuredData=sections)
@@ -599,9 +625,6 @@ class ContinuityTests(unittest.TestCase):
         self.assertEqual(released["title"], "Plain-language explanation")
         self.assertIn("About gestational diabetes (test)", released["structuredData"])
         self.assertNotIn("reviewNotes", released)
-        undocumented = self.approved_consultation("Routine antenatal visit.")
-        empty = self.create_output("explanation", sourceType="consultation", sourceId=undocumented["id"], language="en")
-        self.assertTrue(any("No known condition topic" in n["text"] for n in empty["reviewNotes"]))
 
     # ---- prescriptions: written and signed by the doctor, with no automated drug check ----
     def prescription(self, medicine, consultation=None):
@@ -626,21 +649,31 @@ class ContinuityTests(unittest.TestCase):
         incomplete = self.edit_output(self.create_output("prescription", sourceType="consultation", sourceId=self.approved_consultation("Synthetic incomplete prescription.")["id"]), content="Reviewed prescription.")
         self.request("POST", f"{ROOT}/outputs/{incomplete['id']}/approve", payload={"confirmed": True}, expected=400)
 
-    # ---- ICD-10 candidates ----
-    def test_icd10_sets_are_seeded_valid_and_prefer_the_most_specific_phrase(self):
+    # ---- ICD-10 lookup ----
+    def test_icd10_sets_are_seeded_valid_and_are_searched_never_suggested(self):
         sets = [r for r in self.request("GET", "/api/v2/library?kind=coding") if r["familyId"].startswith("starter-icd10-who-obstetric")]
         self.assertEqual(len(sets), 2)
         codes = {e["code"] for s in sets for e in s["configuration"]["entries"]}
         self.assertEqual(len(codes), 80)
         self.assertTrue(all(len(s["configuration"]["entries"]) <= 200 and s["status"] == "DRAFT" for s in sets))
+        self.assertEqual(self.request("GET", f"{ROOT}/codes/search?q=gestational"), [])  # nothing is searchable until a doctor approves the sets
         self.request("POST", "/api/v2/library/approve-batch", payload={"ids": [s["id"] for s in sets], "confirmed": True})
         approved = self.approved_consultation("Gestational diabetes diagnosed at booking. Delivered by LSCS. Secondary postpartum haemorrhage on day 6.")
         output = self.create_output("note", sourceType="consultation", sourceId=approved["id"])
-        found = {c["code"]: c for c in self.request("GET", f"{ROOT}/outputs/{output['id']}/codes")}
-        self.assertIn("O24.4", found)
-        self.assertIn("O72.2", found)
-        self.assertNotIn("O72.1", found)  # "postpartum haemorrhage" is inside the more specific phrase
-        self.assertEqual(found["O24.4"]["label"], "Diabetes mellitus arising in pregnancy")
+        # The note is never read: the old suggestion endpoint is gone, and a search returns the same whatever any note says.
+        self.request("GET", f"{ROOT}/outputs/{output['id']}/codes", expected=404)
+        by_phrase = {c["code"]: c for c in self.request("GET", f"{ROOT}/codes/search?q=gestational")}
+        self.assertIn("O24.4", by_phrase)
+        self.assertEqual(by_phrase["O24.4"]["label"], "Diabetes mellitus arising in pregnancy")
+        by_code = [c["code"] for c in self.request("GET", f"{ROOT}/codes/search?q=O72")]
+        self.assertTrue(by_code and all(code.startswith("O72") for code in by_code[:2]))  # codes that start with the typed code come first
+        self.assertEqual(self.request("GET", f"{ROOT}/codes/search?q=o"), [])  # one character is not a search
+        self.assertEqual(self.request("GET", f"{ROOT}/codes/search?q=zzzzqq"), [])
+        for who in ("staff", "patient"):
+            self.request("GET", f"{ROOT}/codes/search?q=gestational", who, expected=403)
+        saved = self.edit_output(output, selectedCodes=["O24.4"])  # the doctor picks it from the lookup
+        self.assertEqual(saved["selectedCodes"], ["O24.4"])
+        self.request("PATCH", f"{ROOT}/outputs/{saved['id']}", payload={"content": "x", "structuredData": {}, "selectedCodes": ["Z99.9"], "revision": saved["revision"]}, expected=400)
 
     # ---- reference library: real documents only ----
     def test_reference_library_holds_real_documents_and_no_synthetic_ones(self):

@@ -64,6 +64,13 @@ ADDITIVE_COLUMNS = {
     "daily_logs": [
         ("entered_with_help", "VARCHAR"),
     ],
+    "ai_actions": [
+        ("executed_by_user_id", "VARCHAR"),
+        ("undo", "JSON"),
+        ("undone_at", "DATETIME"),
+        ("undone_by_user_id", "VARCHAR"),
+        ("undo_note", "VARCHAR"),
+    ],
     "outreach_messages": [
         ("provider", "VARCHAR"),
         ("sent_at", "DATETIME"),

@@ -1,31 +1,35 @@
 import type { BadgeTone } from '../../components/StatusBadge';
+import { currentLanguage, currentLocale, translate, tx } from '../../i18n';
+
+// English keeps the browser's own date style (so it reads exactly as before); the other languages use their regional style.
+const dateLocale = () => (currentLanguage() === 'en' ? undefined : currentLocale());
 
 export function formatFriendlyDate(value: string | null | undefined): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function formatFriendlyDateTime(value: string | null | undefined): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 export function formatFriendlyTime(value: string | null | undefined): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' });
 }
 
 export function timeOfDayGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return translate('Good morning');
+  if (hour < 18) return translate('Good afternoon');
+  return translate('Good evening');
 }
 
 export const DOCUMENT_STATUS_TONE: Record<string, BadgeTone> = {
@@ -36,14 +40,14 @@ export const DOCUMENT_STATUS_TONE: Record<string, BadgeTone> = {
 };
 
 const QUESTION_STATUS_LABELS: Record<string, string> = {
-  NEW: 'New',
-  ASSIGNED: 'Assigned',
-  WAITING_FOR_RESPONSE: 'Waiting for Response',
-  ANSWERED: 'Answered',
-  CLOSED: 'Closed',
+  NEW: tx('New'),
+  ASSIGNED: tx('Assigned'),
+  WAITING_FOR_RESPONSE: tx('Waiting for Response'),
+  ANSWERED: tx('Answered'),
+  CLOSED: tx('Closed'),
 };
 export function friendlyQuestionStatus(status: string): string {
-  return QUESTION_STATUS_LABELS[status] ?? status;
+  return translate(QUESTION_STATUS_LABELS[status] ?? status);
 }
 export const QUESTION_STATUS_TONE: Record<string, BadgeTone> = {
   NEW: 'blue',
@@ -54,14 +58,14 @@ export const QUESTION_STATUS_TONE: Record<string, BadgeTone> = {
 };
 
 const TASK_STATUS_LABELS: Record<string, string> = {
-  OPEN: 'Open',
-  IN_PROGRESS: 'In Progress',
-  WAITING: 'Waiting',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled',
+  OPEN: tx('Open'),
+  IN_PROGRESS: tx('In Progress'),
+  WAITING: tx('Waiting'),
+  COMPLETED: tx('Completed'),
+  CANCELLED: tx('Cancelled'),
 };
 export function friendlyTaskStatus(status: string): string {
-  return TASK_STATUS_LABELS[status] ?? status;
+  return translate(TASK_STATUS_LABELS[status] ?? status);
 }
 export const TASK_STATUS_TONE: Record<string, BadgeTone> = {
   OPEN: 'blue',
@@ -71,14 +75,24 @@ export const TASK_STATUS_TONE: Record<string, BadgeTone> = {
   CANCELLED: 'neutral',
 };
 
+// The server sends the priority as a plain lower-case word.
+const TASK_PRIORITY_LABELS: Record<string, string> = {
+  routine: tx('routine'),
+  high: tx('high'),
+  urgent: tx('urgent'),
+};
+export function friendlyTaskPriority(priority: string): string {
+  return translate(TASK_PRIORITY_LABELS[priority] ?? priority);
+}
+
 const DRAFT_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'AI Draft — Review Required',
-  REJECTED: 'Rejected',
-  SUPERSEDED: 'Superseded',
-  APPROVED: 'Approved',
+  DRAFT: tx('AI Draft — Review Required'),
+  REJECTED: tx('Rejected'),
+  SUPERSEDED: tx('Superseded'),
+  APPROVED: tx('Approved'),
 };
 export function friendlyDraftStatus(status: string): string {
-  return DRAFT_STATUS_LABELS[status] ?? status;
+  return translate(DRAFT_STATUS_LABELS[status] ?? status);
 }
 export const DRAFT_STATUS_TONE: Record<string, BadgeTone> = {
   DRAFT: 'purple',
@@ -88,12 +102,12 @@ export const DRAFT_STATUS_TONE: Record<string, BadgeTone> = {
 };
 
 const HANDOVER_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'AI-Generated Draft',
-  FINAL: 'Final · Shared Internally',
-  SUPERSEDED: 'Superseded',
+  DRAFT: tx('AI-Generated Draft'),
+  FINAL: tx('Final · Shared Internally'),
+  SUPERSEDED: tx('Superseded'),
 };
 export function friendlyHandoverStatus(status: string): string {
-  return HANDOVER_STATUS_LABELS[status] ?? status;
+  return translate(HANDOVER_STATUS_LABELS[status] ?? status);
 }
 export const HANDOVER_STATUS_TONE: Record<string, BadgeTone> = {
   DRAFT: 'purple',

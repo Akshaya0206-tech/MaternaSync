@@ -51,6 +51,27 @@ class AIAction(Base):
     exception_id = Column(String, ForeignKey("exception_items.id"), nullable=True)
     created_at = Column(DateTime, default=now)
 
+    # Who actually ran the step (the assistant's account, or the doctor who approved a proposal), and what a doctor needs to
+    # reverse it. `undo` holds the ids and earlier values the step changed; a step with no `undo` cannot be reversed.
+    executed_by_user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    undo = Column(JSON, nullable=True)
+    undone_at = Column(DateTime, nullable=True)
+    undone_by_user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    undo_note = Column(String, nullable=True)
+
+
+class AssistantSetting(Base):
+    """Switches a doctor can flip on the Care Assistant page without restarting anything: `paused` (everything waits),
+    `review_all` (every step except the fixed emergency message waits for a doctor) and `paused_episodes` (one patient's
+    work waits). The environment kill switch (MATERNASYNC_AI_COORDINATOR_MODE) is separate and always wins."""
+
+    __tablename__ = "assistant_settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(JSON, nullable=True)
+    updated_by_user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    updated_at = Column(DateTime, default=now)
+
 
 class ExceptionItem(Base):
     """What the assistant hands to a doctor: a proposal to approve with one click, or something that needs a person.

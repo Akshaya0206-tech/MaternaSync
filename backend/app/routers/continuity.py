@@ -1,5 +1,6 @@
 """Episode-connected roadmap workflows with server-side role and source checks."""
 from datetime import date, timedelta
+from typing import Literal
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,10 +10,10 @@ from .. import config, models
 from ..database import get_db
 from ..deps import require_role
 from .. import continuity_schemas as S
-from ..continuity_service import (ADMIN_REPLIES, allowed_ids, audit, candidate_codes, current_resource,
+from ..continuity_service import (ADMIN_REPLIES, allowed_ids, audit, current_resource, known_codes, search_codes,
     episode, get_object, member_ids, name, notify, now, output_out, plain_language_draft, require_member,
     resource_out, row, source_snapshot, suggested_appointment, trend_data, utc, due_reminders)
-from ..plain_language import SECTIONED_KINDS, unresolved_placeholders
+from ..plain_language import LAB_NOTE_PREFIX, SECTIONED_KINDS, unresolved_placeholders
 from .. import whatsapp
 
 router = APIRouter(prefix="/api/v2/continuity", tags=["continuity"])
@@ -40,7 +41,8 @@ def handover_status(user=Depends(staff)):
 
 
 @router.patch("/preferences")
-def preferences(payload: S.PreferenceIn, user=Depends(patient), db: Session = Depends(get_db)):
+def preferences(payload: S.PreferenceIn, user=Depends(authenticated), db: Session = Depends(get_db)):
+    """The screen language. Patients and doctors (and the care team, if that login is on) each keep their own."""
     pref = db.get(models.PatientPreference, user.id)
     if not pref:
         pref = models.PatientPreference(user_id=user.id)
@@ -327,9 +329,8 @@ def edit_output(output_id: str, payload: S.OutputEdit, user=Depends(staff), db: 
         raise HTTPException(403, "Only a doctor can edit this clinical output.")
     if payload.selected_codes and user.role != "doctor":
         raise HTTPException(403, "Only a doctor can select clinical codes.")
-    valid_codes = {item["code"] for item in candidate_codes(db, output.source_snapshot.get("text", ""))}
-    if any(code not in valid_codes for code in payload.selected_codes):
-        raise HTTPException(400, "Choose codes from the reviewed candidate set.")
+    if payload.selected_codes and any(code not in known_codes(db) for code in payload.selected_codes):
+        raise HTTPException(400, "Choose codes from the reviewed code sets.")
     if payload.appointment_id is not None:
         if payload.appointment_id:
             appt = db.get(models.Appointment, payload.appointment_id)
@@ -344,10 +345,20 @@ def edit_output(output_id: str, payload: S.OutputEdit, user=Depends(staff), db: 
     return output_out(db, output)
 
 
-@router.get("/outputs/{output_id}/codes")
-def codes(output_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
-    output = get_object(db, user, models.ClinicalOutput, output_id)
-    return candidate_codes(db, output.source_snapshot.get("text", ""))
+@router.get("/codes/search")
+def code_search(q: str = "", user=Depends(doctor), db: Session = Depends(get_db)):
+    """ICD-10 lookup in the reviewed code sets. The doctor types a code or a phrase; nothing here reads a patient's note."""
+    return search_codes(db, q)
+
+
+@router.get("/education-topics")
+def education_topics(language: Literal["en", "hi", "ta", "te"] = "en", user=Depends(doctor), db: Session = Depends(get_db)):
+    """The approved patient-education topics a doctor can choose to explain in a patient explanation."""
+    seen = {}
+    for r in db.query(models.ClinicalResource).filter_by(kind="education", status="APPROVED", language=language).all():
+        if r.topic not in seen and current_resource(r) and not r.family_id.startswith(LAB_NOTE_PREFIX):
+            seen[r.topic] = {"topic": r.topic, "title": r.title, "issuer": r.issuer, "version": r.version, "reviewer": name(db, r.approved_by_user_id)}
+    return sorted(seen.values(), key=lambda item: item["topic"])
 
 
 @router.post("/outputs/{output_id}/approve")

@@ -5,8 +5,10 @@ import { fetchReferralDetail, closeReferral } from '../../api/doctorPortal';
 import type { ReferralDetail } from '../../api/doctorPortal';
 import { ApiError } from '../../api/client';
 import { ReferralDetailView } from '../../components/shared/ReferralDetailView';
+import { tx, useLanguage } from '../../i18n';
 
 export function ReferralDetailPage() {
+  const { t } = useLanguage();
   const { referralId } = useParams<{ referralId: string }>();
   const navigate = useNavigate();
   const [detail, setDetail] = useState<ReferralDetail | null>(null);
@@ -19,7 +21,7 @@ export function ReferralDetailPage() {
     setIsLoading(true);
     fetchReferralDetail(id)
       .then(setDetail)
-      .catch(() => setLoadError("We couldn't load this referral. You may not be assigned to this patient."))
+      .catch(() => setLoadError(tx("We couldn't load this referral. You may not be assigned to this patient.")))
       .finally(() => setIsLoading(false));
   };
 
@@ -34,7 +36,7 @@ export function ReferralDetailPage() {
       await closeReferral(referralId);
       load(referralId);
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'That action could not be completed.');
+      setActionError(err instanceof ApiError ? err.message : tx('That action could not be completed.'));
     } finally {
       setIsActing(false);
     }
@@ -43,11 +45,11 @@ export function ReferralDetailPage() {
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
       <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', color: 'var(--teal-primary)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, padding: 0, marginBottom: '14px' }}>
-        <ArrowLeft size={15} /> Back
+        <ArrowLeft size={15} /> {t('Back')}
       </button>
 
-      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>}
-      {loadError && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{loadError}</div>}
+      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading…')}</div>}
+      {loadError && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(loadError)}</div>}
 
       {detail && !isLoading && (
         <ReferralDetailView

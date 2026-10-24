@@ -14,8 +14,14 @@ from dataclasses import dataclass
 from datetime import datetime, time, timezone
 
 from .. import config, models
+from . import controls
 
 T0, T1 = "T0", "T1"
+
+# Even in "review every step" mode these never wait: handing something to a doctor IS the human step (a question that waits
+# for approval before it reaches the doctor would be invisible), and the fixed emergency message must not be delayed.
+# A doctor can still reverse any of them afterwards.
+ALWAYS_RUN = {"create_attention", "assign_question_to_doctor", "send_urgent_message"}
 
 TOOLS = {
     "create_attention": T0,
@@ -39,13 +45,18 @@ def _today_start() -> datetime:
     return datetime.combine(datetime.now(timezone.utc).date(), time.min)
 
 
-def decide(db, run: models.AIRun, tool: str, args: dict, key: str | None) -> Decision:
+def decide(db, run: models.AIRun, tool: str, args: dict, key: str | None, safety: bool = False) -> Decision:
+    """`safety` is only passed for the fixed emergency steps for warning-sign wording; it skips a doctor's pause and
+    "review every step" switches (never the environment kill switch) so that message is never held back."""
     mode = config.AI_COORDINATOR_MODE  # read each time, so the kill switch works even for work already queued
     if mode == "off":
         return Decision("deny", "The care assistant is switched off.", quiet=True)
     tier = TOOLS.get(tool)
     if tier is None:
         return Decision("deny", "This is not an action the assistant is allowed to take.")
+    state = controls.load(db)
+    if not safety and controls.is_held(db, run.episode_id, state):
+        return Decision("deny", "A doctor paused the care assistant, so this waits.", quiet=True)
 
     # Everything the action touches must belong to the same patient the run is about.
     for field, table in (("document_id", models.MedicalDocument), ("question_id", models.PatientQuestion), ("task_id", models.Task)):
@@ -66,6 +77,8 @@ def decide(db, run: models.AIRun, tool: str, args: dict, key: str | None) -> Dec
 
     if mode == "shadow":
         return Decision("shadow", "Shadow mode: recorded only, nothing was done.")
+    if tier == T0 and state["review_all"] and tool not in ALWAYS_RUN and not safety:
+        return Decision("propose", "Review-every-step mode: a doctor approves this step before it runs.")
     if tier == T0:
         return Decision("run", "Low-risk administrative step.")
     return Decision("propose", "A doctor approves this step before it runs.")

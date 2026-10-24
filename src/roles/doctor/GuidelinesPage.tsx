@@ -8,16 +8,54 @@ import type { GuidelineSearchResult, GuidelineFilterOptions, GuidelineSource } f
 import { ApiError } from '../../api/client';
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatFriendlyDateTime } from './format';
+import { translate, tx, useLanguage } from '../../i18n';
 
+// The button shows the wording in the chosen language, but the search itself always runs on the English text (the guidelines are in English).
 const EXAMPLE_QUERIES = [
-  'Gestational diabetes screening window',
-  'Blood pressure monitoring in pregnancy',
-  'Postpartum follow-up visit timing',
+  tx('Gestational diabetes screening window'),
+  tx('Blood pressure monitoring in pregnancy'),
+  tx('Postpartum follow-up visit timing'),
 ];
 
+// Category and status codes are shown as capitalised words; these are the known ones, so their wording can be translated.
+const CODE_LABELS: Record<string, string> = {
+  ANTENATAL_CARE: tx('Antenatal Care'),
+  LABOR_DELIVERY: tx('Labor Delivery'),
+  POSTPARTUM: tx('Postpartum'),
+  HIGH_RISK: tx('High Risk'),
+  SCREENING: tx('Screening'),
+  NUTRITION: tx('Nutrition'),
+  MEDICATION_SAFETY: tx('Medication Safety'),
+  GENERAL: tx('General'),
+  PROCESSING: tx('Processing'),
+  AWAITING_REVIEW: tx('Awaiting Review'),
+  APPROVED: tx('Approved'),
+  REJECTED: tx('Rejected'),
+  EXCLUDED: tx('Excluded'),
+};
+
 function prettyLabel(value: string): string {
-  return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  const english = value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  return translate(CODE_LABELS[value] ?? english);
 }
+
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  'Clinical Practice Guideline': tx('Clinical Practice Guideline'),
+  Protocol: tx('Protocol'),
+  'Position Statement': tx('Position Statement'),
+  Factsheet: tx('Factsheet'),
+  Other: tx('Other'),
+};
+
+function documentTypeLabel(value: string): string {
+  return translate(DOCUMENT_TYPE_LABELS[value] ?? value);
+}
+
+const COULD_NOT_ACT: Record<'approve' | 'reject' | 'exclude', string> = {
+  approve: tx('Could not approve this source.'),
+  reject: tx('Could not reject this source.'),
+  exclude: tx('Could not exclude this source.'),
+};
 
 const SOURCE_STATUS_TONE: Record<string, 'green' | 'amber' | 'red' | 'blue' | 'purple' | 'neutral'> = {
   PROCESSING: 'neutral',
@@ -28,22 +66,22 @@ const SOURCE_STATUS_TONE: Record<string, 'green' | 'amber' | 'red' | 'blue' | 'p
 };
 
 export function GuidelinesPage() {
+  const { t } = useLanguage();
   const [tab, setTab] = useState<'search' | 'manage'>('search');
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '860px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 6px 0' }}>Clinical Guidelines</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 6px 0' }}>{t('Clinical Guidelines')}</h1>
       <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', margin: '0 0 18px 0' }}>
-        A reference assistant over approved guideline sources. It retrieves and shows real excerpts — it does
-        not diagnose, prescribe, or generate clinical recommendations beyond what's in the approved library.
+        {t("A reference assistant over approved guideline sources. It retrieves and shows real excerpts — it does not diagnose, prescribe, or generate clinical recommendations beyond what's in the approved library.")}
       </p>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
         <button onClick={() => setTab('search')} className={tab === 'search' ? 'btn-primary' : 'btn-secondary'} style={{ fontSize: '0.82rem' }}>
-          <Search size={14} /> Search
+          <Search size={14} /> {t('Search')}
         </button>
         <button onClick={() => setTab('manage')} className={tab === 'manage' ? 'btn-primary' : 'btn-secondary'} style={{ fontSize: '0.82rem' }}>
-          <Upload size={14} /> Manage Sources
+          <Upload size={14} /> {t('Manage Sources')}
         </button>
       </div>
 
@@ -53,6 +91,7 @@ export function GuidelinesPage() {
 }
 
 function SearchView() {
+  const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
   const [organization, setOrganization] = useState('');
@@ -82,7 +121,7 @@ function SearchView() {
       setResult(res);
       setExpanded(new Set());
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not complete this search.');
+      setError(err instanceof ApiError ? err.message : tx('Could not complete this search.'));
     } finally {
       setIsLoading(false);
     }
@@ -105,26 +144,26 @@ function SearchView() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void runSearch(query); }}
-            placeholder="Ask a question or search a guideline topic…"
+            placeholder={t('Ask a question or search a guideline topic…')}
             style={{ flex: 1, padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.88rem' }}
           />
           <button onClick={() => void runSearch(query)} disabled={isLoading || !query.trim()} className="btn-primary">
-            <Search size={14} /> Search
+            <Search size={14} /> {t('Search')}
           </button>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <select value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle}>
-            <option value="">All categories</option>
+            <option value="">{t('All categories')}</option>
             {(filters?.categories ?? GUIDELINE_CATEGORIES).map((c) => <option key={c} value={c}>{prettyLabel(c)}</option>)}
           </select>
           <select value={organization} onChange={(e) => setOrganization(e.target.value)} style={selectStyle}>
-            <option value="">All organizations</option>
+            <option value="">{t('All organizations')}</option>
             {(filters?.organizations ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
           <select value={documentType} onChange={(e) => setDocumentType(e.target.value)} style={selectStyle}>
-            <option value="">All document types</option>
-            {(filters?.documentTypes ?? GUIDELINE_DOCUMENT_TYPES).map((d) => <option key={d} value={d}>{d}</option>)}
+            <option value="">{t('All document types')}</option>
+            {(filters?.documentTypes ?? GUIDELINE_DOCUMENT_TYPES).map((d) => <option key={d} value={d}>{documentTypeLabel(d)}</option>)}
           </select>
         </div>
       </div>
@@ -133,23 +172,23 @@ function SearchView() {
         <div className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
           <BookOpen size={28} style={{ color: 'var(--text-muted)', marginBottom: '10px' }} />
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
-            Try a question like:
+            {t('Try a question like:')}
           </p>
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
             {EXAMPLE_QUERIES.map((q) => (
-              <button key={q} onClick={() => void runSearch(q)} className="btn-secondary" style={{ fontSize: '0.78rem' }}>{q}</button>
+              <button key={q} onClick={() => void runSearch(q)} className="btn-secondary" style={{ fontSize: '0.78rem' }}>{t(q)}</button>
             ))}
           </div>
         </div>
       )}
 
-      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Searching approved sources…</div>}
-      {error && !isLoading && <div className="glass-panel" style={{ padding: '18px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{error}</div>}
+      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Searching approved sources…')}</div>}
+      {error && !isLoading && <div className="glass-panel" style={{ padding: '18px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>}
 
       {result && !isLoading && !result.hasSufficientEvidence && (
         <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
           <AlertTriangle size={20} style={{ color: 'var(--amber-pending)', marginBottom: '8px' }} />
-          <p style={{ color: 'var(--text-primary)', fontSize: '0.86rem' }}>{result.answerText}</p>
+          <p style={{ color: 'var(--text-primary)', fontSize: '0.86rem' }}>{t(result.answerText)}</p>
         </div>
       )}
 
@@ -157,7 +196,7 @@ function SearchView() {
         <div>
           {result.disagreementPossible && (
             <div className="glass-panel" style={{ padding: '12px 16px', marginBottom: '12px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-              These results come from more than one source — reviewed separately below.
+              {t('These results come from more than one source — reviewed separately below.')}
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -173,8 +212,8 @@ function SearchView() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                      {e.isDemoContent && <StatusBadge label="Synthetic Demo Source" tone="purple" />}
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>similarity {e.similarityScore}</span>
+                      {e.isDemoContent && <StatusBadge label={t('Synthetic Demo Source')} tone="purple" />}
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{t('similarity {score}', { score: e.similarityScore })}</span>
                     </div>
                   </div>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', margin: '0 0 6px 0', lineHeight: 1.5 }}>
@@ -182,12 +221,12 @@ function SearchView() {
                   </p>
                   {e.excerptText.length >= 220 && (
                     <button onClick={() => toggleExpand(e.chunkId)} style={{ background: 'none', border: 'none', color: 'var(--teal-primary)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-                      {isOpen ? 'Show less' : 'Show more'}
+                      {isOpen ? t('Show less') : t('Show more')}
                     </button>
                   )}
                   {e.sourceUrl && (
                     <div style={{ marginTop: '8px' }}>
-                      <a href={e.sourceUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', color: 'var(--teal-primary)', fontWeight: 600 }}>Original source ↗</a>
+                      <a href={e.sourceUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', color: 'var(--teal-primary)', fontWeight: 600 }}>{t('Original source ↗')}</a>
                     </div>
                   )}
                 </div>
@@ -206,6 +245,7 @@ const selectStyle: React.CSSProperties = {
 };
 
 function ManageSourcesView() {
+  const { t } = useLanguage();
   const [sources, setSources] = useState<GuidelineSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -224,7 +264,7 @@ function ManageSourcesView() {
 
   const load = () => {
     setIsLoading(true);
-    fetchSources().then(setSources).catch(() => setError("We couldn't load guideline sources.")).finally(() => setIsLoading(false));
+    fetchSources().then(setSources).catch(() => setError(tx("We couldn't load guideline sources."))).finally(() => setIsLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -242,7 +282,7 @@ function ManageSourcesView() {
       setFile(null); setTitle(''); setOrg(''); setVersion(''); setPubDate(''); setSourceUrl('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not upload this source.');
+      setError(err instanceof ApiError ? err.message : tx('Could not upload this source.'));
     } finally {
       setIsUploading(false);
     }
@@ -256,7 +296,7 @@ function ManageSourcesView() {
       await fn(sourceId, notes || undefined);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : `Could not ${action} this source.`);
+      setError(err instanceof ApiError ? err.message : COULD_NOT_ACT[action]);
     }
   };
 
@@ -266,9 +306,9 @@ function ManageSourcesView() {
       const result = await approveSourcesBatch(awaiting.map((s) => s.id));
       setBatchConfirmed(false);
       load();
-      if (result.failed.length) setError(`${result.approved.length} approved. ${result.failed.length} could not be approved: ${result.failed.map((f) => f.reason).join('; ')}`);
+      if (result.failed.length) setError(t('{approved} approved. {failed} could not be approved: {reasons}', { approved: result.approved.length, failed: result.failed.length, reasons: result.failed.map((f) => t(f.reason)).join('; ') }));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not approve these sources.');
+      setError(err instanceof ApiError ? err.message : tx('Could not approve these sources.'));
     }
   };
 
@@ -279,72 +319,72 @@ function ManageSourcesView() {
   return (
     <div>
       <form onSubmit={handleUpload} className="glass-panel" style={{ padding: '18px', marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)' }}>Upload a Guideline Source (PDF)</div>
+        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)' }}>{t('Upload a Guideline Source (PDF)')}</div>
         <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.82rem' }} />
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} style={textInputStyle} />
-          <input placeholder="Issuing organization" value={org} onChange={(e) => setOrg(e.target.value)} style={textInputStyle} />
+          <input placeholder={t('Title')} value={title} onChange={(e) => setTitle(e.target.value)} style={textInputStyle} />
+          <input placeholder={t('Issuing organization')} value={org} onChange={(e) => setOrg(e.target.value)} style={textInputStyle} />
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <select value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle}>
             {GUIDELINE_CATEGORIES.map((c) => <option key={c} value={c}>{prettyLabel(c)}</option>)}
           </select>
           <select value={docType} onChange={(e) => setDocType(e.target.value)} style={selectStyle}>
-            {GUIDELINE_DOCUMENT_TYPES.map((d) => <option key={d} value={d}>{d}</option>)}
+            {GUIDELINE_DOCUMENT_TYPES.map((d) => <option key={d} value={d}>{documentTypeLabel(d)}</option>)}
           </select>
-          <input placeholder="Version (optional)" value={version} onChange={(e) => setVersion(e.target.value)} style={{ ...textInputStyle, maxWidth: '140px' }} />
-          <input placeholder="Publication date (optional)" value={pubDate} onChange={(e) => setPubDate(e.target.value)} style={{ ...textInputStyle, maxWidth: '180px' }} />
+          <input placeholder={t('Version (optional)')} value={version} onChange={(e) => setVersion(e.target.value)} style={{ ...textInputStyle, maxWidth: '140px' }} />
+          <input placeholder={t('Publication date (optional)')} value={pubDate} onChange={(e) => setPubDate(e.target.value)} style={{ ...textInputStyle, maxWidth: '180px' }} />
         </div>
-        <input placeholder="Source URL (optional)" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} style={textInputStyle} />
+        <input placeholder={t('Source URL (optional)')} value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} style={textInputStyle} />
         <button type="submit" disabled={isUploading || !file || !title.trim() || !org.trim()} className="btn-primary" style={{ alignSelf: 'flex-start' }}>
-          <Upload size={14} /> {isUploading ? 'Uploading…' : 'Upload for Review'}
+          <Upload size={14} /> {isUploading ? t('Uploading…') : t('Upload for Review')}
         </button>
       </form>
 
-      {error && <div className="glass-panel" style={{ padding: '14px', color: 'var(--rose-urgent)', textAlign: 'center', marginBottom: '14px' }}>{error}</div>}
-      {isLoading && <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>}
+      {error && <div className="glass-panel" style={{ padding: '14px', color: 'var(--rose-urgent)', textAlign: 'center', marginBottom: '14px' }}>{t(error)}</div>}
+      {isLoading && <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading…')}</div>}
 
       {!isLoading && (
         <>
-          <SectionLabel>Awaiting Review ({awaiting.length})</SectionLabel>
-          {awaiting.length === 0 && <EmptyRow text="Nothing awaiting review." />}
+          <SectionLabel>{t('Awaiting Review ({count})', { count: awaiting.length })}</SectionLabel>
+          {awaiting.length === 0 && <EmptyRow text={t('Nothing awaiting review.')} />}
           {awaiting.length > 1 && (
             <div className="glass-panel" style={{ padding: '14px 16px', marginBottom: '10px' }}>
               <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.8rem', marginBottom: '10px' }}>
                 <input type="checkbox" checked={batchConfirmed} onChange={(e) => setBatchConfirmed(e.target.checked)} />
-                I reviewed each of these {awaiting.length} documents, their publisher, version and licence, and approve them for passage search with my professional signature.
+                {t('I reviewed each of these {count} documents, their publisher, version and licence, and approve them for passage search with my professional signature.', { count: awaiting.length })}
               </label>
               <button className="btn-primary" disabled={!batchConfirmed} onClick={() => void approveAll()} style={{ fontSize: '0.78rem' }}>
-                <CheckCircle2 size={13} /> Approve all {awaiting.length}
+                <CheckCircle2 size={13} /> {t('Approve all {count}', { count: awaiting.length })}
               </button>
             </div>
           )}
           {awaiting.map((s) => (
             <SourceRow key={s.id} source={s}>
               <input
-                placeholder="Review notes (optional)"
+                placeholder={t('Review notes (optional)')}
                 value={notesById[s.id] ?? ''}
                 onChange={(e) => setNotesById((prev) => ({ ...prev, [s.id]: e.target.value }))}
                 style={{ ...textInputStyle, fontSize: '0.76rem', marginBottom: '8px' }}
               />
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => void act('approve', s.id)} className="btn-primary" style={{ fontSize: '0.76rem' }}><CheckCircle2 size={13} /> Approve</button>
-                <button onClick={() => void act('reject', s.id)} className="btn-secondary" style={{ fontSize: '0.76rem', color: 'var(--rose-urgent)' }}><XCircle size={13} /> Reject</button>
+                <button onClick={() => void act('approve', s.id)} className="btn-primary" style={{ fontSize: '0.76rem' }}><CheckCircle2 size={13} /> {t('Approve')}</button>
+                <button onClick={() => void act('reject', s.id)} className="btn-secondary" style={{ fontSize: '0.76rem', color: 'var(--rose-urgent)' }}><XCircle size={13} /> {t('Reject')}</button>
               </div>
             </SourceRow>
           ))}
 
-          <SectionLabel>Approved ({approved.length})</SectionLabel>
-          {approved.length === 0 && <EmptyRow text="No approved sources yet." />}
+          <SectionLabel>{t('Approved ({count})', { count: approved.length })}</SectionLabel>
+          {approved.length === 0 && <EmptyRow text={t('No approved sources yet.')} />}
           {approved.map((s) => (
             <SourceRow key={s.id} source={s}>
-              <button onClick={() => void act('exclude', s.id)} className="btn-secondary" style={{ fontSize: '0.76rem' }}><Ban size={13} /> Exclude</button>
+              <button onClick={() => void act('exclude', s.id)} className="btn-secondary" style={{ fontSize: '0.76rem' }}><Ban size={13} /> {t('Exclude')}</button>
             </SourceRow>
           ))}
 
           {other.length > 0 && (
             <>
-              <SectionLabel>Other ({other.length})</SectionLabel>
+              <SectionLabel>{t('Other ({count})', { count: other.length })}</SectionLabel>
               {other.map((s) => <SourceRow key={s.id} source={s} />)}
             </>
           )}
@@ -368,6 +408,7 @@ function EmptyRow({ text }: { text: string }) {
 }
 
 function SourceRow({ source, children }: { source: GuidelineSource; children?: React.ReactNode }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="glass-panel" style={{ padding: '14px 16px', marginBottom: '8px' }}>
@@ -375,11 +416,11 @@ function SourceRow({ source, children }: { source: GuidelineSource; children?: R
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-primary)' }}>{source.title}</span>
-            {source.isDemoContent && <StatusBadge label="Demo" tone="purple" />}
+            {source.isDemoContent && <StatusBadge label={t('Demo')} tone="purple" />}
           </div>
           <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-            {source.issuingOrganization} · {prettyLabel(source.category)} · {source.documentType} · {source.chunkCount} passage(s)
-            {source.lastReviewedAt && ` · Reviewed ${formatFriendlyDateTime(source.lastReviewedAt)}`}
+            {source.issuingOrganization} · {prettyLabel(source.category)} · {documentTypeLabel(source.documentType)} · {t('{count} passage(s)', { count: source.chunkCount })}
+            {source.lastReviewedAt && ` · ${t('Reviewed {date}', { date: formatFriendlyDateTime(source.lastReviewedAt) })}`}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

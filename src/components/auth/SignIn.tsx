@@ -6,6 +6,7 @@ import type { DemoAccount as PortalDemoAccount } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import type { CurrentUser } from '../../api/auth';
 import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { tx, useLanguage } from '../../i18n';
 
 interface SignInProps {
   onAuthenticated: (token: string, user: CurrentUser) => void;
@@ -39,6 +40,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
 const DEMO_ROLE_ORDER: DemoAccount['role'][] = ['Patient', 'Caregiver', 'Care Team', 'Doctor'];
 
 export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignUp }) => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -49,12 +51,12 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
   // Until the server says the care-team login is on, its demo accounts are hidden (they would only be refused).
   const [careTeamOn, setCareTeamOn] = useState(false);
   useEffect(() => { let active = true; fetchAuthOptions().then(o => { if (active) setCareTeamOn(o.careTeamEnabled); }).catch(() => undefined); return () => { active = false; }; }, []);
-  useEffect(() => { let active = true; fetchDemoAccounts().then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError('Demo logins are unavailable. Check that the API is running.'); }); return () => { active = false; }; }, []);
+  useEffect(() => { let active = true; fetchDemoAccounts().then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError(tx('Demo logins are unavailable. Check that the API is running.')); }); return () => { active = false; }; }, []);
   const signInDemo = async (account: PortalDemoAccount) => {
     if (isSubmitting) return;
     setEmail(account.email); setPassword(account.password); setDemoRole(account.role); setIsSubmitting(true); setError(null);
     try { const result = await login(account.email, account.password); onAuthenticated(result.accessToken, result.user); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Could not reach the API. Start the backend and try again.'); }
+    catch (err) { setError(err instanceof ApiError ? err.message : tx('Could not reach the API. Start the backend and try again.')); }
     finally { setIsSubmitting(false); setDemoRole(''); }
   };
   const [showDemoAccounts, setShowDemoAccounts] = useState(false);
@@ -69,13 +71,13 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
     } catch (err) {
       if (err instanceof ApiError) {
         // A 403 carries a plain explanation from the server (for example, that the care-team sign-in is switched off).
-        setError(err.status === 401 ? 'Invalid email or password.' : err.status === 403 ? err.message : 'Something went wrong. Please try again.');
+        setError(err.status === 401 ? tx('Invalid email or password.') : err.status === 403 ? err.message : tx('Something went wrong. Please try again.'));
       } else {
         // fetch() itself failed before any response came back — e.g. the
         // backend isn't running/reachable. Not an ApiError, so it needs its
         // own message instead of being shown as a wrong-password failure.
         console.error('Login request failed before reaching the server:', err);
-        setError("Can't reach the server right now. Please try again in a moment.");
+        setError(tx("Can't reach the server right now. Please try again in a moment."));
       }
     } finally {
       setIsSubmitting(false);
@@ -90,20 +92,20 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
 
   return (
     <AuthLayout>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 4px 0', textAlign: 'center' }}>Welcome back</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 4px 0', textAlign: 'center' }}>{t('Welcome back')}</h1>
       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', margin: '0 0 24px 0' }}>
-        Sign in to your MaternaSync workspace
+        {t('Sign in to your MaternaSync workspace')}
       </p>
 
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--rose-urgent-bg)', color: 'var(--rose-urgent)', border: '1px solid rgba(156, 58, 34, 0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.825rem', marginBottom: '16px' }}>
           <AlertCircle size={16} style={{ flexShrink: 0 }} />
-          {error}
+          {t(error)}
         </div>
       )}
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <Field label="Email">
+        <Field label={t('Email')}>
           <input
             type="email"
             required
@@ -113,7 +115,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
             style={inputStyle}
           />
         </Field>
-        <Field label="Password">
+        <Field label={t('Password')}>
           <input
             type="password"
             required
@@ -126,27 +128,27 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
 
         <div style={{ textAlign: 'right' }}>
           <button type="button" style={{ background: 'none', border: 'none', color: 'var(--teal-primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
-            Forgot password?
+            {t('Forgot password?')}
           </button>
         </div>
 
         <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ width: '100%', padding: '11px', fontSize: '0.9rem', marginTop: '4px' }}>
-          {isSubmitting ? 'Signing in…' : 'Sign In'}
+          {isSubmitting ? t('Signing in…') : t('Sign In')}
         </button>
       </form>
 
       {demoAccounts.length > 0 && <section aria-label="Demo logins" style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border-color)' }}>
-        <h2 style={{ fontSize: '.95rem', margin: '0 0 6px' }}>Explore a demo workspace</h2>
-        <p style={{ fontSize: '.77rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>One-click sign-in with synthetic patient data.</p>
-        <div style={{ display: 'grid', gap: 8 }}>{demoAccounts.map(account => <button type="button" key={account.role} className="btn-secondary" disabled={isSubmitting} onClick={() => void signInDemo(account)} style={{ justifyContent: 'space-between', width: '100%', padding: '11px 13px' }}><span>{demoRole === account.role ? 'Signing in…' : `Demo ${account.label}`}</span><span style={{ fontSize: '.72rem', fontWeight: 400 }}>{account.name}</span></button>)}</div>
-        <details style={{ fontSize: '.74rem', color: 'var(--text-secondary)', marginTop: 12 }}><summary style={{ cursor: 'pointer' }}>View demo credentials</summary>{demoAccounts.map(account => <p key={account.role} style={{ overflowWrap: 'anywhere' }}><strong>{account.label}</strong><br />{account.email}<br />{account.password}</p>)}</details>
+        <h2 style={{ fontSize: '.95rem', margin: '0 0 6px' }}>{t('Explore a demo workspace')}</h2>
+        <p style={{ fontSize: '.77rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>{t('One-click sign-in with synthetic patient data.')}</p>
+        <div style={{ display: 'grid', gap: 8 }}>{demoAccounts.map(account => <button type="button" key={account.role} className="btn-secondary" disabled={isSubmitting} onClick={() => void signInDemo(account)} style={{ justifyContent: 'space-between', width: '100%', padding: '11px 13px' }}><span>{demoRole === account.role ? t('Signing in…') : t('Demo {role}', { role: t(account.label) })}</span><span style={{ fontSize: '.72rem', fontWeight: 400 }}>{account.name}</span></button>)}</div>
+        <details style={{ fontSize: '.74rem', color: 'var(--text-secondary)', marginTop: 12 }}><summary style={{ cursor: 'pointer' }}>{t('View demo credentials')}</summary>{demoAccounts.map(account => <p key={account.role} style={{ overflowWrap: 'anywhere' }}><strong>{t(account.label)}</strong><br />{account.email}<br />{account.password}</p>)}</details>
       </section>}
-      {demoError && <p role="status" style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{demoError}</p>}
+      {demoError && <p role="status" style={{ fontSize: '.8rem', color: 'var(--text-secondary)' }}>{t(demoError)}</p>}
 
       <p style={{ textAlign: 'center', fontSize: '0.825rem', color: 'var(--text-secondary)', marginTop: '20px' }}>
-        Don't have an account?{' '}
+        {t("Don't have an account?")}{' '}
         <button onClick={onSwitchToSignUp} style={{ background: 'none', border: 'none', color: 'var(--teal-primary)', fontWeight: 700, cursor: 'pointer', fontSize: '0.825rem' }}>
-          Create Account
+          {t('Create Account')}
         </button>
       </p>
 
@@ -156,7 +158,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
           onClick={() => setShowDemoAccounts((v) => !v)}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', padding: '4px' }}
         >
-          Demo Accounts {showDemoAccounts ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {t('Demo Accounts')} {showDemoAccounts ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
 
         {showDemoAccounts && (
@@ -164,7 +166,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
             {DEMO_ROLE_ORDER.filter((role) => role !== 'Care Team' || careTeamOn).map((role) => (
               <div key={role}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '6px' }}>
-                  {role}
+                  {t(role)}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {DEMO_ACCOUNTS.filter((a) => a.role === role).map((account) => (
@@ -182,7 +184,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
                         className="btn-secondary"
                         style={{ flexShrink: 0, fontSize: '0.72rem', padding: '6px 10px', whiteSpace: 'nowrap' }}
                       >
-                        Use Demo Account
+                        {t('Use Demo Account')}
                       </button>
                     </div>
                   ))}
@@ -190,7 +192,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
               </div>
             ))}
             <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>
-              Synthetic demo data only. Selecting an account fills the form above — click Sign In to continue.
+              {t('Synthetic demo data only. Selecting an account fills the form above — click Sign In to continue.')}
             </p>
           </div>
         )}

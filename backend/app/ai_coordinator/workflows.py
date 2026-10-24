@@ -236,14 +236,45 @@ def run_question_routing(db, run: models.AIRun, provider) -> str:
     return result.get("summary") or result.get("skip") or ""
 
 
+# ================================================================= while a doctor has paused the assistant
+def run_held_question(db, run: models.AIRun) -> bool:
+    """A doctor paused the assistant (for everyone, or for this patient). Nothing is routed or answered. Two things still
+    happen, because a question must never become invisible or an emergency message delayed:
+      - the fixed rule hands the question to the patient's doctor (tools.route_question_to_doctor);
+      - if the wording contains a warning sign, the fixed emergency message is shown to her and the doctor is alerted,
+        exactly as in a normal run. A doctor can still reverse that message afterwards.
+    Returns True when the run is complete (an urgent one); otherwise it stays queued and runs again when the doctor resumes."""
+    question = db.get(models.PatientQuestion, run.source_id)
+    if question is None or question.episode_id != run.episode_id or question.status in ("ANSWERED", "CLOSED"):
+        run.summary = "Nothing to do."
+        return True
+    episode = db.get(models.PregnancyEpisode, question.episode_id)
+    language = _language(db, episode.patient_user_id)
+    analysis = rules_question(question.question_text, language)
+    if analysis.category != "urgent":
+        tools.route_question_to_doctor(db, question)
+        return False
+    qid, excerpt = question.id, question.question_text[:200]
+    doctors = tools.doctor_ids(db, question.episode_id)
+    source = {"source_type": "PatientQuestion", "source_id": qid, "run_id": run.id}
+    tools.act(db, run, "send_urgent_message", {"user_id": question.asked_by_user_id, "language": language, "question_id": qid, "kind": "urgent"}, key=f"urgent:{qid}", safety=True)
+    tools.act(db, run, "assign_question_to_doctor", {"question_id": qid, "doctor_id": doctors[0] if doctors else None, "is_clinical": True}, key=f"assign:{qid}", safety=True)
+    tools.act(db, run, "create_attention", {"title": "Urgent wording in a patient message", "urgency": "urgent", "summary": f"“{excerpt}” ({analysis.reason}) The assistant is paused, so only the fixed emergency message was sent.",
+              "recommended_action": "Contact the patient now. The patient has already been shown the fixed emergency message.", **source}, key=f"attention:question:{qid}", safety=True)
+    run.summary = "Paused: only the fixed emergency steps ran."
+    return True
+
+
 # ================================================================= follow-up sweeps
-def sweep_missed_checkins(db, make_run) -> int:
+def sweep_missed_checkins(db, make_run, skip=frozenset()) -> int:
     """For each agreed check-in schedule that has run late: send the patient (and trusted people she allowed) a fixed
     reminder, once a day. After three reminders with no check-in, ask a doctor to look. A missing entry is never treated
     as evidence of a problem, and the wording says so."""
     done = 0
     for plan in db.query(models.MonitoringPlan).filter_by(active=True).all():
-        latest = db.query(models.DailyLog).filter_by(episode_id=plan.episode_id, skipped=False).order_by(models.DailyLog.recorded_at.desc()).first()
+        if plan.episode_id in skip:  # a doctor paused the assistant for this patient
+            continue
+        latest =db.query(models.DailyLog).filter_by(episode_id=plan.episode_id, skipped=False).order_by(models.DailyLog.recorded_at.desc()).first()
         baseline = max(_utc(latest.recorded_at), _utc(plan.agreed_at)) if latest else _utc(plan.agreed_at)
         if _now() <= baseline + timedelta(days=plan.interval_days):
             continue
@@ -272,12 +303,12 @@ def sweep_missed_checkins(db, make_run) -> int:
     return done
 
 
-def sweep_overdue_tasks(db, make_run, days: int = 3) -> int:
+def sweep_overdue_tasks(db, make_run, days: int = 3, skip=frozenset()) -> int:
     """A task overdue by `days` or more is raised to the doctor once. The existing reminder sweep keeps nudging the owner."""
     done = 0
     limit = (_now().date() - timedelta(days=days)).isoformat()
     for task in db.query(models.Task).filter(models.Task.status.in_(["OPEN", "IN_PROGRESS", "WAITING"]), models.Task.due_date.isnot(None)).all():
-        if str(task.due_date)[:10] > limit:
+        if str(task.due_date)[:10] > limit or task.episode_id in skip:
             continue
         run = make_run("overdue_task", task.episode_id, "Task", task.id, f"overdue_task:{task.id}")
         if run is None:

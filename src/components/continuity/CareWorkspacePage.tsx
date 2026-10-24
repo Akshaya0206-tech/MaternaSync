@@ -14,6 +14,7 @@ import type {
   Task,
   Workspace,
 } from "../../api/continuity";
+import { tx, useLanguage } from "../../i18n";
 import {
   Badge,
   Empty,
@@ -28,11 +29,55 @@ import {
 import { DraftStudio } from "./DraftStudio";
 import { TrendsPanel } from "./TrendsPanel";
 
+// Codes the server sends (appointment, reminder and message statuses and so on), shown as words. The English
+// wording is exactly what these pages always showed; the other languages come from the dictionary.
+const WORDS: Record<string, string> = {
+  appointment: tx("appointment"),
+  follow_up: tx("follow up"),
+  medicine: tx("medicine"),
+  vaccine: tx("vaccine"),
+  pending: tx("pending"),
+  done: tx("done"),
+  skipped: tx("skipped"),
+  needs_help: tx("needs help"),
+  requested: tx("requested"),
+  scheduled: tx("scheduled"),
+  completed: tx("completed"),
+  cancelled: tx("cancelled"),
+  no_show: tx("no show"),
+  scan: tx("scan"),
+  delivery: tx("delivery"),
+  on_time: tx("on time"),
+  late: tx("late"),
+  PREPARED: tx("PREPARED"),
+  COMPOSER_LINK_READY: tx("COMPOSER LINK READY"),
+  MANUALLY_SENT: tx("MANUALLY SENT"),
+  SENT: tx("SENT"),
+  DELIVERED: tx("DELIVERED"),
+  READ: tx("READ"),
+  FAILED: tx("FAILED"),
+  CANCELLED: tx("CANCELLED"),
+};
+// Task statuses were always shown exactly as the server sends them.
+const TASK_STATUS: Record<string, string> = {
+  OPEN: tx("OPEN"),
+  IN_PROGRESS: tx("IN_PROGRESS"),
+  WAITING: tx("WAITING"),
+  COMPLETED: tx("COMPLETED"),
+  CANCELLED: tx("CANCELLED"),
+};
+type Translate = ReturnType<typeof useLanguage>["t"];
+const word = (t: Translate, value: string) =>
+  t(Object.hasOwn(WORDS, value) ? WORDS[value] : value.replaceAll("_", " "));
+const taskStatus = (t: Translate, value: string) =>
+  t(Object.hasOwn(TASK_STATUS, value) ? TASK_STATUS[value] : value);
+
 export function CareWorkspacePage({
   initialTab = "trends",
 }: {
   initialTab?: string;
 }) {
+  const { t } = useLanguage();
   const w = useWorkspace();
   const { user } = useAuth();
   const [tab, setTab] = useState(initialTab);
@@ -57,17 +102,19 @@ export function CareWorkspacePage({
   const doctor = user?.role === "doctor";
   return (
     <Page
-      title="Connected care workspace"
-      subtitle="Patient-reported information, accountable follow-up, reviewed documents, and controlled outreach in one place."
+      title={t("Connected care workspace")}
+      subtitle={t(
+        "Patient-reported information, accountable follow-up, reviewed documents, and controlled outreach in one place.",
+      )}
     >
       <PatientSelect workspace={w} />
       <Feedback error={error} />
       <div className="continuity-tabs">
         {[
-          ["trends", "Trends & pathways"],
-          ["drafts", "Document studio"],
-          ["reminders", "Reminders & outreach"],
-          ["operations", "Tasks, visits & outcomes"],
+          ["trends", t("Trends & pathways")],
+          ["drafts", t("Document studio")],
+          ["reminders", t("Reminders & outreach")],
+          ["operations", t("Tasks, visits & outcomes")],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -129,6 +176,7 @@ function Pathways({
   doctor: boolean;
   reload: () => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const action = useAction();
   const [pathway, setPathway] = useState("");
   const [owner, setOwner] = useState(
@@ -143,11 +191,11 @@ function Pathways({
   return (
     <>
       <Feedback error={action.error} message={action.message} />
-      <Panel title="Agreed check-in follow-up">
+      <Panel title={t("Agreed check-in follow-up")}>
         <p className="continuity-muted">
-          A missed-log queue is created only after the team records an agreed
-          follow-up schedule. Missing information is separate from clinical
-          concern.
+          {t(
+            "A missed-log queue is created only after the team records an agreed follow-up schedule. Missing information is separate from clinical concern.",
+          )}
         </p>
         <form
           onSubmit={(e) => {
@@ -161,11 +209,11 @@ function Pathways({
               });
               setAgreed(false);
               await reload();
-            }, "Agreed check-in plan saved.");
+            }, t("Agreed check-in plan saved."));
           }}
         >
           <div className="continuity-fields">
-            <Field label="Follow-up owner">
+            <Field label={t("Follow-up owner")}>
               <select
                 required
                 value={owner}
@@ -178,7 +226,7 @@ function Pathways({
                 ))}
               </select>
             </Field>
-            <Field label="Check-in interval (days)">
+            <Field label={t("Check-in interval (days)")}>
               <input
                 type="number"
                 required
@@ -196,11 +244,11 @@ function Pathways({
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
             />
-            The patient and care team have agreed to this follow-up schedule.
+            {t("The patient and care team have agreed to this follow-up schedule.")}
           </label>
           <div className="continuity-actions">
             <button className="btn-primary" disabled={action.busy || !agreed}>
-              Save agreed schedule
+              {t("Save agreed schedule")}
             </button>
             {data.monitoring?.active && (
               <button
@@ -219,16 +267,16 @@ function Pathways({
                       },
                     );
                     await reload();
-                  }, "Monitoring follow-up stopped.")
+                  }, t("Monitoring follow-up stopped."))
                 }
               >
-                Stop this schedule
+                {t("Stop this schedule")}
               </button>
             )}
           </div>
         </form>
       </Panel>
-      <Panel title="Clinician-approved pathways">
+      <Panel title={t("Clinician-approved pathways")}>
         {doctor ? (
           <form
             onSubmit={(e) => {
@@ -242,17 +290,17 @@ function Pathways({
                 });
                 setConfirmed(false);
                 await reload();
-              }, "Administrative tasks created with an owner and due dates.");
+              }, t("Administrative tasks created with an owner and due dates."));
             }}
           >
             <div className="continuity-fields">
-              <Field label="Approved pathway">
+              <Field label={t("Approved pathway")}>
                 <select
                   required
                   value={pathway}
                   onChange={(e) => setPathway(e.target.value)}
                 >
-                  <option value="">Select a pathway</option>
+                  <option value="">{t("Select a pathway")}</option>
                   {pathways.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.title} · v{p.version}
@@ -260,7 +308,7 @@ function Pathways({
                   ))}
                 </select>
               </Field>
-              <Field label="Start date">
+              <Field label={t("Start date")}>
                 <input
                   type="date"
                   required
@@ -268,7 +316,7 @@ function Pathways({
                   onChange={(e) => setStart(e.target.value)}
                 />
               </Field>
-              <Field label="Task owner">
+              <Field label={t("Task owner")}>
                 <select
                   required
                   value={owner}
@@ -285,15 +333,16 @@ function Pathways({
             {chosen && (
               <>
                 <p className="continuity-muted">
-                  {chosen.content} · Reviewed by {chosen.approvedByName}
+                  {chosen.content} ·{" "}
+                  {t("Reviewed by {name}", { name: chosen.approvedByName ?? "" })}
                 </p>
                 {chosen.configuration.steps?.map((s, i) => (
                   <p key={i}>
-                    {s.title} · day {s.days}
+                    {s.title} · {t("day {days}", { days: s.days })}
                   </p>
                 ))}
                 <a href={chosen.sourceUrl} target="_blank" rel="noreferrer">
-                  Pathway source
+                  {t("Pathway source")}
                 </a>
               </>
             )}
@@ -304,31 +353,34 @@ function Pathways({
                 onChange={(e) => setConfirmed(e.target.checked)}
                 required
               />
-              I confirm this version and its administrative tasks apply to this
-              patient’s documented plan.
+              {t(
+                "I confirm this version and its administrative tasks apply to this patient’s documented plan.",
+              )}
             </label>
             <button
               className="btn-primary"
               disabled={action.busy || !pathway || !confirmed}
             >
-              Confirm & generate tasks
+              {t("Confirm & generate tasks")}
             </button>
             {!pathways.length && (
               <Empty>
-                Review and approve a pathway in the clinical library before
-                enrollment.
+                {t(
+                  "Review and approve a pathway in the clinical library before enrollment.",
+                )}
               </Empty>
             )}
           </form>
         ) : (
           <p className="continuity-muted">
-            The assigned doctor confirms pathway enrollment. Generated tasks
-            appear in your task queue.
+            {t(
+              "The assigned doctor confirms pathway enrollment. Generated tasks appear in your task queue.",
+            )}
           </p>
         )}
         {data.enrollments?.map((e) => (
           <p className="continuity-muted" key={e.id}>
-            {e.title} · Applied {formatTime(e.createdAt)}
+            {e.title} · {t("Applied {time}", { time: formatTime(e.createdAt) })}
           </p>
         ))}
       </Panel>
@@ -345,6 +397,7 @@ function Reminders({
   doctor: boolean;
   reload: () => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const action = useAction();
   const [kind, setKind] = useState("appointment");
   const [title, setTitle] = useState("");
@@ -375,13 +428,13 @@ function Reminders({
             title: `${a.appointmentType} · ${formatTime(a.scheduledAt)}`,
           }))
       : kind === "follow_up"
-        ? tasks.map((t) => ({ id: t.id, title: t.title }))
+        ? tasks.map((task) => ({ id: task.id, title: task.title }))
         : data.sources?.filter((s) => s.type === "consultation") || [];
   const consent = data.consents.find((c) => c.id === consentId);
   return (
     <>
       <Feedback error={action.error} message={action.message} />
-      <Panel title="Approve a reminder schedule">
+      <Panel title={t("Approve a reminder schedule")}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -396,11 +449,11 @@ function Reminders({
                 occurrences,
               });
               await reload();
-            }, "Reminders added to the patient’s care plan.");
+            }, t("Reminders added to the patient’s care plan."));
           }}
         >
           <div className="continuity-fields">
-            <Field label="Reminder type">
+            <Field label={t("Reminder type")}>
               <select
                 value={kind}
                 onChange={(e) => {
@@ -413,18 +466,18 @@ function Reminders({
                   : ["appointment", "follow_up"]
                 ).map((k) => (
                   <option key={k} value={k}>
-                    {k.replaceAll("_", " ")}
+                    {word(t, k)}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Source plan / visit">
+            <Field label={t("Source plan / visit")}>
               <select
                 required
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
               >
-                <option value="">Select source</option>
+                <option value="">{t("Select source")}</option>
                 {sources.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.title}
@@ -432,7 +485,7 @@ function Reminders({
                 ))}
               </select>
             </Field>
-            <Field label="Reminder title">
+            <Field label={t("Reminder title")}>
               <input
                 required
                 minLength={3}
@@ -440,7 +493,7 @@ function Reminders({
                 onChange={(e) => setTitle(e.target.value)}
               />
             </Field>
-            <Field label="First reminder">
+            <Field label={t("First reminder")}>
               <input
                 type="datetime-local"
                 required
@@ -448,7 +501,7 @@ function Reminders({
                 onChange={(e) => setTime(e.target.value)}
               />
             </Field>
-            <Field label="Repeat every (days; 0 for once)">
+            <Field label={t("Repeat every (days; 0 for once)")}>
               <input
                 type="number"
                 min="0"
@@ -457,7 +510,7 @@ function Reminders({
                 onChange={(e) => setRepeat(Number(e.target.value))}
               />
             </Field>
-            <Field label="Number of reminders">
+            <Field label={t("Number of reminders")}>
               <input
                 type="number"
                 min="1"
@@ -467,7 +520,7 @@ function Reminders({
               />
             </Field>
           </div>
-          <Field label="Instructions from the documented plan">
+          <Field label={t("Instructions from the documented plan")}>
             <textarea
               rows={3}
               value={instructions}
@@ -475,16 +528,16 @@ function Reminders({
             />
           </Field>
           <button className="btn-primary" disabled={action.busy}>
-            Approve reminder schedule
+            {t("Approve reminder schedule")}
           </button>
         </form>
       </Panel>
-      <Panel title="Reminder responses">
-        {!data.reminders.length && <Empty>No reminder schedule yet.</Empty>}
+      <Panel title={t("Reminder responses")}>
+        {!data.reminders.length && <Empty>{t("No reminder schedule yet.")}</Empty>}
         {data.reminders.map((r) => (
           <div key={r.id} className="continuity-item">
             <h3>
-              {r.title} <Badge>{r.status.replaceAll("_", " ")}</Badge>
+              {r.title} <Badge>{word(t, r.status)}</Badge>
             </h3>
             <p className="continuity-muted">
               {formatTime(r.scheduledAt)} · {r.approvedByName}
@@ -492,22 +545,26 @@ function Reminders({
           </div>
         ))}
       </Panel>
-      <Panel title="WhatsApp outreach">
+      <Panel title={t("WhatsApp outreach")}>
         <div className="continuity-note">
-          Recipients must have active permission for this purpose, and every
-          message is only a prompt to sign in: no names, results or medicines.{" "}
+          {t(
+            "Recipients must have active permission for this purpose, and every message is only a prompt to sign in: no names, results or medicines.",
+          )}{" "}
           {data.whatsapp?.mode === "cloud_api" &&
-            "Messages are sent through the WhatsApp Business Cloud API, and sent, delivered and read are reported by the provider. A recipient who replies STOP withdraws permission automatically."}
+            t(
+              "Messages are sent through the WhatsApp Business Cloud API, and sent, delivered and read are reported by the provider. A recipient who replies STOP withdraws permission automatically.",
+            )}
           {data.whatsapp?.mode === "simulator" && (
             <strong>
-              SIMULATED: no message leaves this server and no phone receives
-              anything. Statuses are generated so the flow can be demonstrated.
-              Set MATERNASYNC_WHATSAPP_PROVIDER=cloud_api with WhatsApp Business
-              credentials to send for real.
+              {t(
+                "SIMULATED: no message leaves this server and no phone receives anything. Statuses are generated so the flow can be demonstrated. Set MATERNASYNC_WHATSAPP_PROVIDER=cloud_api with WhatsApp Business credentials to send for real.",
+              )}
             </strong>
           )}
           {data.whatsapp?.mode === "manual" &&
-            "Automatic sending is not configured. Prepare the composer link, send from your own WhatsApp, then record it as sent. Delivery stays unconfirmed."}
+            t(
+              "Automatic sending is not configured. Prepare the composer link, send from your own WhatsApp, then record it as sent. Delivery stays unconfirmed.",
+            )}
         </div>
         <form
           onSubmit={(e) => {
@@ -523,11 +580,11 @@ function Reminders({
               setConfirmed(false);
               setReadyLink("");
               await reload();
-            }, "Notification prepared. Open WhatsApp to review and send.");
+            }, t("Notification prepared. Open WhatsApp to review and send."));
           }}
         >
           <div className="continuity-fields">
-            <Field label="Notification type">
+            <Field label={t("Notification type")}>
               <select
                 value={outreachType}
                 onChange={(e) => {
@@ -536,17 +593,17 @@ function Reminders({
                   setOutreachSource("");
                 }}
               >
-                <option value="reminder">Reminder</option>
-                <option value="output">Approved document</option>
+                <option value="reminder">{t("Reminder")}</option>
+                <option value="output">{t("Approved document")}</option>
               </select>
             </Field>
-            <Field label="Approved item">
+            <Field label={t("Approved item")}>
               <select
                 required
                 value={outreachSource}
                 onChange={(e) => setOutreachSource(e.target.value)}
               >
-                <option value="">Select item</option>
+                <option value="">{t("Select item")}</option>
                 {(outreachType === "reminder"
                   ? data.reminders
                   : data.outputs.filter(
@@ -559,7 +616,7 @@ function Reminders({
                 ))}
               </select>
             </Field>
-            <Field label="Active patient permission">
+            <Field label={t("Active patient permission")}>
               <select
                 required
                 value={consentId}
@@ -569,7 +626,7 @@ function Reminders({
                   setConfirmed(false);
                 }}
               >
-                <option value="">Select permission</option>
+                <option value="">{t("Select permission")}</option>
                 {data.consents
                   .filter(
                     (c) =>
@@ -581,18 +638,19 @@ function Reminders({
                   )
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.recipient} · Expires {formatTime(c.expiresAt)}
+                      {c.recipient} ·{" "}
+                      {t("Expires {time}", { time: formatTime(c.expiresAt) })}
                     </option>
                   ))}
               </select>
             </Field>
-            <Field label="Confirm recipient phone">
+            <Field label={t("Confirm recipient phone")}>
               <input
                 required
                 type="tel"
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
-                placeholder="Re-enter the consented number"
+                placeholder={t("Re-enter the consented number")}
               />
             </Field>
           </div>
@@ -603,7 +661,7 @@ function Reminders({
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
             />
-            I verified the recipient and reviewed the minimal notification.
+            {t("I verified the recipient and reviewed the minimal notification.")}
           </label>
           <button
             className="btn-primary"
@@ -614,36 +672,39 @@ function Reminders({
               recipient !== consent.recipient
             }
           >
-            Prepare notification
+            {t("Prepare notification")}
           </button>
         </form>
         {data.outreach?.map((o) => (
           <div key={o.id} className="continuity-item">
             <h3>
-              {o.recipient} <Badge>{o.status.replaceAll("_", " ")}</Badge>{" "}
-              {o.provider === "simulator" && <Badge>SIMULATED</Badge>}
+              {o.recipient} <Badge>{word(t, o.status)}</Badge>{" "}
+              {o.provider === "simulator" && <Badge>{t("SIMULATED")}</Badge>}
             </h3>
             <p>{o.message}</p>
             <p className="continuity-muted">
-              Prepared {formatTime(o.createdAt)}
-              {o.sentAt && ` · Sent ${formatTime(o.sentAt)}`}
-              {o.deliveredAt && ` · Delivered ${formatTime(o.deliveredAt)}`}
-              {o.readAt && ` · Read ${formatTime(o.readAt)}`}
+              {t("Prepared {time}", { time: formatTime(o.createdAt) })}
+              {o.sentAt &&
+                ` · ${t("Sent {time}", { time: formatTime(o.sentAt) })}`}
+              {o.deliveredAt &&
+                ` · ${t("Delivered {time}", { time: formatTime(o.deliveredAt) })}`}
+              {o.readAt &&
+                ` · ${t("Read {time}", { time: formatTime(o.readAt) })}`}
               <br />
-              Delivery:{" "}
+              {t("Delivery:")}{" "}
               {o.status === "DELIVERED" || o.status === "READ"
                 ? o.provider === "simulator"
-                  ? "simulated, nothing was delivered to a phone"
-                  : "confirmed by the WhatsApp provider"
+                  ? t("simulated, nothing was delivered to a phone")
+                  : t("confirmed by the WhatsApp provider")
                 : o.status === "SENT"
-                  ? "sent, waiting for the provider to confirm delivery"
+                  ? t("sent, waiting for the provider to confirm delivery")
                   : o.status === "MANUALLY_SENT"
-                    ? "sent by staff from the composer, not confirmed"
+                    ? t("sent by staff from the composer, not confirmed")
                     : o.status === "FAILED"
-                      ? "failed"
+                      ? t("failed")
                       : o.status === "CANCELLED"
-                        ? "cancelled, permission was withdrawn"
-                        : "not sent yet"}
+                        ? t("cancelled, permission was withdrawn")
+                        : t("not sent yet")}
             </p>
             {o.failedReason && (
               <p role="alert" className="continuity-alert">
@@ -663,10 +724,10 @@ function Reminders({
                         } finally {
                           await reload();
                         }
-                      }, data.whatsapp?.mode === "simulator" ? "Simulated send recorded. No real message was sent." : "Message handed to WhatsApp. Delivery status will update.")
+                      }, data.whatsapp?.mode === "simulator" ? t("Simulated send recorded. No real message was sent.") : t("Message handed to WhatsApp. Delivery status will update."))
                     }
                   >
-                    {o.status === "FAILED" ? "Try sending again" : "Send now"}
+                    {o.status === "FAILED" ? t("Try sending again") : t("Send now")}
                   </button>
                 )}
               {["PREPARED", "COMPOSER_LINK_READY"].includes(o.status) && (
@@ -683,7 +744,7 @@ function Reminders({
                     }, "")
                   }
                 >
-                  Verify consent & prepare WhatsApp link
+                  {t("Verify consent & prepare WhatsApp link")}
                 </button>
               )}
               {o.status === "COMPOSER_LINK_READY" && (
@@ -694,10 +755,10 @@ function Reminders({
                     action.run(async () => {
                       await api.post(`${ROOT}/outreach/${o.id}/mark-sent`);
                       await reload();
-                    }, "Recorded as sent by staff. Delivery is unconfirmed.")
+                    }, t("Recorded as sent by staff. Delivery is unconfirmed."))
                   }
                 >
-                  I sent it from WhatsApp
+                  {t("I sent it from WhatsApp")}
                 </button>
               )}
             </div>
@@ -712,7 +773,7 @@ function Reminders({
               rel="noreferrer"
               onClick={() => setReadyLink("")}
             >
-              Continue to WhatsApp ↗
+              {t("Continue to WhatsApp ↗")}
             </a>
           </div>
         )}
@@ -730,6 +791,7 @@ function Operations({
   episode: EpisodeChoice;
   reload: () => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const action = useAction();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState("open");
@@ -744,33 +806,33 @@ function Operations({
     void loadTasks().catch((e) => action.setError(e.message));
   }, [data.episodeId]);
   const shown = tasks.filter(
-    (t) =>
-      (!ownerFilter || t.ownerUserId === ownerFilter) &&
+    (task) =>
+      (!ownerFilter || task.ownerUserId === ownerFilter) &&
       (filter === "all" || filter === "overdue"
         ? filter === "all" ||
-          (!!t.dueDate &&
-            t.dueDate < localDateTime().slice(0, 10) &&
-            !["COMPLETED", "CANCELLED"].includes(t.status))
-        : !["COMPLETED", "CANCELLED"].includes(t.status)),
+          (!!task.dueDate &&
+            task.dueDate < localDateTime().slice(0, 10) &&
+            !["COMPLETED", "CANCELLED"].includes(task.status))
+        : !["COMPLETED", "CANCELLED"].includes(task.status)),
   );
   return (
     <>
       <Feedback error={action.error} message={action.message} />
-      <Panel title="Task ownership & history">
+      <Panel title={t("Task ownership & history")}>
         <div className="continuity-fields">
-          <Field label="Queue filter">
+          <Field label={t("Queue filter")}>
             <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-              <option value="open">Open tasks</option>
-              <option value="overdue">Overdue</option>
-              <option value="all">All tasks</option>
+              <option value="open">{t("Open tasks")}</option>
+              <option value="overdue">{t("Overdue")}</option>
+              <option value="all">{t("All tasks")}</option>
             </select>
           </Field>
-          <Field label="Owner">
+          <Field label={t("Owner")}>
             <select
               value={ownerFilter}
               onChange={(e) => setOwnerFilter(e.target.value)}
             >
-              <option value="">All owners</option>
+              <option value="">{t("All owners")}</option>
               {episode.members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -779,21 +841,21 @@ function Operations({
             </select>
           </Field>
         </div>
-        {!shown.length && <Empty>No tasks in this queue.</Empty>}
-        {shown.map((t) => (
+        {!shown.length && <Empty>{t("No tasks in this queue.")}</Empty>}
+        {shown.map((task) => (
           <TaskRow
-            key={`${t.id}-${t.ownerUserId}-${t.dueDate}`}
-            task={t}
+            key={`${task.id}-${task.ownerUserId}-${task.dueDate}`}
+            task={task}
             members={episode.members}
             saved={loadTasks}
           />
         ))}
       </Panel>
-      <Panel title="Appointments & requests">
+      <Panel title={t("Appointments & requests")}>
         {data.appointments.map((a) => (
           <article key={a.id} className="continuity-item">
             <h3>
-              {a.appointmentType} <Badge>{a.status.replaceAll("_", " ")}</Badge>
+              {a.appointmentType} <Badge>{word(t, a.status)}</Badge>
             </h3>
             <p>
               {formatTime(a.scheduledAt)} · {a.notes}
@@ -815,19 +877,19 @@ function Operations({
                         status,
                       });
                       await reload();
-                    }, "Appointment updated.")
+                    }, t("Appointment updated."))
                   }
                 >
                   {status === "scheduled"
-                    ? "Confirm visit"
-                    : status.replaceAll("_", " ")}
+                    ? t("Confirm visit")
+                    : word(t, status)}
                 </button>
               ))}
             </div>
           </article>
         ))}
       </Panel>
-      <Panel title="Record a documented outcome">
+      <Panel title={t("Record a documented outcome")}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -839,11 +901,11 @@ function Operations({
                 sourceDocumentId: source,
               });
               await reload();
-            }, "Documented outcome added to authorized clinic reporting.");
+            }, t("Documented outcome added to authorized clinic reporting."));
           }}
         >
           <div className="continuity-fields">
-            <Field label="Outcome type">
+            <Field label={t("Outcome type")}>
               <select
                 value={outcome}
                 onChange={(e) => {
@@ -851,18 +913,18 @@ function Operations({
                   setValue(e.target.value === "scan" ? "on_time" : "");
                 }}
               >
-                <option value="scan">Scan completion</option>
-                <option value="delivery">Recorded delivery outcome</option>
+                <option value="scan">{t("Scan completion")}</option>
+                <option value="delivery">{t("Recorded delivery outcome")}</option>
               </select>
             </Field>
-            <Field label="Recorded outcome">
+            <Field label={t("Recorded outcome")}>
               {outcome === "scan" ? (
                 <select
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                 >
-                  <option value="on_time">On time</option>
-                  <option value="late">Late</option>
+                  <option value="on_time">{t("On time")}</option>
+                  <option value="late">{t("Late")}</option>
                 </select>
               ) : (
                 <input
@@ -872,7 +934,7 @@ function Operations({
                 />
               )}
             </Field>
-            <Field label="Event date">
+            <Field label={t("Event date")}>
               <input
                 type="date"
                 required
@@ -881,13 +943,13 @@ function Operations({
                 onChange={(e) => setDate(e.target.value)}
               />
             </Field>
-            <Field label="Verified source document">
+            <Field label={t("Verified source document")}>
               <select
                 required
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
               >
-                <option value="">Choose source</option>
+                <option value="">{t("Choose source")}</option>
                 {data.sources
                   ?.filter((s) => s.type === "document")
                   .map((s) => (
@@ -899,12 +961,15 @@ function Operations({
             </Field>
           </div>
           <button className="btn-primary" disabled={action.busy}>
-            Record outcome
+            {t("Record outcome")}
           </button>
         </form>
         {data.outcomes?.map((o) => (
           <p className="continuity-muted" key={o.id}>
-            {o.eventDate} · {o.kind} · {o.value.replaceAll("_", " ")}
+            {o.eventDate} · {word(t, o.kind)} ·{" "}
+            {o.kind === "scan"
+              ? word(t, o.value)
+              : o.value.replaceAll("_", " ")}
           </p>
         ))}
       </Panel>
@@ -921,13 +986,14 @@ function TaskRow({
   members: EpisodeChoice["members"];
   saved: () => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const action = useAction();
   const [owner, setOwner] = useState(task.ownerUserId || "");
   const [date, setDate] = useState(task.dueDate || "");
   return (
     <article className="continuity-item">
       <h3>
-        {task.title} <Badge>{task.status}</Badge>
+        {task.title} <Badge>{taskStatus(t, task.status)}</Badge>
       </h3>
       <Feedback error={action.error} message={action.message} />
       <form
@@ -939,17 +1005,17 @@ function TaskRow({
               dueDate: date || null,
             });
             await saved();
-          }, "Assignment saved.");
+          }, t("Assignment saved."));
         }}
       >
         <div className="continuity-fields">
-          <Field label="Assigned owner">
+          <Field label={t("Assigned owner")}>
             <select
               required
               value={owner}
               onChange={(e) => setOwner(e.target.value)}
             >
-              <option value="">Unassigned</option>
+              <option value="">{t("Unassigned")}</option>
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -957,7 +1023,7 @@ function TaskRow({
               ))}
             </select>
           </Field>
-          <Field label="Due date">
+          <Field label={t("Due date")}>
             <input
               type="date"
               value={date}
@@ -966,16 +1032,17 @@ function TaskRow({
           </Field>
         </div>
         <button className="btn-secondary" disabled={action.busy}>
-          Save owner & due date
+          {t("Save owner & due date")}
         </button>
       </form>
       <details>
         <summary className="continuity-muted">
-          Reassignment history ({task.history.length})
+          {t("Reassignment history ({count})", { count: task.history.length })}
         </summary>
         {task.history.map((h, i) => (
           <p className="continuity-muted" key={i}>
-            {formatTime(h.at)} · {h.name} · assigned by {h.by}
+            {formatTime(h.at)} · {h.name} ·{" "}
+            {t("assigned by {name}", { name: h.by })}
           </p>
         ))}
       </details>
@@ -990,12 +1057,13 @@ export function CareWorkspaceLink({
   episodeId: string;
   role: string;
 }) {
+  const { t } = useLanguage();
   return (
     <Link
       className="btn-secondary"
       to={`/${role === "doctor" ? "doctor" : "care-team"}/care-workspace?episodeId=${episodeId}`}
     >
-      Connected care workspace
+      {t("Connected care workspace")}
     </Link>
   );
 }

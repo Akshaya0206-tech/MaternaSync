@@ -172,6 +172,8 @@ class OutputIn(Input):
     language: Language = "en"
     appointment_id: str | None = None
     template_id: str | None = None
+    # For a patient explanation: the topics the doctor chose to explain. The note is never scanned to pick them.
+    topics: list[str] = Field(default_factory=list, max_length=20)
 
 
 class OutputEdit(Input):

@@ -5,10 +5,37 @@ import { fetchDashboard } from '../../api/doctorPortal';
 import { assistantStatus } from '../../api/assistant';
 import type { DoctorDashboard } from '../../api/doctorPortal';
 import { useAuth } from '../../auth/AuthContext';
+import { tx, useLanguage } from '../../i18n';
+import type { LanguageValue } from '../../i18n';
 import { formatFriendlyTime, timeOfDayGreeting } from './format';
 import { StatusBadge } from '../../components/StatusBadge';
 
+// The server sends these two words (backend/app/routers/doctor_portal.py).
+const BRIEF_STATUS_LABELS: Record<string, string> = {
+  Ready: tx('Ready'),
+  'Not Ready': tx('Not Ready'),
+};
+
+// The server sends the pending items as "2 Questions · 1 Follow-up", or "No pending items" (backend/app/routers/doctor_portal.py).
+// Each part is translated on its own; anything it does not recognise is shown as it came.
+function translateSummary(summary: string, t: LanguageValue['t']): string {
+  return summary
+    .split(' · ')
+    .map((part) => {
+      if (part === 'No pending items') return t('No pending items');
+      const match = /^(\d+) (Question|Questions|Follow-up|Follow-ups)$/.exec(part);
+      if (!match) return part;
+      const count = Number(match[1]);
+      if (match[2] === 'Question') return t('{count} Question', { count });
+      if (match[2] === 'Questions') return t('{count} Questions', { count });
+      if (match[2] === 'Follow-up') return t('{count} Follow-up', { count });
+      return t('{count} Follow-ups', { count });
+    })
+    .join(' · ');
+}
+
 export function DashboardPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<DoctorDashboard | null>(null);
@@ -19,20 +46,20 @@ export function DashboardPage() {
   useEffect(() => {
     fetchDashboard()
       .then(setDashboard)
-      .catch(() => setError("We couldn't load your dashboard. Please try again."))
+      .catch(() => setError(tx("We couldn't load your dashboard. Please try again.")))
       .finally(() => setIsLoading(false));
     assistantStatus().then((s) => setAssistantOpen(s.open)).catch(() => undefined);
   }, []);
 
   const stats = dashboard
     ? [
-        { label: "Today's Patients", value: dashboard.todaysPatients, icon: <Users size={18} />, to: '/doctor/patients' },
-        { label: 'Briefs Ready', value: dashboard.briefsReady, icon: <ClipboardCheck size={18} />, to: '/doctor/todays-brief' },
-        { label: 'Questions', value: dashboard.questions, icon: <MessageCircle size={18} />, to: '/doctor/questions' },
-        { label: 'Documents to Review', value: dashboard.documentsToReview, icon: <FileCheck2 size={18} />, to: '/doctor/patients' },
-        { label: 'Follow-ups', value: dashboard.followUps, icon: <ListTodo size={18} />, to: '/doctor/follow-ups' },
-        { label: 'Drafts to Approve', value: dashboard.draftsToApprove, icon: <Stethoscope size={18} />, to: '/doctor/documentation' },
-        ...(assistantOpen === null ? [] : [{ label: 'Care Assistant: needs you', value: assistantOpen, icon: <Bot size={18} />, to: '/doctor/assistant' }]),
+        { label: t("Today's Patients"), value: dashboard.todaysPatients, icon: <Users size={18} />, to: '/doctor/patients' },
+        { label: t('Briefs Ready'), value: dashboard.briefsReady, icon: <ClipboardCheck size={18} />, to: '/doctor/todays-brief' },
+        { label: t('Questions'), value: dashboard.questions, icon: <MessageCircle size={18} />, to: '/doctor/questions' },
+        { label: t('Documents to Review'), value: dashboard.documentsToReview, icon: <FileCheck2 size={18} />, to: '/doctor/patients' },
+        { label: t('Follow-ups'), value: dashboard.followUps, icon: <ListTodo size={18} />, to: '/doctor/follow-ups' },
+        { label: t('Drafts to Approve'), value: dashboard.draftsToApprove, icon: <Stethoscope size={18} />, to: '/doctor/documentation' },
+        ...(assistantOpen === null ? [] : [{ label: t('Care Assistant: needs you'), value: assistantOpen, icon: <Bot size={18} />, to: '/doctor/assistant' }]),
       ]
     : [];
 
@@ -41,10 +68,10 @@ export function DashboardPage() {
       <h1 className="page-title" style={{ fontSize: '1.5rem', margin: '8px 0 6px 0' }}>
         {timeOfDayGreeting()}{user?.fullName ? `, ${user.fullName}` : ''}
       </h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '0 0 24px 0' }}>Today</p>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', margin: '0 0 24px 0' }}>{t('Today')}</p>
 
-      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>}
-      {error && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{error}</div>}
+      {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading…')}</div>}
+      {error && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>}
 
       {dashboard && !isLoading && (
         <>
@@ -63,10 +90,10 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <h2 className="page-title" style={{ fontSize: '1.05rem', margin: '0 0 12px 0' }}>Today's Patients</h2>
+          <h2 className="page-title" style={{ fontSize: '1.05rem', margin: '0 0 12px 0' }}>{t("Today's Patients")}</h2>
           {dashboard.todayPatientRows.length === 0 ? (
             <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              No appointments scheduled for today.
+              {t('No appointments scheduled for today.')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -75,12 +102,12 @@ export function DashboardPage() {
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>{row.patientName}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {row.appointmentTime ? formatFriendlyTime(row.appointmentTime) : 'No time set'} · {row.pendingItemsSummary}
+                      {row.appointmentTime ? formatFriendlyTime(row.appointmentTime) : t('No time set')} · {translateSummary(row.pendingItemsSummary, t)}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <StatusBadge label={row.briefStatus} tone={row.briefStatus === 'Ready' ? 'green' : 'neutral'} />
-                    <button onClick={() => navigate(`/doctor/patients/${row.episodeId}`)} className="btn-primary" style={{ fontSize: '0.8rem' }}>Open Brief</button>
+                    <StatusBadge label={t(BRIEF_STATUS_LABELS[row.briefStatus] ?? row.briefStatus)} tone={row.briefStatus === 'Ready' ? 'green' : 'neutral'} />
+                    <button onClick={() => navigate(`/doctor/patients/${row.episodeId}`)} className="btn-primary" style={{ fontSize: '0.8rem' }}>{t('Open Brief')}</button>
                   </div>
                 </div>
               ))}

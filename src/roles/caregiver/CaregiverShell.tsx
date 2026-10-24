@@ -1,31 +1,11 @@
 import { Link, Outlet } from 'react-router-dom';
-import { Bell, Calendar, ClipboardList, HeartPulse, Home, Languages, MessageCircle, PhoneCall } from 'lucide-react';
+import { Bell, Calendar, ClipboardList, HeartPulse, Home, MessageCircle, PhoneCall } from 'lucide-react';
 import { RoleSidebar } from '../../components/shared/RoleSidebar';
+import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher';
 import { useAuth } from '../../auth/AuthContext';
 import { LanguageProvider, useLanguage } from '../../i18n';
-import type { Language } from '../../i18n';
 import { TextSizeControl } from '../../accessibility/TextSizeControl';
 import { CaregiverProvider, useCaregiver } from './CaregiverContext';
-
-const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', hi: 'हिन्दी', ta: 'தமிழ்', te: 'తెలుగు' };
-
-function LanguageSwitcher() {
-  const { language, setLanguage, t } = useLanguage();
-  return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px 8px', color: 'var(--sidebar-text)', fontSize: '0.75rem' }}>
-      <Languages size={16} aria-hidden="true" />
-      <span style={{ flexShrink: 0 }}>{t('Language')}</span>
-      <select
-        value={language}
-        onChange={(event) => void setLanguage(event.target.value as Language)}
-        aria-label={t('Language')}
-        style={{ flex: 1, minWidth: 0, padding: '5px 6px', borderRadius: 'var(--radius-md)', border: '1px solid var(--sidebar-border)', background: 'var(--sidebar-bg)', color: 'var(--cream-soft)', fontSize: '0.8rem' }}
-      >
-        {Object.entries(LANGUAGE_NAMES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-      </select>
-    </label>
-  );
-}
 
 function CaregiverLayout() {
   const { user, logout } = useAuth();

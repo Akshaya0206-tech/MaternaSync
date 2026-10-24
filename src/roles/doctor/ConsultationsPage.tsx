@@ -10,10 +10,12 @@ import { ApiError } from '../../api/client';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
 import { StatusBadge } from '../../components/StatusBadge';
 import { friendlyDraftStatus, DRAFT_STATUS_TONE } from './format';
+import { tx, useLanguage } from '../../i18n';
 
 type Stage = 'select' | 'context' | 'documenting' | 'draft';
 
 export function ConsultationsPage() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const initialEpisodeId = searchParams.get('episodeId') ?? '';
 
@@ -44,7 +46,7 @@ export function ConsultationsPage() {
 
   useEffect(() => {
     if (episodeId && stage === 'context') {
-      fetchTodaysBrief(episodeId).then(setBrief).catch(() => setError("We couldn't load this patient's context."));
+      fetchTodaysBrief(episodeId).then(setBrief).catch(() => setError(tx("We couldn't load this patient's context.")));
     }
   }, [episodeId, stage]);
 
@@ -66,7 +68,7 @@ export function ConsultationsPage() {
       setWriteMode(inputMode);
       setStage('documenting');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start the consultation.');
+      setError(err instanceof ApiError ? err.message : tx('Could not start the consultation.'));
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +89,7 @@ export function ConsultationsPage() {
           const updated = await transcribeConsultation(consultation.id, blob, language);
           setConsultation(updated);
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : 'Transcription could not be completed.');
+          setError(err instanceof ApiError ? err.message : tx('Transcription could not be completed.'));
         } finally {
           setIsTranscribing(false);
         }
@@ -104,7 +106,7 @@ export function ConsultationsPage() {
       const updated = await updateTranscript(consultation.id, textNote.trim());
       setConsultation(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save the note.');
+      setError(err instanceof ApiError ? err.message : tx('Could not save the note.'));
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +122,7 @@ export function ConsultationsPage() {
     try {
       await updateTranscript(consultation.id, consultation.rawTranscript ?? '');
     } catch {
-      setError('Could not save your transcript edit.');
+      setError(tx('Could not save your transcript edit.'));
     }
   };
 
@@ -134,7 +136,7 @@ export function ConsultationsPage() {
       setEdits(d.structuredContent);
       setStage('draft');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not generate a draft.');
+      setError(err instanceof ApiError ? err.message : tx('Could not generate a draft.'));
     } finally {
       setIsGenerating(false);
     }
@@ -149,7 +151,7 @@ export function ConsultationsPage() {
       setDraft(updated);
       setEdits(updated.structuredContent);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save your edits.');
+      setError(err instanceof ApiError ? err.message : tx('Could not save your edits.'));
     } finally {
       setIsLoading(false);
     }
@@ -164,7 +166,7 @@ export function ConsultationsPage() {
       setDraft(d);
       setEdits(d.structuredContent);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not regenerate the draft.');
+      setError(err instanceof ApiError ? err.message : tx('Could not regenerate the draft.'));
     } finally {
       setIsGenerating(false);
     }
@@ -176,7 +178,7 @@ export function ConsultationsPage() {
       const updated = await rejectDraft(draft.id);
       setDraft(updated);
     } catch {
-      setError('Could not reject this draft.');
+      setError(tx('Could not reject this draft.'));
     }
   };
 
@@ -190,7 +192,7 @@ export function ConsultationsPage() {
       setSuggestedFollowUp(approved.suggestedFollowUp);
       setFollowUpStatus('pending');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not approve this documentation.');
+      setError(err instanceof ApiError ? err.message : tx('Could not approve this documentation.'));
     } finally {
       setIsLoading(false);
     }
@@ -204,7 +206,7 @@ export function ConsultationsPage() {
       await confirmFollowUp(consultation.id, suggestedFollowUp);
       setFollowUpStatus('confirmed');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create the follow-up task.');
+      setError(err instanceof ApiError ? err.message : tx('Could not create the follow-up task.'));
     } finally {
       setIsConfirmingFollowUp(false);
     }
@@ -216,19 +218,19 @@ export function ConsultationsPage() {
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 18px 0' }}>Consultations</h1>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 18px 0' }}>{t('Consultations')}</h1>
 
-      {error && <div className="glass-panel" style={{ padding: '12px 18px', marginBottom: '16px', color: 'var(--rose-urgent)', fontSize: '0.84rem' }}>{error}</div>}
+      {error && <div className="glass-panel" style={{ padding: '12px 18px', marginBottom: '16px', color: 'var(--rose-urgent)', fontSize: '0.84rem' }}>{t(error)}</div>}
 
       {stage === 'select' && (
         <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '16px' }}>Select a patient to begin a consultation.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '16px' }}>{t('Select a patient to begin a consultation.')}</p>
           <select
             onChange={(e) => handleSelectPatient(e.target.value)}
             defaultValue=""
             style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.88rem', cursor: 'pointer', minWidth: '240px' }}
           >
-            <option value="" disabled>Select a patient…</option>
+            <option value="" disabled>{t('Select a patient…')}</option>
             {patients.map((p) => <option key={p.episodeId} value={p.episodeId}>{p.patientName}</option>)}
           </select>
         </div>
@@ -246,24 +248,24 @@ export function ConsultationsPage() {
 
           {brief ? (
             <div className="glass-panel" style={{ padding: '20px 24px' }}>
-              <div className="page-title" style={{ fontSize: '1.1rem', marginBottom: '10px' }}>Patient Context: {brief.patientName}</div>
+              <div className="page-title" style={{ fontSize: '1.1rem', marginBottom: '10px' }}>{t('Patient Context: {name}', { name: brief.patientName })}</div>
               <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
                 GA {brief.gestationalAgeWeeks}w{brief.gestationalAgeDays}d
               </div>
-              <ContextRow label="Recent Journey" value={brief.recentEvents.length ? brief.recentEvents.slice(0, 3).map((e) => e.title).join('; ') : 'Not available in current records.'} />
-              <ContextRow label="Relevant Documents" value={brief.relevantDocuments.length ? brief.relevantDocuments.map((d) => d.filename).join(', ') : 'Not available in current records.'} />
-              <ContextRow label="Patient Questions" value={brief.patientQuestions.length ? `${brief.patientQuestions.length} unanswered` : 'None'} />
-              <ContextRow label="Pending Follow-ups" value={brief.pendingItems.length ? `${brief.pendingItems.length} open` : 'None'} isLast />
+              <ContextRow label={t('Recent Journey')} value={brief.recentEvents.length ? brief.recentEvents.slice(0, 3).map((e) => e.title).join('; ') : t('Not available in current records.')} />
+              <ContextRow label={t('Relevant Documents')} value={brief.relevantDocuments.length ? brief.relevantDocuments.map((d) => d.filename).join(', ') : t('Not available in current records.')} />
+              <ContextRow label={t('Patient Questions')} value={brief.patientQuestions.length ? t('{count} unanswered', { count: brief.patientQuestions.length }) : t('None')} />
+              <ContextRow label={t('Pending Follow-ups')} value={brief.pendingItems.length ? t('{count} open', { count: brief.pendingItems.length }) : t('None')} isLast />
             </div>
           ) : (
-            <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading context…</div>
+            <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading context…')}</div>
           )}
 
           <div className="glass-panel" style={{ padding: '20px 24px' }}>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>Documentation</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>{t('Documentation')}</div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button onClick={() => handleStartConsultation('text')} disabled={isLoading} className="btn-secondary"><Keyboard size={14} /> Write Note</button>
-              <button onClick={() => handleStartConsultation('voice')} disabled={isLoading} className="btn-primary"><Mic size={14} /> Start Voice Note</button>
+              <button onClick={() => handleStartConsultation('text')} disabled={isLoading} className="btn-secondary"><Keyboard size={14} /> {t('Write Note')}</button>
+              <button onClick={() => handleStartConsultation('voice')} disabled={isLoading} className="btn-primary"><Mic size={14} /> {t('Start Voice Note')}</button>
             </div>
           </div>
         </div>
@@ -273,28 +275,28 @@ export function ConsultationsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {writeMode === 'voice' && (
             <div className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '14px' }}>Voice Note</div>
-              <label style={{ display: 'block', marginBottom: 16, fontSize: '.85rem' }}>Spoken language{' '}
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '14px' }}>{t('Voice Note')}</div>
+              <label style={{ display: 'block', marginBottom: 16, fontSize: '.85rem' }}>{t('Spoken language')}{' '}
                 <select value={language} onChange={e => setLanguage(e.target.value)} disabled={recorder.status === 'recording' || isTranscribing}>
-                  <option value="auto">Auto-detect / mixed languages</option><option value="en">English</option><option value="hi">Hindi / Hinglish</option><option value="ta">Tamil</option><option value="te">Telugu</option>
+                  <option value="auto">{t('Auto-detect / mixed languages')}</option><option value="en">{t('English')}</option><option value="hi">{t('Hindi / Hinglish')}</option><option value="ta">{t('Tamil')}</option><option value="te">{t('Telugu')}</option>
                 </select>
               </label>
-              <p style={{ fontSize: '.78rem', color: 'var(--text-secondary)' }}>Review names, medicines and mixed-language terminology in the transcript before generating a draft.</p>
+              <p style={{ fontSize: '.78rem', color: 'var(--text-secondary)' }}>{t('Review names, medicines and mixed-language terminology in the transcript before generating a draft.')}</p>
               {recorder.status === 'idle' && (
-                <button onClick={() => recorder.start()} className="btn-primary"><Mic size={16} /> Start Recording</button>
+                <button onClick={() => recorder.start()} className="btn-primary"><Mic size={16} /> {t('Start Recording')}</button>
               )}
               {recorder.status === 'recording' && (
                 <>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--rose-urgent)', marginBottom: '14px' }}>● {recorder.durationSeconds}s</div>
-                  <button onClick={handleStopRecording} className="btn-secondary"><Square size={14} /> Stop Recording</button>
+                  <button onClick={handleStopRecording} className="btn-secondary"><Square size={14} /> {t('Stop Recording')}</button>
                 </>
               )}
               {recorder.status === 'error' && (
-                <div style={{ color: 'var(--rose-urgent)', fontSize: '0.85rem' }}>{recorder.errorMessage}</div>
+                <div style={{ color: 'var(--rose-urgent)', fontSize: '0.85rem' }}>{recorder.errorMessage && t(recorder.errorMessage)}</div>
               )}
               {isTranscribing && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '14px', color: 'var(--text-secondary)' }}>
-                  <Loader2 size={16} className="spin-slow" /> Transcribing…
+                  <Loader2 size={16} className="spin-slow" /> {t('Transcribing…')}
                 </div>
               )}
             </div>
@@ -302,22 +304,22 @@ export function ConsultationsPage() {
 
           {writeMode === 'text' && !consultation.rawTranscript && (
             <div className="glass-panel" style={{ padding: '20px 24px' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>Write Note</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>{t('Write Note')}</div>
               <textarea
                 value={textNote}
                 onChange={(e) => setTextNote(e.target.value)}
                 rows={6}
-                placeholder="Document the consultation…"
+                placeholder={t('Document the consultation…')}
                 style={{ width: '100%', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '10px 12px', color: 'var(--text-primary)', fontSize: '0.86rem', fontFamily: 'inherit', resize: 'vertical', marginBottom: '12px' }}
               />
-              <button onClick={handleSaveTextNote} disabled={isLoading || !textNote.trim()} className="btn-primary">Save Note</button>
+              <button onClick={handleSaveTextNote} disabled={isLoading || !textNote.trim()} className="btn-primary">{t('Save Note')}</button>
             </div>
           )}
 
           {consultation.rawTranscript !== null && consultation.rawTranscript !== undefined && consultation.rawTranscript !== '' && (
             <div className="glass-panel" style={{ padding: '20px 24px' }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>
-                {writeMode === 'voice' ? 'Voice Transcription' : 'Consultation Note'}
+                {writeMode === 'voice' ? t('Voice Transcription') : t('Consultation Note')}
               </div>
               <textarea
                 value={consultation.rawTranscript}
@@ -327,7 +329,7 @@ export function ConsultationsPage() {
                 style={{ width: '100%', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '10px 12px', color: 'var(--text-primary)', fontSize: '0.86rem', fontFamily: 'inherit', resize: 'vertical', marginBottom: '12px' }}
               />
               <button onClick={handleGenerateDraft} disabled={isGenerating} className="btn-primary">
-                {isGenerating ? 'Generating…' : <><Sparkles size={14} /> Generate Documentation Draft</>}
+                {isGenerating ? t('Generating…') : <><Sparkles size={14} /> {t('Generate Documentation Draft')}</>}
               </button>
             </div>
           )}
@@ -336,8 +338,8 @@ export function ConsultationsPage() {
             <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <AlertTriangle size={18} style={{ color: 'var(--rose-urgent)' }} />
               <div>
-                <div style={{ fontSize: '0.86rem', color: 'var(--text-primary)' }}>Transcription could not be completed.</div>
-                <button onClick={() => recorder.reset()} className="btn-secondary" style={{ fontSize: '0.78rem', marginTop: '8px' }}><RotateCcw size={13} /> Retry</button>
+                <div style={{ fontSize: '0.86rem', color: 'var(--text-primary)' }}>{t('Transcription could not be completed.')}</div>
+                <button onClick={() => recorder.reset()} className="btn-secondary" style={{ fontSize: '0.78rem', marginTop: '8px' }}><RotateCcw size={13} /> {t('Retry')}</button>
               </div>
             </div>
           )}
@@ -349,45 +351,45 @@ export function ConsultationsPage() {
           <div className="glass-panel" style={{ padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
-                <div className="page-title" style={{ fontSize: '1.1rem' }}>Consultation Documentation</div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--purple-ai)', fontWeight: 700, textTransform: 'uppercase', marginTop: '2px' }}>AI-Generated · Draft</div>
+                <div className="page-title" style={{ fontSize: '1.1rem' }}>{t('Consultation Documentation')}</div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--purple-ai)', fontWeight: 700, textTransform: 'uppercase', marginTop: '2px' }}>{t('AI-Generated · Draft')}</div>
               </div>
               <StatusBadge label={friendlyDraftStatus(draft.status)} tone={DRAFT_STATUS_TONE[draft.status]} />
             </div>
 
-            <DraftField label="Visit Context" value={edits.visitContext} onChange={(v) => setEdits({ ...edits, visitContext: v })} disabled={draft.status !== 'DRAFT'} />
-            <DraftField label="Documented Discussion" value={edits.documentedDiscussion} onChange={(v) => setEdits({ ...edits, documentedDiscussion: v })} disabled={draft.status !== 'DRAFT'} rows={4} />
-            <DraftField label="Relevant Information" value={edits.relevantInformation} onChange={(v) => setEdits({ ...edits, relevantInformation: v })} disabled={draft.status !== 'DRAFT'} />
-            <DraftField label="Follow-up / Next Steps" value={edits.followUpNextSteps} onChange={(v) => setEdits({ ...edits, followUpNextSteps: v })} disabled={draft.status !== 'DRAFT'} />
+            <DraftField label={t('Visit Context')} value={edits.visitContext} onChange={(v) => setEdits({ ...edits, visitContext: v })} disabled={draft.status !== 'DRAFT'} />
+            <DraftField label={t('Documented Discussion')} value={edits.documentedDiscussion} onChange={(v) => setEdits({ ...edits, documentedDiscussion: v })} disabled={draft.status !== 'DRAFT'} rows={4} />
+            <DraftField label={t('Relevant Information')} value={edits.relevantInformation} onChange={(v) => setEdits({ ...edits, relevantInformation: v })} disabled={draft.status !== 'DRAFT'} />
+            <DraftField label={t('Follow-up / Next Steps')} value={edits.followUpNextSteps} onChange={(v) => setEdits({ ...edits, followUpNextSteps: v })} disabled={draft.status !== 'DRAFT'} />
 
             {draft.status === 'DRAFT' && (
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px' }}>
-                <button onClick={handleSaveEdits} disabled={isLoading} className="btn-secondary"><Edit3 size={14} /> Save Draft</button>
-                <button onClick={handleRegenerate} disabled={isGenerating} className="btn-secondary"><RotateCcw size={14} /> Regenerate</button>
-                <button onClick={handleReject} disabled={isLoading} className="btn-secondary" style={{ color: 'var(--rose-urgent)' }}><XCircle size={14} /> Reject</button>
-                <button onClick={handleApprove} disabled={isLoading} className="btn-primary"><CheckCircle2 size={15} /> Approve</button>
+                <button onClick={handleSaveEdits} disabled={isLoading} className="btn-secondary"><Edit3 size={14} /> {t('Save Draft')}</button>
+                <button onClick={handleRegenerate} disabled={isGenerating} className="btn-secondary"><RotateCcw size={14} /> {t('Regenerate')}</button>
+                <button onClick={handleReject} disabled={isLoading} className="btn-secondary" style={{ color: 'var(--rose-urgent)' }}><XCircle size={14} /> {t('Reject')}</button>
+                <button onClick={handleApprove} disabled={isLoading} className="btn-primary"><CheckCircle2 size={15} /> {t('Approve')}</button>
               </div>
             )}
             {draft.status === 'APPROVED' && (
               <div style={{ marginTop: '14px', fontSize: '0.84rem', color: 'var(--emerald-raw)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckCircle2 size={15} /> Approved and added to the patient's journey.
+                <CheckCircle2 size={15} /> {t("Approved and added to the patient's journey.")}
               </div>
             )}
           </div>
 
           {draft.status === 'APPROVED' && suggestedFollowUp && followUpStatus === 'pending' && (
             <div className="glass-panel" style={{ padding: '18px 22px' }}>
-              <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>Suggested Follow-up</div>
+              <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>{t('Suggested Follow-up')}</div>
               <div style={{ fontSize: '0.86rem', color: 'var(--text-primary)', marginBottom: '14px' }}>&ldquo;{suggestedFollowUp}&rdquo;</div>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={handleConfirmFollowUp} disabled={isConfirmingFollowUp} className="btn-primary"><CheckCircle2 size={14} /> Create Task</button>
-                <button onClick={handleSkipFollowUp} disabled={isConfirmingFollowUp} className="btn-secondary">Skip</button>
+                <button onClick={handleConfirmFollowUp} disabled={isConfirmingFollowUp} className="btn-primary"><CheckCircle2 size={14} /> {t('Create Task')}</button>
+                <button onClick={handleSkipFollowUp} disabled={isConfirmingFollowUp} className="btn-secondary">{t('Skip')}</button>
               </div>
             </div>
           )}
           {draft.status === 'APPROVED' && followUpStatus === 'confirmed' && (
             <div className="glass-panel" style={{ padding: '14px 22px', fontSize: '0.84rem', color: 'var(--emerald-raw)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={15} /> Follow-up task created.
+              <CheckCircle2 size={15} /> {t('Follow-up task created.')}
             </div>
           )}
         </div>

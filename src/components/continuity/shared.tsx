@@ -11,15 +11,16 @@ import type { ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getContext, getWorkspace } from "../../api/continuity";
 import type { Context, Workspace } from "../../api/continuity";
-import { useLanguage } from "../../i18n";
+import { tx, useLanguage } from "../../i18n";
 // continuity.css is loaded once, from main.tsx: it styles the menu and tour as well as these pages.
 
 export function useAction() {
+  const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const inFlight = useRef(false);
-  async function run(action: () => Promise<void>, success = "Saved.") {
+  async function run(action: () => Promise<void>, success = tx("Saved.")) {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -32,14 +33,15 @@ export function useAction() {
       setError(
         err instanceof Error
           ? err.message
-          : "Could not save. Please try again.",
+          : tx("Could not save. Please try again."),
       );
     } finally {
       setBusy(false);
       inFlight.current = false;
     }
   }
-  return { busy, error, message, run, setError };
+  // The text is kept as it arrived and translated when it is read, so a language change also changes a message already on screen.
+  return { busy, error: t(error), message: t(message), run, setError };
 }
 
 export function useWorkspace() {
@@ -206,11 +208,12 @@ export function PatientSelect({
 }: {
   workspace: ReturnType<typeof useWorkspace>;
 }) {
+  const { t } = useLanguage();
   return (
     <>
       <Feedback error={workspace.error} />
       {workspace.context && workspace.context.episodes.length > 0 && (
-        <Field label="Patient">
+        <Field label={t("Patient")}>
           <select
             value={workspace.episodeId}
             onChange={(e) => workspace.select(e.target.value)}
@@ -223,9 +226,9 @@ export function PatientSelect({
           </select>
         </Field>
       )}
-      {workspace.loading && <p role="status">Loading care workspace…</p>}
+      {workspace.loading && <p role="status">{t("Loading care workspace…")}</p>}
       {workspace.context?.episodes.length === 0 && (
-        <Empty>No patient episode is assigned to this account.</Empty>
+        <Empty>{t("No patient episode is assigned to this account.")}</Empty>
       )}
     </>
   );
