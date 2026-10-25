@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException
 
-from .. import companion, config, models, server_text, whatsapp
+from .. import caregiver_whatsapp, companion, config, models, server_text, whatsapp
 from ..handover_content import build_doctor_handover_content
 from ..handover_service import HandoverService
 from ..referral_communication import ReferralCommunicationService, ReferralTransitionError
@@ -316,6 +316,34 @@ def _send_outreach(db, args, actor, episode_id) -> Outcome:
     return Outcome(f"Sent the WhatsApp reminder through {result['provider']}. Minimal sign-in text only.")  # a sent message cannot be recalled
 
 
+def _send_caregiver_whatsapp(db, args, actor, episode_id) -> Outcome:
+    link = db.get(models.CaregiverLink, args["link_id"])
+    kind = args["kind"]
+    # Everything is checked again here, in code: the person confirmed their number, they have not withdrawn (or replied STOP), the woman has
+    # not removed them or run past their end date, and she still lets them see this kind of thing.
+    consent = caregiver_whatsapp.usable(db, link, kind) if kind in caregiver_whatsapp.NEEDS else None
+    if consent is None:
+        raise HTTPException(409, "This person has not turned on WhatsApp reminders, or they no longer apply.")
+    if not whatsapp.automatic():
+        raise HTTPException(409, "WhatsApp sending is not set up on this server.")
+    source_type = f"caregiver_{kind}"
+    if db.query(models.Outreach).filter_by(episode_id=episode_id, consent_id=consent.id, source_type=source_type, source_id=args["source_id"]).first():
+        raise HTTPException(409, "This reminder was already sent.")
+    language = server_text.language_of(db, link.caregiver_user_id)
+    item = models.Outreach(episode_id=episode_id, consent_id=consent.id, recipient=consent.recipient, source_type=source_type, source_id=args["source_id"],
+                           message=server_text.outreach_text(source_type, language), created_by_user_id=actor.id)  # no name, result or medicine
+    db.add(item)
+    db.flush()
+    try:
+        result = whatsapp.send(item.recipient, item.message, template_env="MATERNASYNC_WHATSAPP_CAREGIVER_TEMPLATE")
+    except whatsapp.WhatsAppError as error:
+        item.status, item.failed_reason, item.updated_at = "FAILED", str(error)[:300], now()
+        raise HTTPException(502, item.failed_reason)
+    item.status, item.provider, item.provider_reference = "SENT", result["provider"], result["reference"]
+    item.sent_at = item.updated_at = now()
+    return Outcome(f"Sent a short WhatsApp reminder to a trusted person through {result['provider']}. No name, result or medicine in it.")  # cannot be recalled
+
+
 # ---------------------------------------------------------------- paperwork and handover drafts
 def _prepare_draft(db, args, actor, episode_id) -> Outcome:
     from .. import continuity_schemas as S
@@ -355,7 +383,7 @@ _IMPLEMENTATIONS = {
     "assign_question_to_doctor": _assign_question_to_doctor, "verify_document": _verify_document,
     "reject_document": _reject_document, "answer_question": _answer_question,
     "confirm_appointment": _confirm_appointment, "offer_new_times": _offer_new_times, "record_missed_visit": _record_missed_visit,
-    "send_referral": _send_referral, "chase_referral": _chase_referral, "send_outreach": _send_outreach,
+    "send_referral": _send_referral, "chase_referral": _chase_referral, "send_outreach": _send_outreach, "send_caregiver_whatsapp": _send_caregiver_whatsapp,
     "prepare_draft": _prepare_draft, "prepare_handover": _prepare_handover, "post_weekly_summary": _post_weekly_summary,
 }
 

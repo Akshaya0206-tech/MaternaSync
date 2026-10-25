@@ -13,7 +13,7 @@ Risk levels
 from dataclasses import dataclass
 from datetime import datetime, time, timezone
 
-from .. import config, models
+from .. import caregiver_service, config, models
 from . import controls
 
 T0, T1 = "T0", "T1"
@@ -40,6 +40,8 @@ TOOLS = {
     "chase_referral": T1,
     # A WhatsApp reminder the doctor already approved, to a number the woman consented to; consent is checked in code on every send.
     "send_outreach": T0,
+    # A short "please sign in" WhatsApp nudge to a trusted person on their own number, only after they confirmed it with a code.
+    "send_caregiver_whatsapp": T0,
     # Drafts and counts: nothing here is released to a patient or changes a clinical record.
     "prepare_draft": T0,
     "prepare_handover": T0,
@@ -73,7 +75,8 @@ def decide(db, run: models.AIRun, tool: str, args: dict, key: str | None, safety
 
     # Everything the action touches must belong to the same patient the run is about.
     for field, table in (("document_id", models.MedicalDocument), ("question_id", models.PatientQuestion), ("task_id", models.Task),
-                         ("appointment_id", models.Appointment), ("referral_id", models.Referral), ("reminder_id", models.CareReminder)):
+                         ("appointment_id", models.Appointment), ("referral_id", models.Referral), ("reminder_id", models.CareReminder),
+                         ("link_id", models.CaregiverLink)):
         if field in args:
             item = db.get(table, args[field])
             if item is None or item.episode_id != run.episode_id:
@@ -113,4 +116,5 @@ def _recipient_belongs(db, episode_id: str, user_id: str | None) -> bool:
         return True
     if db.query(models.PatientDoctorAssignment).filter_by(episode_id=episode_id, doctor_user_id=user_id).first():
         return True
-    return db.query(models.CaregiverLink).filter_by(episode_id=episode_id, caregiver_user_id=user_id, status="ACTIVE").first() is not None
+    link = db.query(models.CaregiverLink).filter_by(episode_id=episode_id, caregiver_user_id=user_id, status="ACTIVE").first()
+    return link is not None and caregiver_service.is_current(link)  # not past the end date she set

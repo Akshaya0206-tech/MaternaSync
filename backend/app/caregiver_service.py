@@ -5,7 +5,7 @@ A code is shown once, is single-use, expires after 48 hours, and only its hash i
 """
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import HTTPException
 
@@ -81,6 +81,35 @@ def accept_invite(db, link: models.CaregiverLink, user: models.User) -> None:
                            related_entity_type="CaregiverLink", related_entity_id=link.id)
 
 
+def iso(value):
+    return utc(value).isoformat() if value else None
+
+
+MAX_ACCESS_DAYS = 730
+
+
+def is_ended(link: models.CaregiverLink) -> bool:
+    """Active, but past the end date the woman set. The person is still linked; they just cannot see anything until she extends it."""
+    return link.status == "ACTIVE" and link.access_until is not None and utc(link.access_until) <= now()
+
+
+def is_current(link: models.CaregiverLink) -> bool:
+    """Linked, not removed and not past the end date: the only state in which the person may see anything or be messaged."""
+    return link.status == "ACTIVE" and not is_ended(link)
+
+
+def access_limit(day: date | None) -> datetime | None:
+    """The woman picks a date; access lasts to the end of that day (UTC). Empty means no end date."""
+    if day is None:
+        return None
+    end = datetime.combine(day, time(23, 59, 59), tzinfo=timezone.utc)
+    if end <= now():
+        raise HTTPException(status_code=400, detail="Choose a date in the future.")
+    if end > now() + timedelta(days=MAX_ACCESS_DAYS):
+        raise HTTPException(status_code=400, detail="Access can be limited for two years at most. Leave the date empty for no end date.")
+    return end.replace(tzinfo=None)
+
+
 def active_links_for_episode(db, episode_id: str, permission: str | None = None) -> list[models.CaregiverLink]:
     links = db.query(models.CaregiverLink).filter_by(episode_id=episode_id, status="ACTIVE").all()
-    return [l for l in links if l.caregiver_user_id and (permission is None or (l.permissions or {}).get(permission))]
+    return [l for l in links if is_current(l) and l.caregiver_user_id and (permission is None or (l.permissions or {}).get(permission))]

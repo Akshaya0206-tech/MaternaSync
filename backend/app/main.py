@@ -1,3 +1,5 @@
+import logging
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +30,8 @@ app = FastAPI(title="MaternaSync API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=config.CORS_ORIGINS,
+    allow_origin_regex=config.CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,6 +71,8 @@ def _run_reminder_sweep() -> None:
 
 @app.on_event("startup")
 def on_startup():
+    if config.JWT_SECRET_IS_DEFAULT:
+        logging.getLogger("uvicorn.error").warning("MATERNASYNC_JWT_SECRET is not set, so the built-in development secret signs every sign-in. Set it before any real deployment.")
     db = SessionLocal()
     try:
         if DEMO_ENABLED:

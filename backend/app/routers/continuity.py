@@ -64,7 +64,8 @@ def workspace(episode_id: str, user=Depends(authenticated), db: Session = Depend
     if is_patient:
         outputs = [o for o in outputs if o.status == "APPROVED" and o.visible_to_patient]
     reminders = db.query(models.CareReminder).filter_by(episode_id=ep.id).order_by(models.CareReminder.scheduled_at).all()
-    consents = db.query(models.SharingConsent).filter_by(episode_id=ep.id).order_by(models.SharingConsent.granted_at.desc()).all()
+    consents = (db.query(models.SharingConsent).filter(models.SharingConsent.episode_id == ep.id, models.SharingConsent.purpose != "caregiver_reminders")
+                .order_by(models.SharingConsent.granted_at.desc()).all())  # a trusted person's own WhatsApp consent is theirs, not part of her list
     pref = db.get(models.PatientPreference, ep.patient_user_id)
     plan = db.get(models.MonitoringPlan, ep.id)
     result = {
@@ -80,8 +81,9 @@ def workspace(episode_id: str, user=Depends(authenticated), db: Session = Depend
         docs = db.query(models.MedicalDocument).filter_by(episode_id=ep.id, status="VERIFIED").all()
         approved = db.query(models.ApprovedConsultation).join(models.Consultation, models.ApprovedConsultation.consultation_id == models.Consultation.id).filter(models.Consultation.episode_id == ep.id).all()
         questions = db.query(models.PatientQuestion).filter_by(episode_id=ep.id).all()
-        outreach_items = db.query(models.Outreach).filter_by(episode_id=ep.id).order_by(models.Outreach.created_at.desc()).all()
-        whatsapp.advance_simulated(db, outreach_items, now, utc)
+        every_message = db.query(models.Outreach).filter_by(episode_id=ep.id).order_by(models.Outreach.created_at.desc()).all()
+        whatsapp.advance_simulated(db, every_message, now, utc)
+        outreach_items = [o for o in every_message if not o.source_type.startswith("caregiver_")]  # messages to a trusted person's own number stay out of this list
         result.update({
             "whatsapp": {"mode": whatsapp.mode(), "automatic": whatsapp.automatic()},
             "sources": [{"id": d.id, "type": "document", "title": d.filename} for d in docs]

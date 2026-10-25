@@ -18,6 +18,11 @@ export interface TrustedPerson {
   revokedAt: string | null;
   inviteExpiresAt: string | null;
   lastActivity: string | null;
+  /** The last day they may help, or null for no end date. After it they see nothing until she extends it. */
+  accessUntil: string | null;
+  ended: boolean;
+  /** Whether they get short WhatsApp reminders on their own number. */
+  whatsapp: 'off' | 'waiting' | 'on';
   /** Only present in the answer to creating an invite or asking for a new code: it is shown once and never kept. */
   code?: string;
 }
@@ -27,11 +32,14 @@ export interface TrustedActivity { at: string; title: string; details: string }
 
 const MINE = '/api/v2/patient/caregivers';
 export const listTrusted = () => api.get<TrustedPeople>(MINE);
-export const inviteTrusted = (body: { displayName: string; relationship: string; permissions: Partial<Permissions> }) => api.post<TrustedPerson>(MINE, body);
-export const updateTrusted = (id: string, body: { displayName?: string; relationship?: string; permissions?: Partial<Permissions> }) => api.patch<TrustedPerson>(`${MINE}/${id}`, body);
+export const inviteTrusted = (body: { displayName: string; relationship: string; permissions: Partial<Permissions>; accessUntil?: string | null }) => api.post<TrustedPerson>(MINE, body);
+export const updateTrusted = (id: string, body: { displayName?: string; relationship?: string; permissions?: Partial<Permissions>; accessUntil?: string | null }) => api.patch<TrustedPerson>(`${MINE}/${id}`, body);
 export const newInviteCode = (id: string) => api.post<TrustedPerson>(`${MINE}/${id}/new-code`);
 export const removeTrusted = (id: string) => api.delete<TrustedPerson>(`${MINE}/${id}`);
 export const trustedActivity = (id: string) => api.get<TrustedActivity[]>(`${MINE}/${id}/activity`);
+/** Who has said they will take her to, or cannot come to, each upcoming visit (by visit id). */
+export interface VisitHelpAnswer { name: string; status: 'WILL_TAKE' | 'CANNOT'; at: string | null }
+export const visitHelpForMe = () => api.get<Record<string, VisitHelpAnswer[]>>(`${MINE}/visit-help`);
 
 // ---------------------------------------------------------------- the trusted person's side
 export interface Woman {
@@ -41,12 +49,24 @@ export interface Woman {
   displayName: string;
   permissions: Permissions;
   since: string | null;
+  accessUntil: string | null;
+  /** Past the end date she set: they see nothing until she extends it. */
+  ended: boolean;
 }
 export interface HomeSummary extends Woman {
   upcoming?: { id: string; scheduledAt: string; type: string; location: string | null }[];
   lastCheckIn?: string | null;
 }
-export interface CaregiverAppointment { id: string; scheduledAt: string; type: string; location: string | null; status: string }
+export type VisitAnswer = 'WILL_TAKE' | 'CANNOT';
+export interface CaregiverAppointment {
+  id: string; scheduledAt: string; type: string; location: string | null; status: string;
+  help: { status: VisitAnswer; updatedAt: string | null } | null;
+}
+export interface CaregiverWhatsAppStatus {
+  available: boolean; mode: string; status: 'off' | 'waiting' | 'on'; number: string | null; expiresAt: string | null; visits: boolean; checkIns: boolean;
+  /** Only in a demonstration, where no phone receives the code, so the screen shows it. */
+  demoCode?: string | null;
+}
 export interface CaregiverCheckIn {
   id: string; recordedAt: string; systolic: number | null; diastolic: number | null; weightKg: number | null; symptoms: string; mood: string;
   adherence: string; skipped: boolean; enteredWithHelp: string | null;
@@ -82,3 +102,9 @@ export const caregiverQuestions = (link: string) => api.get<CaregiverQuestion[]>
 export const askCaregiverQuestion = (link: string, questionText: string) => api.post<{ id: string }>(`${BASE}/${link}/questions`, { questionText });
 export const caregiverEmergency = (link: string) => api.get<CaregiverEmergency>(`${BASE}/${link}/emergency`);
 export const caregiverTalk = (link: string, message: string) => api.post<{ message: string }>(`${BASE}/${link}/talk-to-a-person`, { message });
+export const setVisitHelp = (link: string, appointmentId: string, status: VisitAnswer) => api.put<{ status: VisitAnswer }>(`${BASE}/${link}/appointments/${appointmentId}/help`, { status });
+export const clearVisitHelp = (link: string, appointmentId: string) => api.delete<{ status: null }>(`${BASE}/${link}/appointments/${appointmentId}/help`);
+export const caregiverWhatsApp = (link: string) => api.get<CaregiverWhatsAppStatus>(`${BASE}/${link}/whatsapp`);
+export const startCaregiverWhatsApp = (link: string, number: string) => api.post<CaregiverWhatsAppStatus>(`${BASE}/${link}/whatsapp/start`, { number });
+export const confirmCaregiverWhatsApp = (link: string, code: string) => api.post<CaregiverWhatsAppStatus>(`${BASE}/${link}/whatsapp/confirm`, { code });
+export const turnOffCaregiverWhatsApp = (link: string) => api.delete<CaregiverWhatsAppStatus>(`${BASE}/${link}/whatsapp`);

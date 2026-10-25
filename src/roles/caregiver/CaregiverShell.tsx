@@ -41,7 +41,7 @@ function CaregiverLayout() {
         topExtra={
           can('emergency')
             ? <Link to="/caregiver/emergency" className="sidebar-emergency"><PhoneCall size={18} aria-hidden="true" /> {t('Emergency help')}</Link>
-            : current && <Link to="/caregiver/home#talk" className="sidebar-emergency"><PhoneCall size={18} aria-hidden="true" /> {t('Talk to a person')}</Link>
+            : current && !current.ended && <Link to="/caregiver/home#talk" className="sidebar-emergency"><PhoneCall size={18} aria-hidden="true" /> {t('Talk to a person')}</Link>
         }
       />
       <div className="app-main-column" id="main-content" tabIndex={-1}>

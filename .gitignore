@@ -27,3 +27,6 @@ playwright-report/
 *.sw?
 MaternaSync/
 .vscode/settings.json
+
+# Vercel
+.vercel

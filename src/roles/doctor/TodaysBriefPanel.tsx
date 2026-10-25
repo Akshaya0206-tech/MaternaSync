@@ -62,7 +62,7 @@ export function TodaysBriefPanel({ episodeId }: Props) {
           brief.recentEvents.slice(0, 5).map((e) => (
             <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)' }}>{formatFriendlyDate(e.eventDate)}</div>
-              <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-primary)' }}>{e.title}</div>
+              <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t(e.title)}</div>
             </div>
           ))
         )}

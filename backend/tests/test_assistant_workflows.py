@@ -480,6 +480,22 @@ class ServerTextTests(WorkflowBase):
             self.assertEqual(shown[note_id]["body"], "Antenatal visit")  # what a person wrote is shown as written
             self.assertEqual(shown[legacy_id]["title"], "Written before keys existed")  # older rows keep the text they had
 
+    def test_older_notifications_that_say_exactly_a_fixed_message_follow_the_language_too(self):
+        with SessionLocal() as db:
+            old = models.Notification(recipient_user_id=self.sarah_id, episode_id=self.ep, type="document_verified",
+                                      title="Your care team reviewed your uploaded documents", body="Your journey has been updated.")
+            written = models.Notification(recipient_user_id=self.sarah_id, episode_id=self.ep, type="x", title="Your care team reviewed your uploaded documents", body="Dr. Rao added a note.")
+            db.add_all([old, written])
+            db.commit()
+            old_id, written_id = old.id, written.id
+        self.track(models.Notification, old_id)
+        self.track(models.Notification, written_id)
+        self.set_language("patient", "hi")
+        shown = {n["id"]: n for n in self.updates()}
+        self.assertEqual(shown[old_id]["title"], "आपकी देखभाल टीम ने आपके अपलोड किए दस्तावेज़ों की समीक्षा की")
+        self.assertEqual(shown[old_id]["body"], "आपकी यात्रा अपडेट कर दी गई है।")
+        self.assertEqual(shown[written_id]["body"], "Dr. Rao added a note.")  # the moment the body is something a person wrote, nothing is translated
+
     def test_a_trusted_persons_updates_are_worded_in_their_own_language(self):
         ravi = self.ravi_login()
         with SessionLocal() as db:

@@ -252,7 +252,7 @@ export function ConsultationsPage() {
               <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
                 GA {brief.gestationalAgeWeeks}w{brief.gestationalAgeDays}d
               </div>
-              <ContextRow label={t('Recent Journey')} value={brief.recentEvents.length ? brief.recentEvents.slice(0, 3).map((e) => e.title).join('; ') : t('Not available in current records.')} />
+              <ContextRow label={t('Recent Journey')} value={brief.recentEvents.length ? brief.recentEvents.slice(0, 3).map((e) => t(e.title)).join('; ') : t('Not available in current records.')} />
               <ContextRow label={t('Relevant Documents')} value={brief.relevantDocuments.length ? brief.relevantDocuments.map((d) => d.filename).join(', ') : t('Not available in current records.')} />
               <ContextRow label={t('Patient Questions')} value={brief.patientQuestions.length ? t('{count} unanswered', { count: brief.patientQuestions.length }) : t('None')} />
               <ContextRow label={t('Pending Follow-ups')} value={brief.pendingItems.length ? t('{count} open', { count: brief.pendingItems.length }) : t('None')} isLast />

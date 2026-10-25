@@ -58,8 +58,8 @@ export function JourneyPage() {
                   {formatFriendlyDate(event.eventDate)}
                 </div>
                 <div className="glass-panel" style={{ padding: '14px 18px' }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{event.title}</div>
-                  {event.summary && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{event.summary}</div>}
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{t(event.title)}</div>
+                  {event.summary && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{t(event.summary)}</div>}
                 </div>
               </div>
             </div>

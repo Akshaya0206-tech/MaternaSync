@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, JSON, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
 
 from ..database import Base
 from ._shared import new_id, now
@@ -31,3 +31,37 @@ class CaregiverLink(Base):
     created_at = Column(DateTime, default=now)
     accepted_at = Column(DateTime, nullable=True)
     revoked_at = Column(DateTime, nullable=True)
+    # The woman can limit how long the person may help. After this moment the link stops working by itself; she can extend it.
+    access_until = Column(DateTime, nullable=True)
+
+
+class CaregiverVisitHelp(Base):
+    """A trusted person's answer about one visit: "I will take her" or "I cannot". The woman sees it on her Appointments page.
+    It is logistics only: it says who can come, and nothing about the visit's content."""
+
+    __tablename__ = "caregiver_visit_help"
+    __table_args__ = (UniqueConstraint("appointment_id", "link_id"),)
+
+    id = Column(String, primary_key=True, default=new_id)
+    appointment_id = Column(String, ForeignKey("appointments.id"), nullable=False, index=True)
+    link_id = Column(String, ForeignKey("caregiver_links.id"), nullable=False, index=True)
+    status = Column(String, nullable=False)  # WILL_TAKE | CANNOT
+    updated_at = Column(DateTime, default=now)
+
+
+class CaregiverWhatsApp(Base):
+    """A trusted person's own WhatsApp number for short reminders about this woman: the number they typed, the one-time code that
+    proves it is theirs (only its hash is kept), and the consent once they confirm. Nothing is sent before the code is confirmed."""
+
+    __tablename__ = "caregiver_whatsapp"
+
+    link_id = Column(String, ForeignKey("caregiver_links.id"), primary_key=True)
+    number = Column(String, nullable=True)
+    code_hash = Column(String, nullable=True)
+    code_expires_at = Column(DateTime, nullable=True)
+    attempts = Column(Integer, default=0)
+    requested_at = Column(DateTime, nullable=True)
+    window_start = Column(DateTime, nullable=True)
+    window_count = Column(Integer, default=0)
+    verified_at = Column(DateTime, nullable=True)
+    consent_id = Column(String, ForeignKey("sharing_consents.id"), nullable=True)

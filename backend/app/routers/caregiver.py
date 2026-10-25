@@ -6,15 +6,15 @@ for each, to exactly the permissions she gave. Every caregiver endpoint goes thr
 is active, belongs to this caregiver, and carries the permission, on every request. The shared episode access check
 (`require_episode_access`) is deliberately NOT widened for caregivers.
 """
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import Field
 from sqlalchemy.orm import Session
 
-from .. import automation, caregiver_service, models, server_text
-from ..ai_coordinator import messages, tools
+from .. import automation, caregiver_service, caregiver_whatsapp, models, server_text
+from ..ai_coordinator import messages, scheduling, tools
 from ..continuity_schemas import Input, LogIn
 from ..continuity_service import output_out
 from ..database import get_db
@@ -42,12 +42,14 @@ class InviteIn(Input):
     display_name: str = Field(min_length=1, max_length=60)
     relationship: str = Field("", max_length=40)
     permissions: dict[str, bool] = Field(default_factory=dict)
+    access_until: date | None = None  # the last day the person may help; empty means until she removes them
 
 
 class LinkUpdateIn(Input):
     display_name: str | None = Field(None, min_length=1, max_length=60)
     relationship: str | None = Field(None, max_length=40)
     permissions: dict[str, bool] | None = None
+    access_until: date | None = None  # sent as null to remove the end date; left out to change nothing
 
 
 def link_out(db: Session, link: models.CaregiverLink) -> dict:
@@ -56,7 +58,9 @@ def link_out(db: Session, link: models.CaregiverLink) -> dict:
             .order_by(models.AuditLog.timestamp.desc()).first()) if link.caregiver_user_id else None
     return {"id": link.id, "displayName": link.display_name, "relationship": link.relationship, "status": link.status, "permissions": link.permissions or {},
             "caregiverName": who.full_name if who else None, "createdAt": _iso(link.created_at), "acceptedAt": _iso(link.accepted_at), "revokedAt": _iso(link.revoked_at),
-            "inviteExpiresAt": _iso(link.code_expires_at), "lastActivity": _iso(last.timestamp) if last else None}
+            "inviteExpiresAt": _iso(link.code_expires_at), "lastActivity": _iso(last.timestamp) if last else None,
+            "accessUntil": caregiver_service.iso(link.access_until), "ended": caregiver_service.is_ended(link),
+            "whatsapp": caregiver_whatsapp.status(db, link)["status"] if link.status == "ACTIVE" else "off"}
 
 
 def _mine(db: Session, user: models.User, link_id: str) -> models.CaregiverLink:
@@ -80,7 +84,8 @@ def list_trusted(ep=Depends(get_my_patient_episode), user=Depends(patient), db: 
 @patient_router.post("")
 def invite(payload: InviteIn, ep=Depends(get_my_patient_episode), user=Depends(patient), db: Session = Depends(get_db)):
     link = models.CaregiverLink(episode_id=ep.id, patient_user_id=user.id, display_name=payload.display_name.strip(), relationship=payload.relationship.strip(),
-                                permissions=caregiver_service.clean_permissions(payload.permissions), status="INVITED")
+                                permissions=caregiver_service.clean_permissions(payload.permissions), status="INVITED",
+                                access_until=caregiver_service.access_limit(payload.access_until))
     code = caregiver_service.issue_code(link)  # shown once; only its hash is kept
     db.add(link)
     db.flush()
@@ -100,6 +105,10 @@ def update_trusted(link_id: str, payload: LinkUpdateIn, user=Depends(patient), d
         link.relationship = payload.relationship.strip()
     if payload.permissions is not None:
         link.permissions = caregiver_service.clean_permissions(payload.permissions)
+    if "access_until" in payload.model_fields_set:
+        link.access_until = caregiver_service.access_limit(payload.access_until)
+        _log(db, user, link, "caregiver_access_limit_changed", "Changed how long a trusted person may help",
+             f"{link.display_name}: " + (f"until {link.access_until.date().isoformat()}" if link.access_until else "no end date"))
     _log(db, user, link, "caregiver_permissions_changed", "Changed what a trusted person may do", f"{link.display_name}: {link.permissions}")
     db.commit()
     return link_out(db, link)
@@ -128,6 +137,17 @@ def remove_trusted(link_id: str, user=Depends(patient), db: Session = Depends(ge
     return link_out(db, link)
 
 
+@patient_router.get("/visit-help")
+def visit_help(ep=Depends(get_my_patient_episode), user=Depends(patient), db: Session = Depends(get_db)):
+    """Who has said they will take her to, or cannot come to, each upcoming visit. Only people whose access is current."""
+    answers: dict[str, list[dict]] = {}
+    for help_row, link in (db.query(models.CaregiverVisitHelp, models.CaregiverLink).join(models.CaregiverLink, models.CaregiverLink.id == models.CaregiverVisitHelp.link_id)
+                           .filter(models.CaregiverLink.episode_id == ep.id).all()):
+        if caregiver_service.is_current(link):
+            answers.setdefault(help_row.appointment_id, []).append({"name": link.display_name, "status": help_row.status, "at": _iso(help_row.updated_at)})
+    return answers
+
+
 @patient_router.get("/{link_id}/activity")
 def trusted_activity(link_id: str, user=Depends(patient), db: Session = Depends(get_db)):
     link = _mine(db, user, link_id)
@@ -146,6 +166,8 @@ def access(permission: str | None = None):
         link = db.get(models.CaregiverLink, link_id)
         if link is None or link.caregiver_user_id != user.id or link.status != "ACTIVE":
             raise HTTPException(403, "You do not have access to this person's information.")  # the same answer whether it exists or not
+        if caregiver_service.is_ended(link):
+            raise HTTPException(403, "Your access to this person's information has ended. Ask her to extend it.")
         if permission and not (link.permissions or {}).get(permission):
             raise HTTPException(403, "She has not allowed this.")
         return link
@@ -158,10 +180,29 @@ def _record(db: Session, user: models.User, link: models.CaregiverLink, action: 
                            title=title, details=details[:300], object_type="CaregiverLink", object_id=link.id))
 
 
+def _tell_her(db: Session, link: models.CaregiverLink, key: str, **params) -> None:
+    """Whenever a trusted person acts for her, she gets a short note in her Updates, in her language, by the name she gave them."""
+    server_text.notify_key(db, link.patient_user_id, key, episode_id=link.episode_id, type_="caregiver_action", params={"name": link.display_name, **params},
+                           related_entity_type="CaregiverLink", related_entity_id=link.id)
+
+
+class HelpIn(Input):
+    status: Literal["WILL_TAKE", "CANNOT"]
+
+
+class NumberIn(Input):
+    number: str = Field(min_length=8, max_length=24)
+
+
+class CodeIn(Input):
+    code: str = Field(min_length=4, max_length=12)
+
+
 def _summary(db: Session, link: models.CaregiverLink) -> dict:
     episode = db.get(models.PregnancyEpisode, link.episode_id)
     return {"linkId": link.id, "womanName": episode.patient_name if episode else "", "relationship": link.relationship, "displayName": link.display_name,
-            "permissions": link.permissions or {}, "since": _iso(link.accepted_at)}
+            "permissions": link.permissions or {}, "since": _iso(link.accepted_at),
+            "accessUntil": caregiver_service.iso(link.access_until), "ended": caregiver_service.is_ended(link)}
 
 
 class AcceptIn(Input):
@@ -238,7 +279,90 @@ def home(link: models.CaregiverLink = Depends(access()), db: Session = Depends(g
 @router.get("/{link_id}/appointments")
 def appointments(link: models.CaregiverLink = Depends(access("appointments")), db: Session = Depends(get_db)):
     rows = db.query(models.Appointment).filter_by(episode_id=link.episode_id).order_by(models.Appointment.scheduled_at.desc()).limit(30).all()
-    return [{"id": a.id, "scheduledAt": _iso(a.scheduled_at), "type": a.appointment_type, "location": a.location, "status": a.status} for a in rows]
+    mine = {h.appointment_id: h for h in db.query(models.CaregiverVisitHelp).filter_by(link_id=link.id).all()}
+    return [{"id": a.id, "scheduledAt": _iso(a.scheduled_at), "type": a.appointment_type, "location": a.location, "status": a.status,
+             "help": {"status": mine[a.id].status, "updatedAt": _iso(mine[a.id].updated_at)} if a.id in mine else None} for a in rows]
+
+
+def _upcoming_visit(db: Session, link: models.CaregiverLink, appointment_id: str) -> models.Appointment:
+    appt = db.get(models.Appointment, appointment_id)
+    if appt is None or appt.episode_id != link.episode_id:
+        raise HTTPException(404, "Visit not found.")
+    if appt.status != "scheduled" or scheduling.utc(appt.scheduled_at) <= _now():
+        raise HTTPException(409, "This visit is no longer coming up.")
+    return appt
+
+
+@router.put("/{link_id}/appointments/{appointment_id}/help")
+def set_visit_help(appointment_id: str, payload: HelpIn, link: models.CaregiverLink = Depends(access("appointments")), user=Depends(caregiver), db: Session = Depends(get_db)):
+    """"I will take her" or "I cannot". She is told, and sees it on her Appointments page. Saying the same thing again changes nothing."""
+    appt = _upcoming_visit(db, link, appointment_id)
+    current = db.query(models.CaregiverVisitHelp).filter_by(appointment_id=appt.id, link_id=link.id).first()
+    if current is not None and current.status == payload.status:
+        return {"status": current.status, "updatedAt": _iso(current.updated_at)}
+    if current is None:
+        current = models.CaregiverVisitHelp(appointment_id=appt.id, link_id=link.id, status=payload.status)
+        db.add(current)
+    current.status, current.updated_at = payload.status, _now()
+    when = scheduling.local_text(appt.scheduled_at, scheduling.rules(db))
+    _record(db, user, link, "caregiver_visit_help", "A trusted person answered about a visit", f"{payload.status} {when}")
+    _tell_her(db, link, "caregiver_visit_yes" if payload.status == "WILL_TAKE" else "caregiver_visit_no", kind=appt.appointment_type, when=when)
+    db.commit()
+    return {"status": current.status, "updatedAt": _iso(current.updated_at)}
+
+
+@router.delete("/{link_id}/appointments/{appointment_id}/help")
+def clear_visit_help(appointment_id: str, link: models.CaregiverLink = Depends(access("appointments")), user=Depends(caregiver), db: Session = Depends(get_db)):
+    """Back to "not sure yet". Nothing is sent to her; it is only recorded."""
+    appt = db.get(models.Appointment, appointment_id)
+    if appt is None or appt.episode_id != link.episode_id:
+        raise HTTPException(404, "Visit not found.")
+    current = db.query(models.CaregiverVisitHelp).filter_by(appointment_id=appt.id, link_id=link.id).first()
+    if current is not None:
+        db.delete(current)
+        _record(db, user, link, "caregiver_visit_help_cleared", "A trusted person is not sure about a visit yet", "")
+        db.commit()
+    return {"status": None}
+
+
+# ---- WhatsApp reminders on the person's own number
+def _needs_something_to_remind(link: models.CaregiverLink) -> None:
+    permissions = link.permissions or {}
+    if not (permissions.get("appointments") or permissions.get("check_in")):
+        raise HTTPException(403, "She has not allowed you to see visits or check-ins, so there is nothing to remind you about.")
+
+
+@router.get("/{link_id}/whatsapp")
+def whatsapp_status(link: models.CaregiverLink = Depends(access()), db: Session = Depends(get_db)):
+    return caregiver_whatsapp.status(db, link)
+
+
+@router.post("/{link_id}/whatsapp/start")
+def whatsapp_start(payload: NumberIn, link: models.CaregiverLink = Depends(access()), user=Depends(caregiver), db: Session = Depends(get_db)):
+    _needs_something_to_remind(link)
+    result = caregiver_whatsapp.start(db, link, user, payload.number)
+    _record(db, user, link, "caregiver_whatsapp_code_sent", "A trusted person asked for a WhatsApp code", "")
+    db.commit()
+    return {**caregiver_whatsapp.status(db, link), **result}
+
+
+@router.post("/{link_id}/whatsapp/confirm")
+def whatsapp_confirm(payload: CodeIn, link: models.CaregiverLink = Depends(access()), user=Depends(caregiver), db: Session = Depends(get_db)):
+    _needs_something_to_remind(link)
+    caregiver_whatsapp.confirm(db, link, user, payload.code)
+    _record(db, user, link, "caregiver_whatsapp_on", "A trusted person turned on WhatsApp reminders", "")
+    _tell_her(db, link, "caregiver_whatsapp_on")
+    db.commit()
+    return caregiver_whatsapp.status(db, link)
+
+
+@router.delete("/{link_id}/whatsapp")
+def whatsapp_off(link: models.CaregiverLink = Depends(access()), user=Depends(caregiver), db: Session = Depends(get_db)):
+    if caregiver_whatsapp.turn_off(db, link):
+        _record(db, user, link, "caregiver_whatsapp_off", "A trusted person turned off WhatsApp reminders", "")
+        _tell_her(db, link, "caregiver_whatsapp_off")
+    db.commit()
+    return caregiver_whatsapp.status(db, link)
 
 
 @router.get("/{link_id}/check-ins")
@@ -256,6 +380,7 @@ def add_check_in(payload: LogIn, link: models.CaregiverLink = Depends(access("ch
     db.add(log)
     db.flush()
     _record(db, user, link, "caregiver_checkin_recorded", "A trusted person filled in a check-in", link.display_name)
+    _tell_her(db, link, "caregiver_acted_checkin")
     db.commit()
     return {"id": log.id, "recordedAt": _iso(log.recorded_at), "enteredWithHelp": log.entered_with_help}
 
@@ -284,6 +409,7 @@ def ask(payload: QuestionIn, link: models.CaregiverLink = Depends(access("questi
     db.add(question)
     db.flush()
     _record(db, user, link, "caregiver_question_asked", "A trusted person asked a question", text[:200])
+    _tell_her(db, link, "caregiver_acted_question")
     automation.dispatch_event(db, automation.events.PATIENT_QUESTION_CREATED, episode_id=link.episode_id, actor_user_id=user.id,
                               source_type="PatientQuestion", source_id=question.id, payload={"questionText": text})
     db.commit()
@@ -308,5 +434,6 @@ def talk(payload: TalkIn, link: models.CaregiverLink = Depends(access()), user=D
                           summary=f"{link.display_name} ({link.relationship or 'trusted person'}): " + (f"“{note}”" if note else "no message left."), recommended_action="Please get back to them.",
                           source_type="CaregiverLink", source_id=link.id)
     _record(db, user, link, "talk_to_a_person", "A trusted person asked to talk to someone", note)
+    _tell_her(db, link, "caregiver_acted_talk")
     db.commit()
     return {"message": messages.pick(messages.TALK_TO_PERSON, language)}

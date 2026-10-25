@@ -3,6 +3,7 @@ import { Copy, UserPlus } from 'lucide-react';
 import { inviteTrusted, listTrusted, newInviteCode, removeTrusted, trustedActivity, updateTrusted } from '../../api/caregiver';
 import type { Permission, Permissions, TrustedActivity, TrustedPerson } from '../../api/caregiver';
 import { formatTime } from '../../api/continuity';
+import { formatFriendlyDate } from './format';
 import { tx, useLanguage } from '../../i18n';
 import { Badge, Feedback, Field, useAction } from '../../components/continuity/shared';
 
@@ -32,6 +33,32 @@ function PermissionBoxes({ value, onChange, name, disabled }: { value: Permissio
   );
 }
 
+/** How long a person may help: a last day she chooses, after which they see nothing until she extends it. Empty means until she removes them. */
+function AccessLimit({ person, busy, onSave }: { person: TrustedPerson; busy: boolean; onSave: (day: string | null) => void }) {
+  const { t } = useLanguage();
+  const [day, setDay] = useState(person.accessUntil ? person.accessUntil.slice(0, 10) : '');
+  const first = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const last = new Date(Date.now() + 730 * 86400000).toISOString().slice(0, 10);
+  return (
+    <div className="trusted-limit">
+      <p className={person.ended ? 'continuity-note' : 'continuity-muted'} role={person.ended ? 'status' : undefined}>
+        {person.ended
+          ? t('Access ended on {date}. They cannot see anything until you extend it.', { date: formatFriendlyDate(person.accessUntil) })
+          : person.accessUntil
+            ? t('Access until the end of {date}.', { date: formatFriendlyDate(person.accessUntil) })
+            : t('No end date: they can help until you remove them.')}
+      </p>
+      <Field label={t('Access ends on')}>
+        <input type="date" min={first} max={last} value={day} onChange={(e) => setDay(e.target.value)} />
+      </Field>
+      <div className="continuity-actions">
+        <button type="button" className="btn-secondary" disabled={busy || !day} onClick={() => onSave(day)}>{person.ended ? t('Extend access') : t('Set end date')}</button>
+        {person.accessUntil && <button type="button" className="btn-secondary" disabled={busy} onClick={() => { setDay(''); onSave(null); }}>{t('Remove the end date')}</button>}
+      </div>
+    </div>
+  );
+}
+
 /** Profile → Trusted people. The woman invites a relative or friend, chooses exactly what they may do, sees what they did, and can remove them at any time. */
 export function TrustedPeopleCard() {
   const { t } = useLanguage();
@@ -40,6 +67,7 @@ export function TrustedPeopleCard() {
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
   const [permissions, setPermissions] = useState<Permissions>(DEFAULTS);
+  const [until, setUntil] = useState('');
   // The invite code is only ever shown right after it is made: the server keeps just a scrambled copy.
   const [issued, setIssued] = useState<{ name: string; code: string; expires: string | null } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -78,9 +106,9 @@ export function TrustedPeopleCard() {
   const invite = (e: React.FormEvent) => {
     e.preventDefault();
     void action.run(async () => {
-      const made = await inviteTrusted({ displayName: name, relationship, permissions });
+      const made = await inviteTrusted({ displayName: name, relationship, permissions, accessUntil: until || null });
       show(made, made.code ?? '');
-      setName(''); setRelationship(''); setPermissions(DEFAULTS);
+      setName(''); setRelationship(''); setPermissions(DEFAULTS); setUntil('');
       await load();
     }, t('Invite made. Give them the code below.'));
   };
@@ -120,6 +148,7 @@ export function TrustedPeopleCard() {
           )}
           {person.status === 'INVITED' && <p className="continuity-muted">{t('Waiting to join. The invite stops working on {when}.', { when: formatTime(person.inviteExpiresAt) })}</p>}
           {person.status === 'REVOKED' && <p className="continuity-muted">{t('Removed on {when}. They can no longer see anything.', { when: formatTime(person.revokedAt) })}</p>}
+          {person.whatsapp === 'on' && <p className="continuity-muted">{t('They get short WhatsApp reminders on their own number. The messages never have your name, results or medicines.')}</p>}
 
           {person.status !== 'REVOKED' && (
             <>
@@ -128,6 +157,8 @@ export function TrustedPeopleCard() {
                 value={person.permissions}
                 onChange={(next) => changePermissions(person, next)}
               />
+              <AccessLimit key={`${person.id}-${person.accessUntil ?? 'none'}`} person={person} busy={action.busy}
+                onSave={(day) => void action.run(async () => { await updateTrusted(person.id, { accessUntil: day }); await load(); }, t('Saved. This applies straight away.'))} />
               <div className="continuity-actions">
                 {person.status === 'INVITED' && (
                   <button type="button" className="btn-secondary" disabled={action.busy}
@@ -173,6 +204,9 @@ export function TrustedPeopleCard() {
           <Field label={t('How are they related to you?')}><input maxLength={40} value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder={t('For example husband or mother')} autoComplete="off" /></Field>
         </div>
         <PermissionBoxes name="new" value={permissions} onChange={setPermissions} />
+        <Field label={t('Access ends on (optional)')}>
+          <input type="date" min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)} max={new Date(Date.now() + 730 * 86400000).toISOString().slice(0, 10)} value={until} onChange={(e) => setUntil(e.target.value)} />
+        </Field>
         <button className="btn-primary" disabled={action.busy || !name.trim()}><UserPlus size={15} aria-hidden="true" /> {t('Make an invite code')}</button>
       </form>}
     </section>

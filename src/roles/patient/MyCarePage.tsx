@@ -95,7 +95,7 @@ export function MyCarePage() {
             <SummaryRow
               icon={<HeartPulse size={18} />}
               label={t('Recent Care')}
-              value={dashboard.recentCareTitle ? `${dashboard.recentCareTitle} (${formatFriendlyDate(dashboard.recentCareDate)})` : t('Nothing recorded yet')}
+              value={dashboard.recentCareTitle ? `${t(dashboard.recentCareTitle)} (${formatFriendlyDate(dashboard.recentCareDate)})` : t('Nothing recorded yet')}
               isLast
             />
           </div>

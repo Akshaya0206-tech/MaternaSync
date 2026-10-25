@@ -1,0 +1,26 @@
+# Render blueprint for the MaternaSync API (the frontend goes on Vercel; see DEPLOYMENT.md).
+# Render: New -> Blueprint -> pick this repository. A persistent disk needs a paid plan.
+services:
+  - type: web
+    name: maternasync-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: maternasync-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: MATERNASYNC_JWT_SECRET
+        generateValue: true
+      - key: MATERNASYNC_DEMO_ENABLED
+        value: "true"
+      # The address of the Vercel site, for example https://maternasync.vercel.app (Render asks for it when the blueprint is created).
+      - key: MATERNASYNC_CORS_ORIGINS
+        sync: false
+      # Optional: a pattern for Vercel preview addresses, for example ^https://maternasync-[a-z0-9-]+\.vercel\.app$
+      - key: MATERNASYNC_CORS_ORIGIN_REGEX
+        value: ""

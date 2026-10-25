@@ -14,7 +14,7 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from .. import config, models
+from .. import caregiver_service, caregiver_whatsapp, config, models, server_text, whatsapp
 from ..plain_language import format_when
 from . import messages, reporting, scheduling, tools
 from .providers import ProviderError, rules_question
@@ -290,12 +290,16 @@ def sweep_missed_checkins(db, make_run, skip=frozenset()) -> int:
         tools.act(db, run, "notify_user", {"user_id": episode.patient_user_id, "title": messages.pick(messages.CHECKIN_TITLE, language), "body": messages.pick(messages.CHECKIN_PATIENT, language),
                   "kind": "assistant_reminder"}, key=f"checkin:{plan.episode_id}:{_now().date().isoformat()}:patient")
         first_name = (episode.patient_name or "").split(" ")[0]
-        for link in db.query(models.CaregiverLink).filter_by(episode_id=plan.episode_id, status="ACTIVE").all():
-            if link.caregiver_user_id and (link.permissions or {}).get("check_in"):
-                tools.act(db, run, "notify_user", {"user_id": link.caregiver_user_id, "title": messages.pick(messages.CHECKIN_TITLE, language),
-                          "body": messages.pick(messages.CHECKIN_CAREGIVER, language).format(name=first_name), "kind": "assistant_reminder"},
-                          key=f"checkin:{plan.episode_id}:{_now().date().isoformat()}:{link.id}")
         sent = db.query(models.AIRun).filter(models.AIRun.workflow == "missed_checkin", models.AIRun.episode_id == plan.episode_id, models.AIRun.created_at >= baseline.replace(tzinfo=None)).count()
+        for link in caregiver_service.active_links_for_episode(db, plan.episode_id, "check_in"):
+            tools.act(db, run, "notify_user", {"user_id": link.caregiver_user_id, "title": messages.pick(messages.CHECKIN_TITLE, language),
+                      "body": messages.pick(messages.CHECKIN_CAREGIVER, language).format(name=first_name), "kind": "assistant_reminder"},
+                      key=f"checkin:{plan.episode_id}:{_now().date().isoformat()}:{link.id}")
+            if sent <= 3 and whatsapp.automatic() and caregiver_whatsapp.usable(db, link, "checkin"):  # at most three nudges per lapse, so it never becomes a flood
+                stamp = f"{plan.episode_id}:{_now().date().isoformat()}"
+                tools.act(db, run, "send_caregiver_whatsapp", {"link_id": link.id, "kind": "checkin", "source_id": stamp}, key=f"wa:checkin:{stamp}:{link.id}",
+                          proposal={"title": "Send a WhatsApp reminder to a trusted person", "summary": "A short “please sign in” message to the number they confirmed. It holds no name, result or medicine.",
+                                    "recommended_action": "Approve to send it."})
         if sent >= 3 and not db.query(models.ExceptionItem).filter_by(episode_id=plan.episode_id, source_type="MonitoringPlan", status="OPEN").first():
             tools.act(db, run, "create_attention", {"title": "No check-in for several days", "urgency": "normal", "run_id": run.id, "source_type": "MonitoringPlan", "source_id": plan.episode_id,
                       "summary": f"{episode.patient_name} has not filled in the agreed check-in since {baseline.date().isoformat()}. {sent} reminders were sent. A missing entry is not evidence of a problem.",
@@ -457,10 +461,13 @@ def sweep_visits(db, make_run, skip=frozenset()) -> dict:
         tools.act(db, run, "notify_user", {"user_id": episode.patient_user_id, "key": "visit_reminder", "params": {"kind": appt.appointment_type, "when": when}, "kind": "assistant_visit_reminder",
                   "entity_type": "Appointment", "entity_id": appt.id}, key=f"visit_reminder:{appt.id}:patient")
         first_name = (episode.patient_name or "").split(" ")[0]
-        for link in db.query(models.CaregiverLink).filter_by(episode_id=episode.id, status="ACTIVE").all():
-            if link.caregiver_user_id and (link.permissions or {}).get("appointments"):
-                tools.act(db, run, "notify_user", {"user_id": link.caregiver_user_id, "key": "visit_reminder_caregiver", "params": {"name": first_name, "kind": appt.appointment_type, "when": when},
-                          "kind": "assistant_visit_reminder", "entity_type": "Appointment", "entity_id": appt.id}, key=f"visit_reminder:{appt.id}:{link.id}")
+        for link in caregiver_service.active_links_for_episode(db, episode.id, "appointments"):
+            tools.act(db, run, "notify_user", {"user_id": link.caregiver_user_id, "key": "visit_reminder_caregiver", "params": {"name": first_name, "kind": appt.appointment_type, "when": when},
+                      "kind": "assistant_visit_reminder", "entity_type": "Appointment", "entity_id": appt.id}, key=f"visit_reminder:{appt.id}:{link.id}")
+            if whatsapp.automatic() and caregiver_whatsapp.usable(db, link, "visit"):
+                tools.act(db, run, "send_caregiver_whatsapp", {"link_id": link.id, "kind": "visit", "source_id": appt.id}, key=f"wa:visit:{appt.id}:{link.id}",
+                          proposal={"title": "Send a WhatsApp reminder to a trusted person", "summary": "A short “please sign in” message to the number they confirmed. It holds no name, result or medicine.",
+                                    "recommended_action": "Approve to send it."})
         run.summary = "Sent the fixed visit reminder."
         reminders += 1
     grace = timedelta(minutes=rules["minutes"], hours=rules["grace_hours"])
@@ -588,5 +595,33 @@ def sweep_summary(db, make_run, skip=frozenset()) -> int:
         tools.act(db, run, "post_weekly_summary", {"doctor_id": doctor.id, "summary": reporting.summary(db, episode_ids, 7)}, key=f"weekly_summary:{doctor.id}:{week}",
                   proposal={"title": "Post the weekly counts", "summary": "Post this week's plain counts to your Updates.", "recommended_action": "Approve to post them."})
         run.summary = "Posted the weekly counts."
+        done += 1
+    return done
+
+
+def sweep_caregiver_access(db, make_run, skip=frozenset()) -> int:
+    """A trusted person's access has an end date the woman chose. Three days before it, and again when it has passed, she gets one
+    short note (and can extend it from her Profile page). The block itself needs no step here: it is checked on every request."""
+    done = 0
+    now = _now()
+    for link in db.query(models.CaregiverLink).filter(models.CaregiverLink.status == "ACTIVE", models.CaregiverLink.access_until.isnot(None)).all():
+        episode = db.get(models.PregnancyEpisode, link.episode_id)
+        if episode is None or episode.id in skip:
+            continue
+        until = _utc(link.access_until)
+        if until <= now:
+            stage = "ended" if now - until <= timedelta(days=30) else None
+        else:
+            stage = "ending" if until - now <= timedelta(days=3) else None
+        if stage is None:
+            continue
+        stamp = until.date().isoformat()
+        run = make_run("caregiver_access", episode.id, "CaregiverLink", link.id, f"caregiver_access:{link.id}:{stage}:{stamp}")
+        if run is None:
+            continue
+        tools.act(db, run, "notify_user", {"user_id": episode.patient_user_id, "key": "access_ended" if stage == "ended" else "access_ending",
+                  "params": {"name": link.display_name, "date": server_text.fmt_date(link.access_until)}, "kind": "assistant_access",
+                  "entity_type": "CaregiverLink", "entity_id": link.id}, key=f"caregiver_access:{link.id}:{stage}:{stamp}")
+        run.summary = "Told her a trusted person's access is ending." if stage == "ending" else "Told her a trusted person's access has ended."
         done += 1
     return done

@@ -481,3 +481,12 @@
 .assistant-counts .assistant-count { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border-color); }
 .assistant-counts dt { margin: 0; }
 .assistant-counts dd { margin: 0; font-weight: 700; }
+
+/* Trusted people: the visit helper, the end date on their access */
+.visit-helper { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); display: grid; gap: 10px; }
+.visit-helper-place { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 0.9rem; }
+.visit-helper-answer { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px; margin: 0; }
+.visit-helper-answer legend { padding: 0 6px; font-size: 0.85rem; font-weight: 700; }
+.visit-helper-answer .continuity-actions button { min-height: 44px; }
+.visit-help-chip { margin-top: 8px; }
+.trusted-limit { margin: 10px 0; padding-top: 8px; border-top: 1px solid var(--border-color); display: grid; gap: 8px; }

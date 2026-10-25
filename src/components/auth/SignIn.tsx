@@ -98,7 +98,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
       </p>
 
       {error && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--rose-urgent-bg)', color: 'var(--rose-urgent)', border: '1px solid rgba(156, 58, 34, 0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.825rem', marginBottom: '16px' }}>
+        <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--rose-urgent-bg)', color: 'var(--rose-urgent)', border: '1px solid rgba(156, 58, 34, 0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.825rem', marginBottom: '16px' }}>
           <AlertCircle size={16} style={{ flexShrink: 0 }} />
           {t(error)}
         </div>

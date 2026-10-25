@@ -12,10 +12,12 @@ import { formatTime } from '../../api/continuity';
 import { useAuth } from '../../auth/AuthContext';
 import { tx, useLanguage } from '../../i18n';
 import { Badge, Empty, Feedback, Field, Page, Panel, useAction } from '../../components/continuity/shared';
-import { friendlyAppointmentStatus, friendlyQuestionStatus } from '../patient/format';
+import { formatFriendlyDate, friendlyAppointmentStatus, friendlyQuestionStatus } from '../patient/format';
 import { GuidedCheckInForm } from '../patient/GuidedCheckInForm';
 import { SummaryList } from '../patient/SupportPages';
+import { CaregiverWhatsAppCard } from './CaregiverWhatsApp';
 import { useCaregiver } from './CaregiverContext';
+import { VisitHelper } from './VisitHelper';
 
 // What each permission lets a trusted person do, in the words she sees when she chooses (the same words are used on her side).
 const PERMISSION_TEXT: Record<Permission, string> = {
@@ -53,12 +55,27 @@ function useForWoman<T>(load: (linkId: string) => Promise<T>, allowed = true) {
   return { data, error, loading, reload };
 }
 
+/** Shown instead of a page when the end date she set has passed. The server refuses the requests too; this explains why. */
+function EndedNotice({ title }: { title: string }) {
+  const { t } = useLanguage();
+  const { current } = useCaregiver();
+  return (
+    <Page title={title}>
+      <Panel title={t('Your access has ended')}>
+        <p>{t('{name} set an end date for your access, and it has passed ({date}). Ask her to extend it from her Profile page. Nothing about her is shown until she does.', { name: current?.womanName ?? '', date: formatFriendlyDate(current?.accessUntil) })}</p>
+        <p className="continuity-muted">{t('If you look after someone else too, choose her from the menu.')}</p>
+      </Panel>
+    </Page>
+  );
+}
+
 /** Wraps a page that needs a permission: shows a plain explanation, not an error, if she has not allowed it. */
 function Needs({ permission, title, children }: { permission: Permission; title: string; children: (linkId: string) => ReactNode }) {
   const { t } = useLanguage();
   const { women, current, can } = useCaregiver();
   if (women === null) return <Page title={title}><p role="status" className="continuity-muted">{t('Loading…')}</p></Page>;
   if (!current) return <NotLinked title={title} />;
+  if (current.ended) return <EndedNotice title={title} />;
   if (!can(permission)) {
     return (
       <Page title={title}>
@@ -115,7 +132,7 @@ export function CaregiverHomePage() {
   const { t } = useLanguage();
   const { women, current, error } = useCaregiver();
   const { hash } = useLocation();
-  const summary = useForWoman<HomeSummary>(caregiverHome);
+  const summary = useForWoman<HomeSummary>(caregiverHome, !current?.ended);
   const talk = useAction();
   const [message, setMessage] = useState('');
   const [reply, setReply] = useState('');
@@ -126,12 +143,14 @@ export function CaregiverHomePage() {
 
   if (women === null) return <Page title={t('Home')}><p role="status" className="continuity-muted">{t('Loading…')}</p></Page>;
   if (!current) return <NotLinked title={t('Home')} />;
+  if (current.ended) return <EndedNotice title={t('Home')} />;
   const data = summary.data;
   return (
     <Page title={t('Home')} subtitle={t('What {name} has allowed you to see and do.', { name: current.womanName })}>
       <Feedback error={error || summary.error} />
       <Panel title={t('You are helping {name}', { name: current.womanName })}>
         <p>{current.relationship ? t('You are listed as: {relationship}.', { relationship: current.relationship }) : t('You are one of her trusted people.')}</p>
+        {current.accessUntil && <p className="continuity-note" role="status">{t('Your access ends on {date}. {name} can extend it.', { date: formatFriendlyDate(current.accessUntil), name: current.womanName.split(' ')[0] })}</p>}
         <ul className="continuity-list">
           {(Object.keys(PERMISSION_TEXT) as Permission[]).map((permission) => (
             <li key={permission}>
@@ -160,6 +179,8 @@ export function CaregiverHomePage() {
           <Link className="btn-primary" to="/caregiver/check-in/new">{t('Fill in a check-in with her')}</Link>
         </Panel>
       )}
+
+      <CaregiverWhatsAppCard linkId={current.linkId} womanName={current.womanName} />
 
       <section id="talk">
         <Panel title={t('Talk to a person')}>
@@ -203,6 +224,7 @@ export function CaregiverAppointmentsPage() {
 }
 function Appointments() {
   const { t } = useLanguage();
+  const { current } = useCaregiver();
   const list = useForWoman<CaregiverAppointment[]>(caregiverAppointments);
   return (
     <Page title={t('Appointments')} subtitle={t('Her visits to the clinic.')}>
@@ -213,7 +235,8 @@ function Appointments() {
         {list.data?.map((a) => (
           <article key={a.id} className="continuity-item">
             <h3>{formatTime(a.scheduledAt)} <Badge>{friendlyAppointmentStatus(a.status)}</Badge></h3>
-            <p>{a.type}{a.location ? ` · ${a.location}` : ''}</p>
+            <p>{a.type}{a.location && a.status !== 'scheduled' ? ` · ${a.location}` : ''}</p>
+            {current && <VisitHelper visit={a} womanName={current.womanName} linkId={current.linkId} onChanged={() => void list.reload()} />}
           </article>
         ))}
       </Panel>

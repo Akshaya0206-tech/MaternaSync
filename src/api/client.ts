@@ -1,5 +1,13 @@
 const TOKEN_STORAGE_KEY = 'maternasync_token';
 
+/** Where the API lives. Empty (the default) means the same address as the page, which is how local development works through Vite's
+ *  proxy. On Vercel the page and the API are on different hosts, so the project sets VITE_API_BASE_URL (for example
+ *  https://maternasync-api.onrender.com) when it is built, and the backend lists the page's address in MATERNASYNC_CORS_ORIGINS. */
+export const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '');
+
+/** A path such as /api/v2/... made into the address to call. A full address is left alone. */
+export const apiUrl = (path: string): string => (/^https?:\/\//i.test(path) ? path : `${API_BASE_URL}${path}`);
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_STORAGE_KEY);
 }
@@ -25,7 +33,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set('Content-Type', 'application/json');
   }
 
-  const res = await fetch(path, { ...options, headers });
+  const res = await fetch(apiUrl(path), { ...options, headers });
 
   if (!res.ok) {
     let message = 'Something went wrong. Please try again.';
@@ -61,7 +69,7 @@ export async function fetchBlobWithAuth(path: string): Promise<Blob> {
   const token = getToken();
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  const res = await fetch(path, { headers });
+  const res = await fetch(apiUrl(path), { headers });
   if (!res.ok) throw new ApiError('Could not load the original source file.', res.status);
   return res.blob();
 }

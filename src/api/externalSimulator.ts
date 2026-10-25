@@ -4,6 +4,7 @@
 // that one always attaches a bearer token; the simulator must work
 // identically whether or not the operator happens to be logged in as one
 // of MaternaSync's own users.
+import { apiUrl } from './client';
 
 export interface SimulatorReferral {
   referenceCode: string;
@@ -20,7 +21,7 @@ export interface SimulatorReferral {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (options.body) headers.set('Content-Type', 'application/json');
-  const res = await fetch(path, { ...options, headers });
+  const res = await fetch(apiUrl(path), { ...options, headers });
   if (!res.ok) {
     let message = 'Something went wrong.';
     try {

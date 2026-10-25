@@ -58,8 +58,12 @@ def _post(url, headers, payload):
         raise WhatsAppError(f"The WhatsApp provider could not be reached: {error}"[:300])
 
 
-def send(recipient, text):
-    """Send one message. Returns {"provider", "reference"} or raises WhatsAppError."""
+def send(recipient, text, template_env=None, params=None):
+    """Send one message. Returns {"provider", "reference"} or raises WhatsAppError.
+
+    In cloud_api mode a business-initiated message must use a template Meta approved. `template_env` names an environment variable
+    holding a template for this kind of message; `params` fill its numbered blanks (used for the one-time code). With no
+    template set, the text is sent as plain text, which Meta only accepts inside an open 24-hour window."""
     current = mode()
     if current == "manual":
         raise WhatsAppError("Automatic sending is not configured.")
@@ -69,10 +73,14 @@ def send(recipient, text):
     phone_id = os.environ.get("MATERNASYNC_WHATSAPP_PHONE_ID", "")
     if not token or not phone_id:
         raise WhatsAppError("WhatsApp Cloud API credentials are not set (MATERNASYNC_WHATSAPP_TOKEN, MATERNASYNC_WHATSAPP_PHONE_ID).")
-    template = os.environ.get("MATERNASYNC_WHATSAPP_TEMPLATE", "").strip()
+    specific = os.environ.get(template_env, "").strip() if template_env else ""
+    template = specific if params else (specific or os.environ.get("MATERNASYNC_WHATSAPP_TEMPLATE", "").strip())  # a template with blanks is never mixed up with the plain one
     payload = {"messaging_product": "whatsapp", "to": recipient.lstrip("+")}
     if template:  # business-initiated messages outside the 24-hour window must use an approved template
-        payload.update(type="template", template={"name": template, "language": {"code": os.environ.get("MATERNASYNC_WHATSAPP_TEMPLATE_LANGUAGE", "en")}})
+        spec = {"name": template, "language": {"code": os.environ.get("MATERNASYNC_WHATSAPP_TEMPLATE_LANGUAGE", "en")}}
+        if params:
+            spec["components"] = [{"type": "body", "parameters": [{"type": "text", "text": str(value)} for value in params]}]
+        payload.update(type="template", template=spec)
     else:
         payload.update(type="text", text={"body": text, "preview_url": False})
     version = os.environ.get("MATERNASYNC_WHATSAPP_API_VERSION", "v20.0")

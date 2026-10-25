@@ -124,6 +124,22 @@ CAREGIVER LOGIN  (NEW, all [B])
     - Invite problems (bad / expired / used) all give one message so codes cannot be guessed.
     - Caregiver actions are written to the audit log; she can read them.
 
+  ADD-ONS (all [B]; Caregiver and Patient logins)
+    Visit helper     Caregiver -> Appointments: address + "Show on map", "Add to my calendar" (.ics made in the
+                     browser), and "I'll take her" / "I can't come" / "Not sure yet". She sees it on Patient ->
+                     Appointments and gets an Update each time it changes (four languages).
+    End date         Patient -> Profile -> Trusted people: "Access ends on" when inviting, and Set / Extend /
+                     Remove on each person. After the day ends the server refuses the person (403, with the
+                     reason), the assistant messages them no more, and they see "Your access has ended".
+                     She is warned 3 days before and told when it ends.
+    Notes to her     She gets an Update whenever they act for her (check-in, question, talk to a person, visit
+                     answer, WhatsApp on/off): says what they did, never what they wrote.
+    WhatsApp         Caregiver -> Home -> "WhatsApp reminders", on THEIR OWN number, with a one-time code (double
+                     opt-in). Short "please sign in" text before a visit and for the first 3 days of a missed
+                     check-in lapse. No name/result/medicine in it. Stops on: turn off, STOP reply, removal, end
+                     date, permission withdrawn. In demo mode it is SIMULATED and the code is shown on screen.
+                     In real use Meta charges per delivered template message (see README / the team chat).
+
 =====================================================================================
 DOCTOR LOGIN
 =====================================================================================
@@ -207,6 +223,9 @@ DOCTOR LOGIN
            them with a range. That is for the doctor." on Today's Brief and Connected Care -> Trends
            (card "Last 30 days - patient-reported trends"). Translated into all four languages.
   [B] FIXED Today's Brief: the patient drop-down had no accessible name (screen readers); now labelled.
+  [B] FIXED Record titles on the patient dashboard ("Recent care"), My Journey and the doctor's brief/workspace now go
+           through translation. The demonstration records' titles and the server's fixed phrases ("Referral sent",
+           "Consultation completed"...) are translated; text a clinic types itself stays as written.
   [B] CHANGED The Claude option of the care assistant can only answer with fixed choices (record type,
            category, yes/no, confidence, reason code). The sentence a doctor reads is looked up from a
            fixed table, so the model never writes text. Prompt versions are now intake@v2, triage@v2.
@@ -307,9 +326,18 @@ BACKEND CHANGES AT A GLANCE (for developers)
   Sign-in check lives in one place: deps.refuse_sign_in.
 
 =====================================================================================
+DEPLOYMENT (Vercel + an API host)  [B]
+=====================================================================================
+  Read DEPLOYMENT.md. Short version: the website goes on Vercel (vercel.json, .vercelignore), the API on a host
+  that keeps running (backend/Dockerfile, render.yaml). Two settings connect them: VITE_API_BASE_URL on the website
+  (set at build time) and MATERNASYNC_CORS_ORIGINS on the API. Also set MATERNASYNC_JWT_SECRET. Vercel itself cannot
+  run the API (SQLite on a disk, background jobs, OCR/speech packages). Not run on Vercel/Render yet; the site was
+  tested built this way with the page and API on different addresses.
+
+=====================================================================================
 TESTS - WHAT WAS RUN
 =====================================================================================
-  Backend: 156 unit/integration tests pass (46 existing + 110 new, including the scope-guard tests
+  Backend: 175 unit/integration tests pass (46 existing + 129 new, including the scope-guard tests
     and the workflow tests in backend/tests/test_assistant_workflows.py).
     Run:  backend/venv/Scripts/python.exe -m unittest discover -s backend/tests
     New files: backend/tests/test_assistant_caregiver.py, backend/tests/test_scope_guard.py ;

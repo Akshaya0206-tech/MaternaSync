@@ -1,0 +1,8 @@
+backend
+tests
+node_modules
+dist
+.test-output
+.vscode
+/FutureImplementations.pdf
+/TEAM-UPDATE-changes-by-login.txt

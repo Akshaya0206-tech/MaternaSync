@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Calendar, MapPin, Stethoscope } from 'lucide-react';
 import { fetchMyAppointments } from '../../api/patientPortal';
+import { visitHelpForMe } from '../../api/caregiver';
+import type { VisitHelpAnswer } from '../../api/caregiver';
 import type { PatientAppointment } from '../../api/patientPortal';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { BadgeTone } from '../../components/StatusBadge';
@@ -22,6 +24,12 @@ export function AppointmentsPage() {
   const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Which trusted person said they will take her, or cannot come, to each visit (by visit id).
+  const [help, setHelp] = useState<Record<string, VisitHelpAnswer[]>>({});
+
+  useEffect(() => {
+    visitHelpForMe().then(setHelp).catch(() => setHelp({}));
+  }, []);
 
   useEffect(() => {
     fetchMyAppointments()
@@ -72,6 +80,11 @@ export function AppointmentsPage() {
                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><MapPin size={13} /> {appt.location}</span>
                   )}
                 </div>
+                {(help[appt.id] ?? []).map((answer) => (
+                  <div key={answer.name} className="visit-help-chip" role="status">
+                    <StatusBadge label={answer.status === 'WILL_TAKE' ? t('{name} will take you', { name: answer.name }) : t('{name} cannot come', { name: answer.name })} tone={answer.status === 'WILL_TAKE' ? 'green' : 'neutral'} />
+                  </div>
+                ))}
               </div>
               <StatusBadge label={friendlyAppointmentStatus(appt.status)} tone={STATUS_TONE[appt.status] ?? 'neutral'} />
             </div>

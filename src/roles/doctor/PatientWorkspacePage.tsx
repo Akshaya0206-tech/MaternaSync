@@ -167,8 +167,8 @@ export function PatientWorkspacePage() {
                       <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)' }}>{formatFriendlyDate(e.eventDate)}</div>
                       <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{t(EVENT_TYPE_LABELS[e.eventType] ?? e.eventType)}</span>
                     </div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{e.title}</div>
-                    {e.summary && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>{e.summary}</div>}
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>{t(e.title)}</div>
+                    {e.summary && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>{t(e.summary)}</div>}
                   </div>
                 ))}
               </div>

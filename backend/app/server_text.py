@@ -104,6 +104,41 @@ CATALOG = {
            "{when} की आपकी अपॉइंटमेंट छूटी हुई दर्ज की गई है। आप अपॉइंटमेंट पेज पर नया समय माँग सकती हैं। मदद चाहिए तो अपनी देखभाल टीम को बताएँ।",
            "{when} அன்றைய உங்கள் சந்திப்பு தவறியதாகப் பதிவாகியுள்ளது. சந்திப்புகள் பக்கத்தில் புதிய நேரத்தைக் கோரலாம். உதவி தேவைப்பட்டால் உங்கள் பராமரிப்புக் குழுவிடம் சொல்லுங்கள்.",
            "{when} నాటి మీ అపాయింట్‌మెంట్ తప్పినట్లు నమోదైంది. అపాయింట్‌మెంట్లు పేజీలో కొత్త సమయం అభ్యర్థించవచ్చు. సహాయం కావాలంటే మీ సంరక్షణ బృందానికి చెప్పండి.")),
+    # ---- a trusted person acted for her, or their access is changing (all go to the woman)
+    "caregiver_acted_checkin": (
+        _m("{name} helped you", "{name} ने आपकी मदद की", "{name} உங்களுக்கு உதவினார்", "{name} మీకు సహాయం చేశారు"),
+        _m("{name} filled in a check-in for you.", "{name} ने आपके लिए चेक-इन भरा।", "{name} உங்களுக்காக ஒரு பதிவை நிரப்பினார்.", "{name} మీ కోసం చెక్-ఇన్ నింపారు.")),
+    "caregiver_acted_question": (
+        _m("{name} helped you", "{name} ने आपकी मदद की", "{name} உங்களுக்கு உதவினார்", "{name} మీకు సహాయం చేశారు"),
+        _m("{name} asked your care team a question for you.", "{name} ने आपकी ओर से आपकी देखभाल टीम से एक प्रश्न पूछा।",
+           "{name} உங்கள் சார்பாக உங்கள் பராமரிப்புக் குழுவிடம் ஒரு கேள்வி கேட்டார்.", "{name} మీ తరపున మీ సంరక్షణ బృందాన్ని ఒక ప్రశ్న అడిగారు.")),
+    "caregiver_acted_talk": (
+        _m("{name} helped you", "{name} ने आपकी मदद की", "{name} உங்களுக்கு உதவினார்", "{name} మీకు సహాయం చేశారు"),
+        _m("{name} asked for someone from your care team to get in touch.", "{name} ने कहा कि आपकी देखभाल टीम का कोई व्यक्ति संपर्क करे।",
+           "{name} உங்கள் பராமரிப்புக் குழுவில் ஒருவர் தொடர்புகொள்ள வேண்டும் எனக் கேட்டார்.", "{name} మీ సంరక్షణ బృందంలో ఎవరైనా సంప్రదించాలని కోరారు.")),
+    "caregiver_visit_yes": (
+        _m("{name} will take you to your visit", "{name} आपको अपॉइंटमेंट पर ले जाएँगे", "{name} உங்களைச் சந்திப்புக்கு அழைத்துச் செல்வார்", "{name} మిమ్మల్ని అపాయింట్‌మెంట్‌కు తీసుకెళ్తారు"),
+        _m("{kind} on {when}.", "{kind}, {when} को।", "{kind}, {when} அன்று.", "{kind}, {when} న.")),
+    "caregiver_visit_no": (
+        _m("{name} cannot take you to your visit", "{name} आपको अपॉइंटमेंट पर नहीं ले जा सकेंगे", "{name}-ஆல் உங்களைச் சந்திப்புக்கு அழைத்துச் செல்ல முடியாது", "{name} మిమ్మల్ని అపాయింట్‌మెంట్‌కు తీసుకెళ్లలేరు"),
+        _m("{kind} on {when}. You may want to ask someone else.", "{kind}, {when} को। आप किसी और से कह सकती हैं।", "{kind}, {when} அன்று. வேறு ஒருவரிடம் கேட்கலாம்.", "{kind}, {when} న. మీరు మరొకరిని అడగవచ్చు.")),
+    "caregiver_whatsapp_on": (
+        _m("{name} turned on WhatsApp reminders", "{name} ने व्हाट्सऐप रिमाइंडर चालू किए", "{name} வாட்ஸ்அப் நினைவூட்டல்களை இயக்கினார்", "{name} వాట్సాప్ రిమైండర్లను ఆన్ చేశారు"),
+        _m("They will get a short \"please sign in\" message before your visits and when a check-in is waiting. Nothing about you is in the message.",
+           "उन्हें आपकी अपॉइंटमेंट से पहले और चेक-इन बाकी होने पर एक छोटा \"कृपया साइन इन करें\" संदेश मिलेगा। संदेश में आपके बारे में कुछ नहीं होता।",
+           "உங்கள் சந்திப்புகளுக்கு முன்பும், பதிவு காத்திருக்கும் போதும் அவருக்கு ஒரு சிறிய \"உள்நுழையவும்\" செய்தி வரும். செய்தியில் உங்களைப் பற்றி எதுவும் இருக்காது.",
+           "మీ అపాయింట్‌మెంట్లకు ముందు, చెక్-ఇన్ వేచి ఉన్నప్పుడు వారికి ఒక చిన్న \"సైన్ ఇన్ చేయండి\" సందేశం వస్తుంది. సందేశంలో మీ గురించి ఏమీ ఉండదు.")),
+    "caregiver_whatsapp_off": (
+        _m("{name} turned off WhatsApp reminders", "{name} ने व्हाट्सऐप रिमाइंडर बंद किए", "{name} வாட்ஸ்அப் நினைவூட்டல்களை நிறுத்தினார்", "{name} వాట్సాప్ రిమైండర్లను ఆఫ్ చేశారు"),
+        _m("They will no longer get WhatsApp messages about you.", "उन्हें अब आपके बारे में व्हाट्सऐप संदेश नहीं मिलेंगे।", "இனி உங்களைப் பற்றிய வாட்ஸ்அப் செய்திகள் அவருக்கு வராது.", "ఇకపై మీ గురించి వాట్సాప్ సందేశాలు వారికి రావు.")),
+    "access_ending": (
+        _m("A trusted person's access ends soon", "एक भरोसेमंद व्यक्ति की पहुँच जल्द समाप्त होगी", "நம்பகமான ஒருவரின் அணுகல் விரைவில் முடிகிறது", "ఒక నమ్మకమైన వ్యక్తి యాక్సెస్ త్వరలో ముగుస్తుంది"),
+        _m("{name}'s access ends on {date}. You can extend it from your Profile page.", "{name} की पहुँच {date} को समाप्त होगी। आप इसे अपने प्रोफ़ाइल पेज से बढ़ा सकती हैं।",
+           "{name} அவர்களின் அணுகல் {date} அன்று முடிகிறது. உங்கள் சுயவிவரப் பக்கத்திலிருந்து நீட்டிக்கலாம்.", "{name} యాక్సెస్ {date} న ముగుస్తుంది. మీ ప్రొఫైల్ పేజీ నుండి పొడిగించవచ్చు.")),
+    "access_ended": (
+        _m("A trusted person's access has ended", "एक भरोसेमंद व्यक्ति की पहुँच समाप्त हो गई", "நம்பகமான ஒருவரின் அணுகல் முடிந்துவிட்டது", "ఒక నమ్మకమైన వ్యక్తి యాక్సెస్ ముగిసింది"),
+        _m("{name} can no longer see your information. You can extend it from your Profile page.", "{name} अब आपकी जानकारी नहीं देख सकते। आप इसे अपने प्रोफ़ाइल पेज से बढ़ा सकती हैं।",
+           "{name}-ஆல் இனி உங்கள் தகவலைப் பார்க்க முடியாது. உங்கள் சுயவிவரப் பக்கத்திலிருந்து நீட்டிக்கலாம்.", "{name} ఇకపై మీ సమాచారాన్ని చూడలేరు. మీ ప్రొఫైల్ పేజీ నుండి పొడిగించవచ్చు.")),
     # ---- to the doctor
     "appointment_requested": (
         _m("Appointment requested", "अपॉइंटमेंट का अनुरोध", "சந்திப்புக் கோரிக்கை", "అపాయింట్‌మెంట్ అభ్యర్థన"), _m("{kind}", "{kind}", "{kind}", "{kind}")),
@@ -166,7 +201,32 @@ OUTREACH = {
                  "MaternaSync: आपकी देखभाल टीम ने एक स्वीकृत दस्तावेज़ साझा किया है। देखने के लिए कृपया साइन इन करें।",
                  "MaternaSync: உங்கள் பராமரிப்புக் குழு அங்கீகரிக்கப்பட்ட ஆவணத்தைப் பகிர்ந்துள்ளது. பார்க்க உள்நுழையவும்.",
                  "MaternaSync: మీ సంరక్షణ బృందం ఆమోదించిన పత్రాన్ని పంచుకుంది. చూడటానికి దయచేసి సైన్ ఇన్ చేయండి."),
+    "caregiver_visit": _m("MaternaSync: a visit you are helping with is coming up. Please sign in to see the details.",
+                          "MaternaSync: आप जिस अपॉइंटमेंट में मदद कर रहे हैं वह नज़दीक है। विवरण देखने के लिए कृपया साइन इन करें।",
+                          "MaternaSync: நீங்கள் உதவும் சந்திப்பு நெருங்குகிறது. விவரங்களைப் பார்க்க உள்நுழையவும்.",
+                          "MaternaSync: మీరు సహాయం చేస్తున్న అపాయింట్‌మెంట్ దగ్గరలో ఉంది. వివరాలు చూడటానికి దయచేసి సైన్ ఇన్ చేయండి."),
+    "caregiver_checkin": _m("MaternaSync: a check-in you are helping with is waiting. Please sign in.",
+                            "MaternaSync: जिस चेक-इन में आप मदद कर रहे हैं वह बाकी है। कृपया साइन इन करें।",
+                            "MaternaSync: நீங்கள் உதவும் பதிவு காத்திருக்கிறது. உள்நுழையவும்.",
+                            "MaternaSync: మీరు సహాయం చేస్తున్న చెక్-ఇన్ వేచి ఉంది. దయచేసి సైన్ ఇన్ చేయండి."),
 }
+
+# The one-time code that proves a number belongs to the person who typed it. It names nobody and says nothing about a patient.
+CODE_TEXT = _m("MaternaSync: your code is {code}. It works for 10 minutes. If you did not ask for it, ignore this message.",
+               "MaternaSync: आपका कोड {code} है। यह 10 मिनट तक काम करेगा। अगर आपने नहीं माँगा, तो इस संदेश को अनदेखा करें।",
+               "MaternaSync: உங்கள் குறியீடு {code}. இது 10 நிமிடங்கள் செல்லும். நீங்கள் கேட்கவில்லை என்றால் இந்தச் செய்தியைப் புறக்கணிக்கவும்.",
+               "MaternaSync: మీ కోడ్ {code}. ఇది 10 నిమిషాలు పనిచేస్తుంది. మీరు అడగకపోతే ఈ సందేశాన్ని విస్మరించండి.")
+
+
+def code_text(code: str, language: str) -> str:
+    return pick(CODE_TEXT, language).format(code=code)
+
+
+def fmt_date(moment) -> str:
+    """A date such as 30-11-2026 (UTC), for access messages."""
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc).strftime("%d-%m-%Y")
 
 
 class _Fill(dict):
@@ -215,10 +275,21 @@ def notify_key(db, recipient_user_id: str, key: str, *, episode_id: str | None =
     return note
 
 
+def _fixed(table: dict | None) -> str | None:
+    """The English text of a table, if it has no blanks to fill in."""
+    return None if table is None or "{" in table["en"] else table["en"]
+
+
+# Notifications written before messages had keys (and the seeded demonstration ones) carry only English text. When that text is exactly
+# one of the fixed messages above, it is recognised and worded in the reader's language too. Anything with blanks or written by a person stays as stored.
+_LEGACY = {(_fixed(title), _fixed(body)): key for key, (title, body) in CATALOG.items() if _fixed(title) and body is not None and _fixed(body)}
+
+
 def texts(db, reader_id: str, note: models.Notification) -> tuple[str, str]:
-    """The title and body to show `reader_id`. Older notifications with no key keep the text they were stored with."""
-    if note.message_key in CATALOG:
-        return render(note.message_key, language_of(db, reader_id), note.message_params or {})
+    """The title and body to show `reader_id`. Older notifications with no key are matched to a fixed message when they say exactly that."""
+    key = note.message_key if note.message_key in CATALOG else _LEGACY.get((note.title, note.body or ""))
+    if key:
+        return render(key, language_of(db, reader_id), note.message_params or {})
     return note.title, note.body or ""
 
 

@@ -35,8 +35,23 @@ AI_MODEL = os.environ.get("MATERNASYNC_AI_MODEL", "claude-opus-5-5").strip()  # 
 AI_WORKER = _flag("MATERNASYNC_AI_WORKER", "true")  # the background job that processes queued assistant work
 AI_DAILY_ACTION_CAP = int(os.environ.get("MATERNASYNC_AI_DAILY_CAP", "40"))  # most assistant actions per patient per day
 
+# Which web pages may call this API from a browser. Local development (the Vite server) is always allowed. A deployment on another host, such as
+# the frontend on Vercel, lists its address(es) in MATERNASYNC_CORS_ORIGINS, comma separated, and may add a regular expression for preview
+# addresses in MATERNASYNC_CORS_ORIGIN_REGEX (for example ^https://maternasync-[a-z0-9-]+\.vercel\.app$). Nothing is allowed by default beyond localhost.
+LOCAL_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
+def parse_origins(raw: str) -> list[str]:
+    """A comma-separated list of page addresses, without trailing slashes. A bare * is ignored: every origin is never the answer."""
+    return [o.strip().rstrip("/") for o in raw.split(",") if o.strip() and o.strip() != "*"]
+
+
+CORS_ORIGINS = LOCAL_ORIGINS + parse_origins(os.environ.get("MATERNASYNC_CORS_ORIGINS", ""))
+CORS_ORIGIN_REGEX = os.environ.get("MATERNASYNC_CORS_ORIGIN_REGEX", "").strip() or None
+
 # Prototype-only secret. In a real deployment this must come from a secrets
 # manager / environment variable and never be committed.
 JWT_SECRET = os.environ.get("MATERNASYNC_JWT_SECRET", "dev-only-insecure-secret-change-me")
+JWT_SECRET_IS_DEFAULT = "MATERNASYNC_JWT_SECRET" not in os.environ
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRES_MINUTES = 60 * 24 * 7  # 7 days

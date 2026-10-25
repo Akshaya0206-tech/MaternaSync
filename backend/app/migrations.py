@@ -71,6 +71,9 @@ ADDITIVE_COLUMNS = {
         ("undone_by_user_id", "VARCHAR"),
         ("undo_note", "VARCHAR"),
     ],
+    "caregiver_links": [
+        ("access_until", "DATETIME"),
+    ],
     "notifications": [
         ("message_key", "VARCHAR"),
         ("message_params", "JSON"),

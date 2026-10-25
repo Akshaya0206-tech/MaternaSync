@@ -51,7 +51,8 @@ export function CaregiverProvider({ children }: { children: ReactNode }) {
       /* private mode: the choice only lasts until the page is closed */
     }
   }, []);
-  const can = useCallback((permission: Permission) => Boolean(current?.permissions?.[permission]), [current]);
+  // Past the end date she set, nothing is allowed, whatever the ticks say. The server refuses it too.
+  const can = useCallback((permission: Permission) => Boolean(current && !current.ended && current.permissions?.[permission]), [current]);
 
   const value = useMemo(() => ({ women, current, error, select, reload, can }), [women, current, error, select, reload, can]);
   return <CaregiverContext.Provider value={value}>{children}</CaregiverContext.Provider>;

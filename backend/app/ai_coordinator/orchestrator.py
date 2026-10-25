@@ -16,7 +16,7 @@ from .providers import get_provider
 
 WORKFLOWS = {"document_intake": workflows.run_document_intake, "question_routing": workflows.run_question_routing,
              "appointment_request": workflows.run_appointment_request, "referral_followup": workflows.run_referral_followup, "paperwork": workflows.run_paperwork}
-NO_SWEEPS = {"missedCheckIns": 0, "overdueTasks": 0, "visitReminders": 0, "missedVisits": 0, "referrals": 0, "outreach": 0, "handover": 0, "weeklySummaries": 0}
+NO_SWEEPS = {"missedCheckIns": 0, "overdueTasks": 0, "visitReminders": 0, "missedVisits": 0, "referrals": 0, "outreach": 0, "handover": 0, "weeklySummaries": 0, "caregiverAccess": 0}
 PROMPT_VERSIONS = {"document_intake": prompts.INTAKE_VERSION, "question_routing": prompts.TRIAGE_VERSION}
 _LOCK = threading.Lock()
 
@@ -131,7 +131,7 @@ def run_sweeps(session_factory=None) -> dict:
             counts = {"missedCheckIns": workflows.sweep_missed_checkins(db, make_run, skip), "overdueTasks": workflows.sweep_overdue_tasks(db, make_run, skip=skip),
                       "visitReminders": visits["reminders"], "missedVisits": visits["missed"], "referrals": workflows.sweep_referrals(db, make_run, skip),
                       "outreach": workflows.sweep_outreach(db, make_run, skip), "handover": workflows.sweep_handover(db, make_run, skip),
-                      "weeklySummaries": workflows.sweep_summary(db, make_run, skip)}
+                      "weeklySummaries": workflows.sweep_summary(db, make_run, skip), "caregiverAccess": workflows.sweep_caregiver_access(db, make_run, skip)}
             db.commit()
             return counts
         except Exception:  # noqa: BLE001: a failed sweep must not stop the scheduler
