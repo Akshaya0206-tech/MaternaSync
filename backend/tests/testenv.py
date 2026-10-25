@@ -18,6 +18,7 @@ os.environ["MATERNASYNC_AI_COORDINATOR_MODE"] = "assist"
 # The frontend on another host (Vercel) is allowed by address, and its preview addresses by pattern.
 os.environ["MATERNASYNC_CORS_ORIGINS"] = "https://maternasync-test.vercel.app/, *"
 os.environ["MATERNASYNC_CORS_ORIGIN_REGEX"] = r"^https://maternasync-[a-z0-9-]+-preview\.vercel\.app$"
+os.environ["MATERNASYNC_SEMANTIC_SEARCH"] = "off"  # the meaning search needs a downloaded model; its own tests switch it on with a stand-in
 os.environ["MATERNASYNC_AI_PROVIDER"] = "rules"
 os.environ["MATERNASYNC_AI_WORKER"] = "off"  # tests run the assistant's queue themselves, when they want it to run
 os.environ["MATERNASYNC_AI_DAILY_CAP"] = "100000"  # the cap has its own test; it must not trip over the other tests' steps

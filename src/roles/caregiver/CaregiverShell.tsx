@@ -1,5 +1,5 @@
 import { Link, Outlet } from 'react-router-dom';
-import { Bell, Calendar, ClipboardList, HeartPulse, Home, MessageCircle, PhoneCall } from 'lucide-react';
+import { AlarmClock, Bell, Calendar, ClipboardList, HeartPulse, Home, MessageCircle, PhoneCall } from 'lucide-react';
 import { RoleSidebar } from '../../components/shared/RoleSidebar';
 import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher';
 import { useAuth } from '../../auth/AuthContext';
@@ -18,6 +18,7 @@ function CaregiverLayout() {
     ...(can('appointments') ? [{ label: t('Appointments'), to: '/caregiver/appointments', icon: <Calendar size={18} /> }] : []),
     ...(can('check_in') ? [{ label: t('Daily Check-in'), to: '/caregiver/check-in', icon: <HeartPulse size={18} /> }] : []),
     ...(can('care_plan') ? [{ label: t('Care plan'), to: '/caregiver/care-plan', icon: <ClipboardList size={18} /> }] : []),
+    ...(can('reminders') ? [{ label: t('Reminders'), to: '/caregiver/reminders', icon: <AlarmClock size={18} /> }] : []),
     ...(can('questions') ? [{ label: t('Questions'), to: '/caregiver/questions', icon: <MessageCircle size={18} /> }] : []),
     { label: t('Updates'), to: '/caregiver/updates', icon: <Bell size={18} /> },
   ];

@@ -5,7 +5,7 @@ It never generates medical content. Every answer is one of:
   * a hand-off of a medical question to the clinician-reviewed question workflow,
   * a navigation pointer inside the app,
   * extracts of education modules that a doctor has approved, shown with their source,
-  * an honest "nothing reviewed on this topic" with an offer to ask the care team.
+  * an honest "nothing reviewed on this topic" with an offer to ask the doctor.
 Matching is keyword/TF-IDF based and runs entirely on this server.
 """
 import math
@@ -16,10 +16,10 @@ LANGUAGES = ("en", "hi", "ta", "te")
 
 MSG = {
     "greeting": {
-        "en": "Hello! I can help you find things in the app and show information that your clinic has reviewed. I cannot answer medical questions. I will pass those to your care team.",
-        "hi": "नमस्ते! मैं ऐप में चीज़ें खोजने और आपके क्लिनिक द्वारा जाँची गई जानकारी दिखाने में मदद कर सकता हूँ। मैं चिकित्सा संबंधी प्रश्नों का उत्तर नहीं दे सकता। उन्हें मैं आपकी देखभाल टीम तक पहुँचाऊँगा।",
-        "ta": "வணக்கம்! செயலியில் தேவையானதைக் கண்டுபிடிக்கவும், உங்கள் மருத்துவமனை மதிப்பாய்வு செய்த தகவல்களைக் காட்டவும் நான் உதவ முடியும். மருத்துவக் கேள்விகளுக்கு என்னால் பதில் சொல்ல முடியாது; அவற்றை உங்கள் பராமரிப்புக் குழுவுக்கு அனுப்புவேன்.",
-        "te": "నమస్కారం! యాప్‌లో కావలసినవి కనుగొనడానికి, మీ క్లినిక్ సమీక్షించిన సమాచారం చూపించడానికి నేను సహాయం చేయగలను. వైద్య ప్రశ్నలకు నేను సమాధానం ఇవ్వలేను; వాటిని మీ సంరక్షణ బృందానికి పంపిస్తాను.",
+        "en": "Hello! I can help you find things in the app and show information that your clinic has reviewed. I cannot answer medical questions. I will pass those to your doctor.",
+        "hi": "नमस्ते! मैं ऐप में चीज़ें खोजने और आपके क्लिनिक द्वारा जाँची गई जानकारी दिखाने में मदद कर सकता हूँ। मैं चिकित्सा संबंधी प्रश्नों का उत्तर नहीं दे सकता। उन्हें मैं आपके डॉक्टर तक पहुँचाऊँगा।",
+        "ta": "வணக்கம்! செயலியில் தேவையானதைக் கண்டுபிடிக்கவும், உங்கள் மருத்துவமனை மதிப்பாய்வு செய்த தகவல்களைக் காட்டவும் நான் உதவ முடியும். மருத்துவக் கேள்விகளுக்கு என்னால் பதில் சொல்ல முடியாது; அவற்றை உங்கள் மருத்துவருக்கு அனுப்புவேன்.",
+        "te": "నమస్కారం! యాప్‌లో కావలసినవి కనుగొనడానికి, మీ క్లినిక్ సమీక్షించిన సమాచారం చూపించడానికి నేను సహాయం చేయగలను. వైద్య ప్రశ్నలకు నేను సమాధానం ఇవ్వలేను; వాటిని మీ డాక్టర్‌కు పంపిస్తాను.",
     },
     "urgent": {
         "en": "What you describe may need urgent attention. Please contact your maternity unit or care team right now, or call your local emergency number (112 in India). Do not wait for an online reply.",
@@ -28,10 +28,10 @@ MSG = {
         "te": "మీరు వివరించిన దానికి తక్షణ శ్రద్ధ అవసరం కావచ్చు. దయచేసి ఇప్పుడే మీ ప్రసూతి విభాగాన్ని లేదా సంరక్షణ బృందాన్ని సంప్రదించండి, లేదా మీ స్థానిక అత్యవసర నంబర్‌కు (భారతదేశంలో 112) కాల్ చేయండి. ఆన్‌లైన్ సమాధానం కోసం వేచి ఉండకండి.",
     },
     "clinical": {
-        "en": "This sounds like a medical question, so I cannot answer it. I can send it to your care team. A doctor will review it and the reply will appear in My Questions.",
-        "hi": "यह चिकित्सा संबंधी प्रश्न लगता है, इसलिए मैं इसका उत्तर नहीं दे सकता। मैं इसे आपकी देखभाल टीम को भेज सकता हूँ। डॉक्टर इसकी समीक्षा करेंगे और उत्तर 'मेरे प्रश्न' में दिखेगा।",
-        "ta": "இது மருத்துவக் கேள்வி போலத் தெரிகிறது; அதனால் என்னால் பதில் சொல்ல முடியாது. இதை உங்கள் பராமரிப்புக் குழுவுக்கு அனுப்ப முடியும். மருத்துவர் மதிப்பாய்வு செய்தபின் பதில் 'எனது கேள்விகள்' பகுதியில் தோன்றும்.",
-        "te": "ఇది వైద్య ప్రశ్నలా అనిపిస్తోంది, కాబట్టి నేను సమాధానం ఇవ్వలేను. దీన్ని మీ సంరక్షణ బృందానికి పంపగలను. డాక్టర్ సమీక్షించాక సమాధానం 'నా ప్రశ్నలు'లో కనిపిస్తుంది.",
+        "en": "This sounds like a medical question, so I cannot answer it. I can send it to your doctor, and the reply will appear in My Questions once they have reviewed it.",
+        "hi": "यह चिकित्सा संबंधी प्रश्न लगता है, इसलिए मैं इसका उत्तर नहीं दे सकता। मैं इसे आपके डॉक्टर को भेज सकता हूँ, और उनकी समीक्षा के बाद उत्तर 'मेरे प्रश्न' में दिखेगा।",
+        "ta": "இது மருத்துவக் கேள்வி போலத் தெரிகிறது; அதனால் என்னால் பதில் சொல்ல முடியாது. இதை உங்கள் மருத்துவருக்கு அனுப்ப முடியும்; அவர் மதிப்பாய்வு செய்தபின் பதில் 'எனது கேள்விகள்' பகுதியில் தோன்றும்.",
+        "te": "ఇది వైద్య ప్రశ్నలా అనిపిస్తోంది, కాబట్టి నేను సమాధానం ఇవ్వలేను. దీన్ని మీ డాక్టర్‌కు పంపగలను; వారు సమీక్షించాక సమాధానం 'నా ప్రశ్నలు'లో కనిపిస్తుంది.",
     },
     "navigate": {
         "en": "You can find that here:",
@@ -52,10 +52,10 @@ MSG = {
         "te": "మీ భాషలో ఇంకా సమీక్షించిన సమాచారం లేదు, కాబట్టి ఇది ఆంగ్లంలో చూపబడింది.",
     },
     "none": {
-        "en": "I could not find reviewed information about that. I can send your question to your care team instead.",
-        "hi": "मुझे इस बारे में कोई जाँची हुई जानकारी नहीं मिली। इसके बजाय मैं आपका प्रश्न आपकी देखभाल टीम को भेज सकता हूँ।",
-        "ta": "இதைப் பற்றி மதிப்பாய்வு செய்யப்பட்ட தகவல் எனக்குக் கிடைக்கவில்லை. அதற்குப் பதிலாக உங்கள் கேள்வியை உங்கள் பராமரிப்புக் குழுவுக்கு அனுப்ப முடியும்.",
-        "te": "దీని గురించి సమీక్షించిన సమాచారం నాకు దొరకలేదు. బదులుగా మీ ప్రశ్నను మీ సంరక్షణ బృందానికి పంపగలను.",
+        "en": "I could not find reviewed information about that. I can send your question to your doctor instead.",
+        "hi": "मुझे इस बारे में कोई जाँची हुई जानकारी नहीं मिली। इसके बजाय मैं आपका प्रश्न आपके डॉक्टर को भेज सकता हूँ।",
+        "ta": "இதைப் பற்றி மதிப்பாய்வு செய்யப்பட்ட தகவல் எனக்குக் கிடைக்கவில்லை. அதற்குப் பதிலாக உங்கள் கேள்வியை உங்கள் மருத்துவருக்கு அனுப்ப முடியும்.",
+        "te": "దీని గురించి సమీక్షించిన సమాచారం నాకు దొరకలేదు. బదులుగా మీ ప్రశ్నను మీ డాక్టర్‌కు పంపగలను.",
     },
 }
 

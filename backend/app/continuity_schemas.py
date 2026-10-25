@@ -91,6 +91,26 @@ class ReminderResponse(Input):
     status: Literal["done", "skipped", "needs_help"]
 
 
+class HelperIn(Input):
+    link_id: str = Field(min_length=1)
+
+
+class VisitPrepIn(Input):
+    """A checklist a doctor writes for one upcoming visit: a few plain lines, nothing the app adds."""
+    appointment_id: str = Field(min_length=1)
+    items: list[str] = Field(min_length=1, max_length=12)
+
+    @field_validator("items")
+    @classmethod
+    def lines(cls, value):
+        cleaned = [" ".join(line.split()) for line in value]
+        if any(not line for line in cleaned):
+            raise ValueError("Each line of the checklist needs some text.")
+        if any(len(line) > 300 for line in cleaned):
+            raise ValueError("A checklist line can be up to 300 characters.")
+        return cleaned
+
+
 class ResourceIn(Input):
     kind: Literal["guideline", "template", "education", "pathway", "rule", "coding"]
     title: str = Field(min_length=3, max_length=250)

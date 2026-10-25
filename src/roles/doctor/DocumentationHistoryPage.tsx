@@ -9,7 +9,8 @@ import { friendlyDraftStatus, DRAFT_STATUS_TONE, formatFriendlyDateTime } from '
 // The server names the kind of record "Consultation" (backend/app/routers/doctor_portal.py).
 const RECORD_TYPE_LABELS: Record<string, string> = { Consultation: tx('Consultation') };
 
-export function DocumentationHistoryPage() {
+// The "Documentation history" tab of the Consultations page (ConsultationsPage.tsx).
+export function DocumentationHistoryView() {
   const { t } = useLanguage();
   const [items, setItems] = useState<DocumentationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,8 +47,7 @@ export function DocumentationHistoryPage() {
   };
 
   return (
-    <main style={{ padding: '24px', flex: 1, maxWidth: '900px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 18px 0' }}>{t('Documentation')}</h1>
+    <div>
 
       {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading…')}</div>}
       {error && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>}
@@ -92,7 +92,7 @@ export function DocumentationHistoryPage() {
           })}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

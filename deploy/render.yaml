@@ -1,5 +1,6 @@
 # Render blueprint for the MaternaSync API (the frontend goes on Vercel; see DEPLOYMENT.md).
-# Render: New -> Blueprint -> pick this repository. A persistent disk needs a paid plan.
+# Render: New -> Blueprint -> pick this repository and set the Blueprint file path to deploy/render.yaml. A persistent disk needs a paid plan.
+# It lives in deploy/ and not at the repository root on purpose: a render.yaml at the root makes Vercel treat it as a backend "service" and refuse vercel.json's build settings.
 services:
   - type: web
     name: maternasync-api

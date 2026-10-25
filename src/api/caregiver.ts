@@ -1,8 +1,9 @@
 import { api } from './client';
+import { ROOT } from './continuity';
 import type { Workspace } from './continuity';
 
-/** What a woman can allow a trusted person to do. Only `appointments` is on unless she chooses more. */
-export type Permission = 'appointments' | 'check_in' | 'care_plan' | 'questions' | 'emergency';
+/** What a woman can allow a trusted person to do. Only `appointments` is on unless she chooses more. `reminders` shows WHEN her reminders are due; the names of a medicine or vaccine need `care_plan` too. */
+export type Permission = 'appointments' | 'check_in' | 'care_plan' | 'reminders' | 'questions' | 'emergency';
 export type Permissions = Record<Permission, boolean>;
 
 // ---------------------------------------------------------------- the woman's side
@@ -23,10 +24,13 @@ export interface TrustedPerson {
   ended: boolean;
   /** Whether they get short WhatsApp reminders on their own number. */
   whatsapp: 'off' | 'waiting' | 'on';
+  /** Set when a doctor asked this person to help with her daily check-ins, and what they answered. */
+  checkInHelper: HelperStatus | null;
   /** Only present in the answer to creating an invite or asking for a new code: it is shown once and never kept. */
   code?: string;
 }
 
+export type HelperStatus = 'ASKED' | 'ACCEPTED' | 'DECLINED';
 export interface TrustedPeople { permissions: Permission[]; items: TrustedPerson[] }
 export interface TrustedActivity { at: string; title: string; details: string }
 
@@ -56,6 +60,26 @@ export interface Woman {
 export interface HomeSummary extends Woman {
   upcoming?: { id: string; scheduledAt: string; type: string; location: string | null }[];
   lastCheckIn?: string | null;
+  /** A doctor asked this person to help with her check-ins. */
+  checkInHelper?: { status: HelperStatus; askedBy: string; askedAt: string | null };
+}
+
+/** One line of the "getting ready for this visit" checklist a doctor wrote. */
+export interface PrepItem { id: string; appointmentId: string; text: string; done: boolean; doneAt: string | null; doneByName: string | null; doneByRole: 'patient' | 'caregiver' | null }
+/** The checklist for each upcoming visit, by visit id. */
+export type PrepByVisit = Record<string, PrepItem[]>;
+/** One of her reminders as a trusted person sees it. How she answered is never included: only whether she has. */
+export interface CaregiverReminder {
+  id: string; kind: 'appointment' | 'follow_up' | 'medicine' | 'vaccine'; scheduledAt: string; answered: boolean;
+  /** Empty for a medicine or vaccine unless she also allows the summaries and instructions. */
+  title: string | null; instructions: string | null; detailsHidden: boolean;
+}
+export interface CaregiverReminders { items: CaregiverReminder[]; detailsAllowed: boolean }
+
+// ---------------------------------------------------------------- the doctor's side (what a doctor sees of her trusted people)
+export interface DoctorTrustedPerson {
+  linkId: string; name: string; relationship: string; accountName: string | null; permissions: Permissions; accessUntil: string | null; ended: boolean;
+  checkInHelper: HelperStatus | null; canAskToHelp: boolean;
 }
 export type VisitAnswer = 'WILL_TAKE' | 'CANNOT';
 export interface CaregiverAppointment {
@@ -108,3 +132,19 @@ export const caregiverWhatsApp = (link: string) => api.get<CaregiverWhatsAppStat
 export const startCaregiverWhatsApp = (link: string, number: string) => api.post<CaregiverWhatsAppStatus>(`${BASE}/${link}/whatsapp/start`, { number });
 export const confirmCaregiverWhatsApp = (link: string, code: string) => api.post<CaregiverWhatsAppStatus>(`${BASE}/${link}/whatsapp/confirm`, { code });
 export const turnOffCaregiverWhatsApp = (link: string) => api.delete<CaregiverWhatsAppStatus>(`${BASE}/${link}/whatsapp`);
+
+// ---------------------------------------------------------------- the checklist, the check-in helper and the reminders, for her and for her trusted person
+export const visitPrepForMe = () => api.get<PrepByVisit>(`${MINE}/visit-prep`);
+export const tickMyVisitPrep = (itemId: string, done: boolean) => api.put<PrepItem>(`${MINE}/visit-prep/${itemId}`, { done });
+export const caregiverVisitPrep = (link: string) => api.get<PrepByVisit>(`${BASE}/${link}/visit-prep`);
+export const tickCaregiverVisitPrep = (link: string, itemId: string, done: boolean) => api.put<PrepItem>(`${BASE}/${link}/visit-prep/${itemId}`, { done });
+export const answerCheckInHelper = (link: string, status: 'ACCEPTED' | 'DECLINED') => api.put<{ status: HelperStatus }>(`${BASE}/${link}/checkin-helper`, { status });
+export const caregiverReminders = (link: string) => api.get<CaregiverReminders>(`${BASE}/${link}/reminders`);
+
+// ---------------------------------------------------------------- a doctor
+export const doctorTrustedPeople = (episodeId: string) => api.get<{ permissions: Permission[]; items: DoctorTrustedPerson[] }>(`${ROOT}/episodes/${episodeId}/trusted-people`);
+export const askCheckInHelper = (episodeId: string, linkId: string) => api.put<{ linkId: string; status: HelperStatus }>(`${ROOT}/episodes/${episodeId}/checkin-helper`, { linkId });
+export const clearCheckInHelper = (episodeId: string) => api.delete<{ status: null }>(`${ROOT}/episodes/${episodeId}/checkin-helper`);
+export const doctorVisitPrep = (episodeId: string) => api.get<PrepByVisit>(`${ROOT}/episodes/${episodeId}/visit-prep`);
+export const releaseVisitPrep = (episodeId: string, appointmentId: string, items: string[]) => api.post<PrepByVisit>(`${ROOT}/episodes/${episodeId}/visit-prep`, { appointmentId, items });
+export const removeVisitPrepLine = (itemId: string) => api.delete<PrepByVisit>(`${ROOT}/visit-prep/${itemId}`);

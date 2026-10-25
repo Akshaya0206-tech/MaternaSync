@@ -7,3 +7,4 @@ uploads
 tests
 .pytest_cache
 .test-output
+search_model

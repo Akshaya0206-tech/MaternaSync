@@ -16,7 +16,7 @@ from pathlib import Path
 
 from sqlalchemy import func
 
-from . import models, reference_search
+from . import models, reference_search, semantic_search
 from .config import UPLOAD_DIR
 from .continuity_service import now
 
@@ -138,6 +138,54 @@ def sync_items(db):
     db.flush()
 
 
+# A passage is read as a unit, so it should be about a short paragraph. The PDF reader hands over one piece per layout block, and many
+# blocks are a list item, a table cell or a caption of a few words ("for the woman and baby."), which makes a poor search result.
+TARGET_CHARS = 700
+MAX_CHARS = 1400
+HEADING_BREAK_CHARS = 300  # a new heading starts a new passage once the one before has this much text
+SMALL_PASSAGE_CHARS = 350  # a PDF whose passages average less than this was split the old way and is split again
+
+
+_DANGLING = ("and", "or", "of", "the", "to", "in", "a", "an", "for", "with", "that", "by", "on", "at", "as", "is", "are")
+
+
+def _plain(text: str) -> str:
+    return text.replace("\u00ad", "").strip()  # soft hyphens are invisible in the PDF and break "pre-eclampsia" into two words for the search
+
+
+def looks_like_heading(label: str) -> bool:
+    """The PDF reader calls any short block that does not end in a full stop a heading, and many are the first words of a sentence that wrapped
+    ("gers are held in the vagina below the cervix to prevent inadvertent"). A real heading is short, starts with a capital or a number and
+    does not stop mid-phrase."""
+    words = label.split()
+    return bool(words) and len(label) <= 70 and (label[0].isupper() or label[0].isdigit()) and words[-1].lower().rstrip(",;") not in _DANGLING and not label.endswith("-")
+
+
+def merge_pieces(pieces: list[dict]) -> list[dict]:
+    """Join consecutive pieces of one page into passages of about TARGET_CHARS, in reading order, never past MAX_CHARS. The words are the
+    document's own, unchanged; only the cut points move. A piece's "section label" is text that came before it on the page, so it goes back
+    in front of it; it stays as the passage's section name only when it really is a heading. A passage never spans two pages, so its page
+    number stays exact."""
+    merged: list[dict] = []
+    current: dict | None = None
+    for piece in pieces:
+        label, body = _plain(piece.get("section_label") or ""), _plain(piece["text"])
+        text = f"{label} {body}".strip() if label else body
+        if not text:
+            continue
+        heading = label if label and looks_like_heading(label) else None
+        starts_section = heading is not None and current is not None and len(current["text"]) >= HEADING_BREAK_CHARS
+        if current and not starts_section and len(current["text"]) < TARGET_CHARS and len(current["text"]) + 1 + len(text) <= MAX_CHARS:
+            current["text"] += " " + text
+        else:
+            if current:
+                merged.append(current)
+            current = {"text": text, "section_label": heading}
+    if current:
+        merged.append(current)
+    return merged
+
+
 def ingest_pdf(db, item, path: Path) -> int:
     """Split a PDF into passages (with page numbers) and store each passage's word counts. Returns the passage count."""
     from . import extraction
@@ -147,7 +195,7 @@ def ingest_pdf(db, item, path: Path) -> int:
     pages = extraction.extract_pages(path)
     index = 0
     for number, blocks in enumerate(pages, start=1):
-        for piece in _chunk_blocks(blocks):
+        for piece in merge_pieces(_chunk_blocks(blocks)):
             sequence, counts = reference_search.analyse(piece["text"])
             db.add(models.ReferenceChunk(item_id=item.id, chunk_index=index, page_number=number, section_label=piece["section_label"],
                                          text=piece["text"], term_freq=dict(counts), token_count=len(sequence)))
@@ -178,6 +226,27 @@ def index_downloaded_documents(db):
         print(f"Indexed {indexed} reference PDF(s) for passage search.")
 
 
+def refresh_small_passages(db):
+    """An earlier version kept one passage per layout block, many only a few words long, and moved the first words of a wrapped sentence into
+    the "section" label, and left soft hyphens in the words. A PDF stored that way (passages averaging under SMALL_PASSAGE_CHARS, a "section" that
+    starts with a lower-case letter, which a real heading never does, or a soft hyphen in a passage) is split again into passages of a short paragraph, from the same pages."""
+    stale = {item_id for item_id, label in db.query(models.ReferenceChunk.item_id, models.ReferenceChunk.section_label).filter(models.ReferenceChunk.section_label.isnot(None)).all()
+             if label[:1].islower()}
+    stale |= {item_id for (item_id,) in db.query(models.ReferenceChunk.item_id).filter(models.ReferenceChunk.text.contains("\u00ad")).distinct().all()}  # soft hyphens
+    rows = db.query(models.ReferenceChunk.item_id, func.avg(func.length(models.ReferenceChunk.text))).group_by(models.ReferenceChunk.item_id).all()
+    refreshed = 0
+    for item_id, average in rows:
+        if not (item_id in stale or (average is not None and average < SMALL_PASSAGE_CHARS)):
+            continue
+        item = db.get(models.ReferenceItem, item_id)
+        path = Path(item.file_path) if item and item.file_path else None
+        if path and path.is_file() and path.read_bytes()[:5] == b"%PDF-":
+            ingest_pdf(db, item, path)
+            refreshed += 1
+    if refreshed:
+        print(f"Split {refreshed} reference PDF(s) again into passages of a short paragraph.")
+
+
 def sync_reference_library(db):
     """Idempotent. Safe to run on every start."""
     remove_synthetic_sources(db)
@@ -186,6 +255,7 @@ def sync_reference_library(db):
     remove_review_queue_copies(db)
     sync_items(db)
     index_downloaded_documents(db)
+    refresh_small_passages(db)
     db.commit()
     invalidate()
 
@@ -203,7 +273,8 @@ def corpus(db):
     """Every PDF passage, kept in memory between searches (a few thousand short passages)."""
     signature = (db.query(func.count(models.ReferenceChunk.id)).scalar(), db.query(func.max(models.ReferenceItem.updated_at)).scalar())
     if _corpus["signature"] != signature:
-        chunks = [{"id": c.id, "item_id": c.item_id, "page": c.page_number, "section": c.section_label, "text": c.text, "tf": c.term_freq, "len": c.token_count}
+        chunks = [{"id": c.id, "item_id": c.item_id, "page": c.page_number, "section": c.section_label, "text": c.text, "tf": c.term_freq, "len": c.token_count, "key": semantic_search.text_key(c.text),
+                   "boiler": reference_search.looks_like_boilerplate(c.text)}
                   for c in db.query(models.ReferenceChunk).all()]
         frequencies: Counter = Counter()
         for chunk in chunks:

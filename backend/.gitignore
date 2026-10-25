@@ -7,3 +7,5 @@ uploads/*
 !uploads/.gitkeep
 # Publisher PDFs downloaded by fetch_reference_documents.py (not redistributed through git)
 reference_documents/
+# The search model and the index built from it (fetch_search_model.py, build_semantic_index.py)
+search_model/

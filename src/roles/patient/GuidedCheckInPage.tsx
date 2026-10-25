@@ -14,7 +14,7 @@ export function GuidedCheckInPage() {
       error={workspace.error}
       save={async (body) => { await api.post(`${ROOT}/episodes/${workspace.episodeId}/logs`, body); }}
       subtitle={t('One question at a time. A health worker or a family member can help. The answers are saved as the patient’s own check-in.')}
-      savedText={t('Your check-in was saved for your care team.')}
+      savedText={t('Your check-in was saved for your doctor.')}
       doneTo="/patient/daily-log"
       doneLabel={t('Back to the daily check-in')}
     />

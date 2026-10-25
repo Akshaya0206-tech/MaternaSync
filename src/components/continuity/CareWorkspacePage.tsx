@@ -14,6 +14,15 @@ import type {
   Task,
   Workspace,
 } from "../../api/continuity";
+import {
+  askCheckInHelper,
+  clearCheckInHelper,
+  doctorTrustedPeople,
+  doctorVisitPrep,
+  releaseVisitPrep,
+  removeVisitPrepLine,
+} from "../../api/caregiver";
+import type { DoctorTrustedPerson, Permission, PrepByVisit } from "../../api/caregiver";
 import { tx, useLanguage } from "../../i18n";
 import {
   Badge,
@@ -65,6 +74,15 @@ const TASK_STATUS: Record<string, string> = {
   WAITING: tx("WAITING"),
   COMPLETED: tx("COMPLETED"),
   CANCELLED: tx("CANCELLED"),
+};
+// What a woman can allow a trusted person to do, as a doctor reads it.
+const PERMISSION_WORDS: Record<Permission, string> = {
+  appointments: tx("Appointments"),
+  check_in: tx("Daily check-ins"),
+  care_plan: tx("Summaries and instructions"),
+  reminders: tx("Reminders"),
+  questions: tx("Questions"),
+  emergency: tx("Emergency details"),
 };
 type Translate = ReturnType<typeof useLanguage>["t"];
 const word = (t: Translate, value: string) =>
@@ -154,6 +172,7 @@ export function CareWorkspacePage({
             <Operations
               data={w.data}
               episode={w.selectedEpisode}
+              doctor={doctor}
               reload={w.reload}
             />
           )}
@@ -433,6 +452,7 @@ function Reminders({
   const consent = data.consents.find((c) => c.id === consentId);
   return (
     <>
+      {doctor && <TrustedPeoplePanel episodeId={data.episodeId} />}
       <Feedback error={action.error} message={action.message} />
       <Panel title={t("Approve a reminder schedule")}>
         <form
@@ -782,13 +802,200 @@ function Reminders({
   );
 }
 
+/** Who helps her and what she lets each of them do. A doctor can look but not change it (it is hers), and can ask one person who is already
+ *  allowed to do check-ins to help with them. That person can say no, she is told, and their missed-check-in reminder then comes first. */
+function TrustedPeoplePanel({ episodeId }: { episodeId: string }) {
+  const { t } = useLanguage();
+  const action = useAction();
+  const [people, setPeople] = useState<DoctorTrustedPerson[] | null>(null);
+  const load = async () => setPeople((await doctorTrustedPeople(episodeId)).items);
+  useEffect(() => {
+    setPeople(null);
+    void load().catch((e) => action.setError(e.message));
+  }, [episodeId]);
+  return (
+    <Panel title={t("Trusted people")}>
+      <p className="continuity-muted">
+        {t("The people she has added to help her, and what she lets each of them do. You can see this but not change it: it is hers.")}
+      </p>
+      <p className="continuity-muted">
+        {t("When you ask someone to help with check-ins, she is told and they can say yes or no. If she misses a check-in, they are reminded first. One person at a time: asking someone else ends the earlier request.")}
+      </p>
+      <Feedback error={action.error} message={action.message} />
+      {people === null && !action.error && <p role="status" className="continuity-muted">{t("Loading…")}</p>}
+      {people?.length === 0 && <Empty>{t("She has not added anyone yet.")}</Empty>}
+      <ul className="trusted-doctor-view">
+        {people?.map((p) => {
+          const allowed = (Object.keys(PERMISSION_WORDS) as Permission[]).filter((key) => p.permissions[key]);
+          return (
+            <li key={p.linkId}>
+              <h3>
+                {p.name}
+                {p.relationship ? ` · ${p.relationship}` : ""} {p.ended && <Badge>{t("Access ended")}</Badge>}
+              </h3>
+              <div className="trusted-chips" role="group" aria-label={t("What she allows")}>
+                {allowed.length ? allowed.map((key) => <Badge key={key}>{t(PERMISSION_WORDS[key])}</Badge>) : <span className="continuity-muted">{t("Nothing allowed yet")}</span>}
+              </div>
+              <p className="continuity-muted">
+                {p.accessUntil
+                  ? t("Access until the end of {date}.", { date: new Date(p.accessUntil).toLocaleDateString() })
+                  : t("No end date set.")}
+              </p>
+              {p.checkInHelper && (
+                <p>
+                  <Badge>
+                    {p.checkInHelper === "ASKED"
+                      ? t("Asked: waiting for an answer")
+                      : p.checkInHelper === "ACCEPTED"
+                        ? t("Agreed to help with check-ins")
+                        : t("Said no to helping with check-ins")}
+                  </Badge>
+                </p>
+              )}
+              <div className="continuity-actions">
+                {(p.checkInHelper === null || p.checkInHelper === "DECLINED") && (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={action.busy || !p.canAskToHelp}
+                    onClick={() =>
+                      action.run(async () => {
+                        await askCheckInHelper(episodeId, p.linkId);
+                        await load();
+                      }, t("Asked. She and the person have been told."))
+                    }
+                  >
+                    {t("Ask to help with check-ins")}
+                  </button>
+                )}
+                {p.checkInHelper && (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={action.busy}
+                    onClick={() =>
+                      action.run(async () => {
+                        await clearCheckInHelper(episodeId);
+                        await load();
+                      }, t("Request withdrawn."))
+                    }
+                  >
+                    {t("Withdraw the request")}
+                  </button>
+                )}
+              </div>
+              {!p.canAskToHelp && p.checkInHelper === null && (
+                <p className="continuity-muted">{t("She has not allowed check-ins for this person, or their access has ended. Only she can change that.")}</p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
+  );
+}
+
+/** A checklist for one upcoming visit. The doctor writes every line; she and the trusted people who may see her visits can tick them, and the doctor sees what is ticked. */
+function VisitChecklistPanel({ data }: { data: Workspace }) {
+  const { t } = useLanguage();
+  const action = useAction();
+  const [prep, setPrep] = useState<PrepByVisit | null>(null);
+  const [visit, setVisit] = useState("");
+  const [lines, setLines] = useState("");
+  const upcoming = data.appointments.filter((a) => a.status === "scheduled" && new Date(a.scheduledAt).getTime() > Date.now());
+  useEffect(() => {
+    void doctorVisitPrep(data.episodeId).then(setPrep).catch((e) => action.setError(e.message));
+  }, [data.episodeId]);
+  const written = upcoming.filter((a) => prep?.[a.id]?.length);
+  return (
+    <Panel title={t("Visit preparation checklist")}>
+      <p className="continuity-muted">
+        {t("Write a short checklist for an upcoming visit. She and her trusted people, if she lets them see visits, can tick it. You write every line: MaternaSync adds nothing to it.")}
+      </p>
+      <Feedback error={action.error} message={action.message} />
+      {!upcoming.length ? (
+        <Empty>{t("There is no confirmed upcoming visit to write a checklist for.")}</Empty>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const items = lines.split("\n").map((line) => line.trim()).filter(Boolean);
+            void action.run(async () => {
+              setPrep(await releaseVisitPrep(data.episodeId, visit, items));
+              setLines("");
+            }, t("Checklist released. She and her trusted people have been told."));
+          }}
+        >
+          <div className="continuity-fields">
+            <Field label={t("Visit")}>
+              <select required value={visit} onChange={(e) => setVisit(e.target.value)}>
+                <option value="">{t("Choose a visit")}</option>
+                {upcoming.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {formatTime(a.scheduledAt)} · {a.appointmentType}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field label={t("Checklist lines (one per line)")}>
+            <textarea
+              rows={4}
+              maxLength={3600}
+              value={lines}
+              onChange={(e) => setLines(e.target.value)}
+              placeholder={t("One line per item, for example: Bring your antenatal card")}
+            />
+          </Field>
+          <button className="btn-primary" disabled={action.busy || !visit || !lines.trim()}>
+            {t("Release the checklist")}
+          </button>
+        </form>
+      )}
+      {prep && !written.length && upcoming.length > 0 && <Empty>{t("No checklist has been written for an upcoming visit yet.")}</Empty>}
+      {written.map((a) => {
+        const items = prep?.[a.id] ?? [];
+        return (
+          <article key={a.id} className="continuity-item">
+            <h3>
+              {formatTime(a.scheduledAt)} · {a.appointmentType}{" "}
+              <Badge>{t("{done} of {total} done", { done: items.filter((i) => i.done).length, total: items.length })}</Badge>
+            </h3>
+            {items.map((item) => (
+              <div key={item.id} className="prep-doctor-line">
+                <Badge>{item.done ? t("Done") : t("Not ticked yet")}</Badge>
+                <span>{item.text}</span>
+                {item.done && item.doneByName && <small className="continuity-muted">{t("Ticked by {name}", { name: item.doneByName })}</small>}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={action.busy}
+                  onClick={() =>
+                    action.run(async () => {
+                      setPrep(await removeVisitPrepLine(item.id));
+                    }, t("Line removed."))
+                  }
+                >
+                  {t("Remove line")}
+                </button>
+              </div>
+            ))}
+          </article>
+        );
+      })}
+    </Panel>
+  );
+}
+
 function Operations({
   data,
   episode,
+  doctor,
   reload,
 }: {
   data: Workspace;
   episode: EpisodeChoice;
+  doctor: boolean;
   reload: () => Promise<void>;
 }) {
   const { t } = useLanguage();
@@ -889,6 +1096,7 @@ function Operations({
           </article>
         ))}
       </Panel>
+      {doctor && <VisitChecklistPanel data={data} />}
       <Panel title={t("Record a documented outcome")}>
         <form
           onSubmit={(e) => {

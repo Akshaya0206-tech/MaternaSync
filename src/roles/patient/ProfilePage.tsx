@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, BadgeCheck, CalendarDays, Check, ClipboardList, Compass, Mail, Phone, ShieldAlert, User, UserRound } from 'lucide-react';
 import { fetchMyProfile, updateMyProfile } from '../../api/patientPortal';
 import type { PatientProfile } from '../../api/patientPortal';
 import { ApiError } from '../../api/client';
-import { Field, inputStyle } from '../../components/auth/AuthField';
 import { Link } from 'react-router-dom';
 import { tx, useLanguage } from '../../i18n';
 import { useTour } from '../../tour/tourContext';
 import { LocationCard } from './LocationCard';
 import { TrustedPeopleCard } from './TrustedPeopleCard';
-
-const readOnlyInputStyle = { ...inputStyle, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', cursor: 'not-allowed' };
+import { CardHeading, FieldTile, HeartbeatLine, SavedBadge } from './ProfileArt';
+import { cardProps, initialsOf } from './profileCard';
+import './profile.css';
 
 export function ProfilePage() {
   const { t } = useLanguage();
@@ -23,6 +23,8 @@ export function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [savedCount, setSavedCount] = useState(0); // a new count plays the "Saved" animation again
+  const hideSaved = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     fetchMyProfile()
@@ -34,6 +36,7 @@ export function ProfilePage() {
       })
       .catch(() => setError(tx("We couldn't load your profile. Please try again.")))
       .finally(() => setIsLoading(false));
+    return () => window.clearTimeout(hideSaved.current);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,7 +48,9 @@ export function ProfilePage() {
       const updated = await updateMyProfile({ fullName, phone, dateOfBirth });
       setProfile(updated);
       setSaved(true);
-      window.setTimeout(() => setSaved(false), 3000);
+      setSavedCount((n) => n + 1);
+      window.clearTimeout(hideSaved.current);
+      hideSaved.current = window.setTimeout(() => setSaved(false), 3500);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('Could not save your profile. Please try again.'));
     } finally {
@@ -54,69 +59,86 @@ export function ProfilePage() {
   };
 
   return (
-    <main style={{ padding: '24px', flex: 1, maxWidth: '520px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('Profile')}</h1>
+    <main className="pf-page">
+      <header className="pf-header" style={cardProps('teal', 0).style}>
+        <span className="pf-header-icon" aria-hidden="true"><UserRound size={30} /></span>
+        <div>
+          <h1 className="page-title">{t('Profile')}</h1>
+          <p>{t('Manage your personal and medical details')}</p>
+        </div>
+      </header>
 
-      {isLoading && (
-        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading your profile…')}</div>
-      )}
+      {isLoading && <div className="pf-card pf-tone-teal pf-loading" role="status">{t('Loading your profile…')}</div>}
+
+      {!isLoading && !profile && error && <div className="pf-card pf-tone-terra pf-loading" role="alert" style={{ color: 'var(--rose-urgent)' }}>{t(error)}</div>}
 
       {!isLoading && profile && (
-        <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <Field label={t('Full Name')}>
-            <input value={fullName} onChange={(e) => setFullName(e.target.value)} style={inputStyle} />
-          </Field>
-          <Field label={t('Email')}>
-            <input value={profile.email} disabled style={readOnlyInputStyle} />
-          </Field>
-          <Field label={t('Date of Birth')}>
-            <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} style={inputStyle} />
-          </Field>
-          <Field label={t('Medical Record Number')}>
-            <input value={profile.mrn ?? t('Not yet assigned')} disabled style={readOnlyInputStyle} />
-          </Field>
-          <Field label={t('Phone')}>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('Not provided')} style={inputStyle} />
-          </Field>
+        <form onSubmit={handleSubmit} aria-labelledby="profile-name" {...cardProps('teal', 1)}>
+          <div className="pf-hero">
+            <div className="pf-avatar" aria-hidden="true">{initialsOf(profile.fullName)}</div>
+            <div className="pf-hero-text">
+              <h2 id="profile-name" className="pf-hero-name">{profile.fullName}</h2>
+              <span className="pf-role"><BadgeCheck size={16} aria-hidden="true" /> {t('Patient')}</span>
+            </div>
+            <HeartbeatLine />
+          </div>
 
-          {error && <div style={{ fontSize: '0.82rem', color: 'var(--rose-urgent)' }}>{t(error)}</div>}
+          <div className="pf-fields">
+            <FieldTile icon={<User size={20} />} label={t('Full Name')} index={0}>
+              <input className="pf-input" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
+            </FieldTile>
+            <FieldTile icon={<Mail size={20} />} label={t('Email')} index={1}>
+              <input className="pf-input" value={profile.email} readOnly aria-readonly="true" />
+            </FieldTile>
+            <FieldTile icon={<CalendarDays size={20} />} label={t('Date of Birth')} index={2}>
+              <input className="pf-input" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} autoComplete="bday" />
+            </FieldTile>
+            <FieldTile icon={<ClipboardList size={20} />} label={t('Medical Record Number')} index={3}>
+              <input className="pf-input" value={profile.mrn ?? t('Not yet assigned')} readOnly aria-readonly="true" />
+            </FieldTile>
+            <FieldTile icon={<Phone size={20} />} label={t('Phone')} index={4}>
+              <input className="pf-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('Not provided')} inputMode="tel" autoComplete="tel" />
+            </FieldTile>
+          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button type="submit" disabled={isSaving} className="btn-primary">
-              {isSaving ? t('Saving…') : t('Save Changes')}
+          {error && <div className="pf-error" role="alert">{t(error)}</div>}
+
+          <div className="pf-actions">
+            <button type="submit" disabled={isSaving} className="btn-primary pf-save">
+              {isSaving ? t('Saving…') : <><Check size={17} aria-hidden="true" /> {t('Save Changes')}</>}
             </button>
-            {saved && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.82rem', color: 'var(--emerald-raw)', fontWeight: 600 }}>
-                <CheckCircle2 size={15} /> {t('Saved')}
-              </span>
-            )}
+            {saved && <SavedBadge key={savedCount}>{t('Saved')}</SavedBadge>}
           </div>
         </form>
       )}
 
-      {!isLoading && profile && <LocationCard />}
+      {!isLoading && profile && <LocationCard index={2} />}
 
-      {!isLoading && profile && <TrustedPeopleCard />}
+      {!isLoading && profile && <TrustedPeopleCard index={3} />}
 
       {!isLoading && profile && (
-        <div className="glass-panel" style={{ padding: '20px 24px', marginTop: '16px' }}>
-          <h2 style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>{t('Emergency details')}</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
-            {t('Your emergency contact and preferred hospital are kept on the Emergency help page. Only you can see them.')}
-          </p>
-          <Link className="btn-secondary" to="/patient/emergency">{t('Open Emergency help')}</Link>
-        </div>
+        <section aria-labelledby="profile-emergency-title" {...cardProps('terra', 4)}>
+          <CardHeading
+            id="profile-emergency-title"
+            icon={<ShieldAlert size={23} />}
+            title={t('Emergency details')}
+            subtitle={t('Your emergency contact and preferred hospital are kept on the Emergency help page. Only you can see them.')}
+          />
+          <Link className="btn-secondary pf-cta" to="/patient/emergency">{t('Open Emergency help')} <ArrowRight size={16} aria-hidden="true" /></Link>
+        </section>
       )}
 
       {/* Always offered, so a demonstration account (which never gets the new-account welcome) can show the tour. */}
       {!isLoading && profile && (
-        <div className="glass-panel" style={{ padding: '20px 24px', marginTop: '16px' }}>
-          <h2 style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>{t('Tour')}</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
-            {t('Take the short tour again to see what each part of the app is for.')}
-          </p>
-          <button type="button" className="btn-secondary" onClick={tour.start}>{t('Start a tour')}</button>
-        </div>
+        <section aria-labelledby="profile-tour-title" {...cardProps('navy', 5)}>
+          <CardHeading
+            id="profile-tour-title"
+            icon={<Compass size={23} />}
+            title={t('Tour')}
+            subtitle={t('Take the short tour again to see what each part of the app is for.')}
+          />
+          <button type="button" className="btn-secondary pf-cta" onClick={tour.start}>{t('Start a tour')} <ArrowRight size={16} aria-hidden="true" /></button>
+        </section>
       )}
     </main>
   );

@@ -191,14 +191,15 @@ class CaregiverTests(Base):
 
     def test_defaults_and_the_permission_gate(self):
         made = self.invite(permissions={"check_in": False})
-        self.assertEqual(made["permissions"], {"appointments": True, "check_in": False, "care_plan": False, "questions": False, "emergency": False})
+        self.assertEqual(made["permissions"], {"appointments": True, "check_in": False, "care_plan": False, "reminders": False, "questions": False, "emergency": False})
         self.register(made["code"], "gate.keeper@example.org")
         token = self.client.post("/api/auth/login", json={"email": "gate.keeper@example.org", "password": "Passw0rd!!"}).json()["accessToken"]
         self.headers["gate"] = {"Authorization": "Bearer " + token}
         base = f"{LOG}/{made['id']}"
         self.call("GET", f"{base}/appointments", "gate")  # on by default
-        for part in ("check-ins", "care-plan", "questions", "emergency"):
+        for part in ("check-ins", "care-plan", "reminders", "questions", "emergency"):
             self.call("GET", f"{base}/{part}", "gate", expected=403)
+        self.call("GET", f"{base}/visit-prep", "gate")  # the visit checklist follows the appointments tick, which is on by default
         self.call("POST", f"{base}/questions", "gate", {"questionText": "Hello?"}, expected=403)
         self.call("PATCH", f"{MINE}/{made['id']}", "patient", {"permissions": {"check_in": True, "care_plan": True}})
         self.call("GET", f"{base}/check-ins", "gate")
@@ -390,6 +391,10 @@ class AssistantTests(Base):
             self.assertEqual(db.query(models.QuestionResponse).filter_by(question_id=qid).count(), 0)  # nothing sent yet
         item = self.items_for(qid)[0]
         self.assertEqual((item.kind, item.proposed_tool), ("proposal", "answer_question"))
+        with SessionLocal() as db:  # every question goes to the doctor, even one the assistant can word a reply to
+            question = db.get(models.PatientQuestion, qid)
+            self.assertEqual((question.assigned_to_user_id, question.status, question.is_clinical), (self.doctor_id, "ASSIGNED", False))
+        self.assertIn(qid, {q["id"] for q in self.call("GET", "/api/v2/doctor/questions", "doctor")})  # it is on her Patient Questions page
         listed = next(i for i in self.call("GET", "/api/v2/assistant/exceptions", "doctor") if i["id"] == item.id)
         self.assertIn("Suggested reply", listed["summary"])
         self.call("POST", f"/api/v2/assistant/exceptions/{item.id}/decide", "other_doctor", {"decision": "approve"}, expected=403)  # not her doctor
@@ -811,7 +816,9 @@ class OverrideTests(Base):
         self.assertEqual((mine["status"], len(mine["responses"])), ("ANSWERED", 1))
         self.undo(self.action_for(qid, "answer_question"), note="I want to word it myself")
         mine = next(q for q in self.call("GET", "/api/v2/patient/questions", "patient") if q["id"] == qid)
-        self.assertEqual((mine["status"], len(mine["responses"])), ("NEW", 0))
+        # Withdrawn, it is back with her doctor (every question is assigned to one), so it is not left unseen
+        self.assertEqual((mine["status"], len(mine["responses"])), ("ASSIGNED", 0))
+        self.assertIn(qid, {q["id"] for q in self.call("GET", "/api/v2/doctor/questions", "doctor")})
         with SessionLocal() as db:
             self.assertEqual(db.query(models.QuestionResponse).filter_by(question_id=qid).count(), 0)
             audit = db.query(models.AuditLog).filter_by(action="assistant_undo_answer_question").order_by(models.AuditLog.timestamp.desc()).first()

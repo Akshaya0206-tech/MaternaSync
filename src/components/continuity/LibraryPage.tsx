@@ -168,7 +168,7 @@ export function LibraryPage() {
         )}{" "}
         {withLink(
           t("Looking something up? Use the {link}."),
-          <Link to="/doctor/library">{t("Reference Library")}</Link>,
+          <Link to="/doctor/references">{t("Reference Library")}</Link>,
         )}
       </div>
       <form

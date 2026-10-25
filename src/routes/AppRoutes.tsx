@@ -43,6 +43,7 @@ const CaregiverAppointmentsPage = lazyPage(() => import('../roles/caregiver/Care
 const CaregiverCheckInPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverCheckInPage')));
 const CaregiverNewCheckInPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverNewCheckInPage')));
 const CaregiverCarePlanPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverCarePlanPage')));
+const CaregiverRemindersPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverRemindersPage')));
 const CaregiverQuestionsPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverQuestionsPage')));
 const CaregiverEmergencyPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverEmergencyPage')));
 const CaregiverUpdatesPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverUpdatesPage')));
@@ -67,17 +68,14 @@ const DoctorShell = lazyPage(() => import('../roles/doctor/DoctorShell').then(na
 const DoctorDashboardPage = lazyPage(() => import('../roles/doctor/DashboardPage').then(named('DashboardPage')));
 const DoctorPatientsListPage = lazyPage(() => import('../roles/doctor/PatientsListPage').then(named('PatientsListPage')));
 const DoctorPatientWorkspacePage = lazyPage(() => import('../roles/doctor/PatientWorkspacePage').then(named('PatientWorkspacePage')));
-const TodaysBriefPage = lazyPage(() => import('../roles/doctor/TodaysBriefPage').then(named('TodaysBriefPage')));
 const ConsultationsPage = lazyPage(() => import('../roles/doctor/ConsultationsPage').then(named('ConsultationsPage')));
-const DocumentationHistoryPage = lazyPage(() => import('../roles/doctor/DocumentationHistoryPage').then(named('DocumentationHistoryPage')));
 const DoctorQuestionsPage = lazyPage(() => import('../roles/doctor/QuestionsPage').then(named('QuestionsPage')));
 const FollowUpsPage = lazyPage(() => import('../roles/doctor/FollowUpsPage').then(named('FollowUpsPage')));
-const GuidelinesPage = lazyPage(() => import('../roles/doctor/GuidelinesPage').then(named('GuidelinesPage')));
 const DoctorReferralDetailPage = lazyPage(() => import('../roles/doctor/ReferralDetailPage').then(named('ReferralDetailPage')));
 const DoctorHandoverPage = lazyPage(() => import('../roles/doctor/HandoverPage').then(named('HandoverPage')));
 const DoctorUpdatesPage = lazyPage(() => import('../roles/doctor/UpdatesPage').then(named('UpdatesPage')));
 const DoctorProfilePage = lazyPage(() => import('../roles/doctor/ProfilePage').then(named('ProfilePage')));
-const ReferenceLibraryPage = lazyPage(() => import('../roles/doctor/ReferenceLibraryPage').then(named('ReferenceLibraryPage')));
+const DoctorReferencesPage = lazyPage(() => import('../roles/doctor/ReferencesPage').then(named('ReferencesPage')));
 const AssistantPage = lazyPage(() => import('../roles/doctor/AssistantPage').then(named('AssistantPage')));
 
 // Used by both the doctor and the care team
@@ -126,6 +124,7 @@ export function AppRoutes() {
         <Route path="check-in" element={<CaregiverCheckInPage />} />
         <Route path="check-in/new" element={<CaregiverNewCheckInPage />} />
         <Route path="care-plan" element={<CaregiverCarePlanPage />} />
+        <Route path="reminders" element={<CaregiverRemindersPage />} />
         <Route path="questions" element={<CaregiverQuestionsPage />} />
         <Route path="emergency" element={<CaregiverEmergencyPage />} />
         <Route path="updates" element={<CaregiverUpdatesPage />} />
@@ -156,20 +155,21 @@ export function AppRoutes() {
         <Route path="dashboard" element={<DoctorDashboardPage />} />
         <Route path="patients" element={<DoctorPatientsListPage />} />
         <Route path="patients/:episodeId" element={<DoctorPatientWorkspacePage />} />
-        <Route path="todays-brief" element={<TodaysBriefPage />} />
+        <Route path="todays-brief" element={<Navigate to="/doctor/dashboard" replace />} />
         <Route path="consultations" element={<ConsultationsPage />} />
         <Route path="questions" element={<DoctorQuestionsPage />} />
         <Route path="assistant" element={<AssistantPage />} />
-        <Route path="documentation" element={<DocumentationHistoryPage />} />
+        <Route path="documentation" element={<Navigate to="/doctor/consultations?tab=history" replace />} />
         <Route path="follow-ups" element={<FollowUpsPage />} />
-        <Route path="guidelines" element={<GuidelinesPage />} />
+        <Route path="guidelines" element={<Navigate to="/doctor/references?tab=guidelines" replace />} />
         <Route path="referrals/:referralId" element={<DoctorReferralDetailPage />} />
         <Route path="handover" element={<DoctorHandoverPage />} />
         <Route path="updates" element={<DoctorUpdatesPage />} />
         <Route path="profile" element={<DoctorProfilePage />} />
         <Route path="care-workspace" element={<CareWorkspacePage />} />
         <Route path="draft-studio" element={<CareWorkspacePage initialTab="drafts" />} />
-        <Route path="library" element={<ReferenceLibraryPage />} />
+        <Route path="references" element={<DoctorReferencesPage />} />
+        <Route path="library" element={<Navigate to="/doctor/references" replace />} />
         <Route path="clinical-settings" element={<LibraryPage />} />
         <Route path="clinic" element={<ClinicPage />} />
       </Route>

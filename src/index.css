@@ -375,12 +375,13 @@ h1, h2, h3, h4, h5, h6 {
     left: 0;
     height: 100vh;
     transform: translateX(-100%);
-    transition: transform 0.2s ease;
-    box-shadow: var(--shadow-lg);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: none; /* closed, it sits off the screen: its shadow would show as a faint strip down the left edge */
   }
 
   .sidebar.sidebar-open {
     transform: translateX(0);
+    box-shadow: var(--shadow-lg);
   }
 
   .sidebar-mobile-toggle {

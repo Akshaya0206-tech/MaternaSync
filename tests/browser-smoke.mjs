@@ -42,7 +42,7 @@ try {
   await page.getByLabel("Systolic BP (mmHg)").fill("117");
   await page.getByLabel("Diastolic BP (mmHg)").fill("76");
   await page
-    .getByLabel("Symptoms or anything you want your team to know")
+    .getByLabel("symptoms or anything you want your doctor to know")
     .fill(`Browser check-in ${stamp}`);
   await page
     .getByRole("button", { name: "Save check-in", exact: true })
@@ -121,10 +121,10 @@ try {
   await page.getByLabel(/I reviewed the source/).check();
   await page.getByRole("button", { name: "Save, sign & release" }).click();
   await page.getByText(/Signed by Dr. Eleanor Vance/).waitFor();
-  await navigate("/doctor/guidelines", "Clinical Guidelines");
-  await page.getByRole("button", { name: "Manage Sources", exact: true }).waitFor();
-  await navigate("/doctor/library", "Clinical reference library");
-  await page.getByLabel("Search title, topic or passage").fill("ICMR");
+  await navigate("/doctor/references?tab=guidelines", "References");
+  await page.getByRole("button", { name: "Guideline sources", exact: true }).waitFor();
+  await navigate("/doctor/references", "References");
+  await page.getByLabel("Search the Reference Library").fill("ICMR");
   await page
     .getByRole("button", { name: "Read source & history" })
     .first()

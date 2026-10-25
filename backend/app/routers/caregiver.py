@@ -54,13 +54,15 @@ class LinkUpdateIn(Input):
 
 def link_out(db: Session, link: models.CaregiverLink) -> dict:
     who = db.get(models.User, link.caregiver_user_id) if link.caregiver_user_id else None
+    asked = db.get(models.CheckInHelper, link.episode_id)
     last = (db.query(models.AuditLog).filter(models.AuditLog.episode_id == link.episode_id, models.AuditLog.actor_user_id == link.caregiver_user_id)
             .order_by(models.AuditLog.timestamp.desc()).first()) if link.caregiver_user_id else None
     return {"id": link.id, "displayName": link.display_name, "relationship": link.relationship, "status": link.status, "permissions": link.permissions or {},
             "caregiverName": who.full_name if who else None, "createdAt": _iso(link.created_at), "acceptedAt": _iso(link.accepted_at), "revokedAt": _iso(link.revoked_at),
             "inviteExpiresAt": _iso(link.code_expires_at), "lastActivity": _iso(last.timestamp) if last else None,
             "accessUntil": caregiver_service.iso(link.access_until), "ended": caregiver_service.is_ended(link),
-            "whatsapp": caregiver_whatsapp.status(db, link)["status"] if link.status == "ACTIVE" else "off"}
+            "whatsapp": caregiver_whatsapp.status(db, link)["status"] if link.status == "ACTIVE" else "off",
+            "checkInHelper": asked.status if asked is not None and asked.link_id == link.id and link.status == "ACTIVE" else None}
 
 
 def _mine(db: Session, user: models.User, link_id: str) -> models.CaregiverLink:
@@ -146,6 +148,28 @@ def visit_help(ep=Depends(get_my_patient_episode), user=Depends(patient), db: Se
         if caregiver_service.is_current(link):
             answers.setdefault(help_row.appointment_id, []).append({"name": link.display_name, "status": help_row.status, "at": _iso(help_row.updated_at)})
     return answers
+
+
+class TickIn(Input):
+    done: bool
+
+
+@patient_router.get("/visit-prep")
+def visit_prep_for_her(ep=Depends(get_my_patient_episode), user=Depends(patient), db: Session = Depends(get_db)):
+    """The checklist her doctor wrote for each upcoming visit, with what is ticked and by whom."""
+    return caregiver_service.prep_by_visit(db, ep.id)
+
+
+@patient_router.put("/visit-prep/{item_id}")
+def tick_for_her(item_id: str, payload: TickIn, ep=Depends(get_my_patient_episode), user=Depends(patient), db: Session = Depends(get_db)):
+    item = db.get(models.VisitPrepItem, item_id)
+    if item is None or item.episode_id != ep.id:
+        raise HTTPException(404, "Checklist item not found.")
+    caregiver_service.tick_prep_item(db, item, user, payload.done)
+    db.add(models.AuditLog(episode_id=ep.id, actor_user_id=user.id, actor_role=user.role, actor_display_name=user.full_name, action="visit_prep_ticked" if payload.done else "visit_prep_unticked",
+                           title="Ticked a visit checklist item" if payload.done else "Unticked a visit checklist item", details=item.text[:200], object_type="VisitPrepItem", object_id=item.id))
+    db.commit()
+    return caregiver_service.prep_out(db, item)
 
 
 @patient_router.get("/{link_id}/activity")
@@ -255,16 +279,25 @@ def set_preferences(payload: PreferenceIn, user=Depends(caregiver), db: Session 
     return {"language": pref.language}
 
 
+def _prompt_reminders(db: Session, user: models.User) -> None:
+    """A reminder of hers that has come due becomes one short note in their Updates, once, for each woman who allowed reminders."""
+    links = db.query(models.CaregiverLink).filter_by(caregiver_user_id=user.id, status="ACTIVE").all()
+    if sum(caregiver_service.reminder_prompts(db, link) for link in links):
+        db.commit()
+
+
 @router.get("/notifications")
 def notifications(user=Depends(caregiver), db: Session = Depends(get_db)):
+    _prompt_reminders(db, user)
     rows = db.query(models.Notification).filter_by(recipient_user_id=user.id).order_by(models.Notification.created_at.desc()).limit(30).all()
     return [{"id": n.id, "title": (text := server_text.texts(db, user.id, n))[0], "body": text[1], "createdAt": _iso(n.created_at), "type": n.type} for n in rows]
 
 
 @router.get("/{link_id}/home")
-def home(link: models.CaregiverLink = Depends(access()), db: Session = Depends(get_db)):
+def home(link: models.CaregiverLink = Depends(access()), user=Depends(caregiver), db: Session = Depends(get_db)):
     permissions = link.permissions or {}
     out = _summary(db, link)
+    _prompt_reminders(db, user)
     if permissions.get("appointments"):
         now = datetime.utcnow()
         upcoming = db.query(models.Appointment).filter(models.Appointment.episode_id == link.episode_id, models.Appointment.status == "scheduled",
@@ -273,6 +306,10 @@ def home(link: models.CaregiverLink = Depends(access()), db: Session = Depends(g
     if permissions.get("check_in"):
         last = db.query(models.DailyLog).filter_by(episode_id=link.episode_id, skipped=False).order_by(models.DailyLog.recorded_at.desc()).first()
         out["lastCheckIn"] = _iso(last.recorded_at) if last else None
+        asked = db.get(models.CheckInHelper, link.episode_id)
+        if asked is not None and asked.link_id == link.id:
+            doctor = db.get(models.User, asked.asked_by_user_id)
+            out["checkInHelper"] = {"status": asked.status, "askedBy": doctor.full_name if doctor else "", "askedAt": _iso(asked.asked_at)}
     return out
 
 
@@ -414,6 +451,51 @@ def ask(payload: QuestionIn, link: models.CaregiverLink = Depends(access("questi
                               source_type="PatientQuestion", source_id=question.id, payload={"questionText": text})
     db.commit()
     return {"id": question.id, "status": question.status}
+
+
+# ---- getting ready for a visit (the checklist a doctor wrote)
+@router.get("/{link_id}/visit-prep")
+def visit_prep(link: models.CaregiverLink = Depends(access("appointments")), db: Session = Depends(get_db)):
+    return caregiver_service.prep_by_visit(db, link.episode_id)
+
+
+@router.put("/{link_id}/visit-prep/{item_id}")
+def tick_item(item_id: str, payload: TickIn, link: models.CaregiverLink = Depends(access("appointments")), user=Depends(caregiver), db: Session = Depends(get_db)):
+    item = db.get(models.VisitPrepItem, item_id)
+    if item is None or item.episode_id != link.episode_id:
+        raise HTTPException(404, "Checklist item not found.")
+    caregiver_service.tick_prep_item(db, item, user, payload.done)
+    _record(db, user, link, "caregiver_visit_prep_ticked" if payload.done else "caregiver_visit_prep_unticked",
+            "A trusted person ticked a visit checklist item" if payload.done else "A trusted person unticked a visit checklist item", item.text)
+    db.commit()
+    return caregiver_service.prep_out(db, item)
+
+
+# ---- helping with check-ins when a doctor has asked
+class HelperAnswerIn(Input):
+    status: Literal["ACCEPTED", "DECLINED"]
+
+
+@router.put("/{link_id}/checkin-helper")
+def answer_helper(payload: HelperAnswerIn, link: models.CaregiverLink = Depends(access("check_in")), user=Depends(caregiver), db: Session = Depends(get_db)):
+    """Yes or no to the doctor's request. Either answer can be changed later; she is told each time."""
+    asked = db.get(models.CheckInHelper, link.episode_id)
+    if asked is None or asked.link_id != link.id:
+        raise HTTPException(404, "Nobody has asked you to help with check-ins.")
+    if asked.status != payload.status:
+        asked.status, asked.responded_at = payload.status, _now()
+        _record(db, user, link, "caregiver_helper_answered", "A trusted person answered a doctor's request to help with check-ins", payload.status)
+        _tell_her(db, link, "caregiver_helper_yes" if payload.status == "ACCEPTED" else "caregiver_helper_no")
+        db.commit()
+    return {"status": asked.status, "respondedAt": _iso(asked.responded_at)}
+
+
+# ---- her reminders, as prompts
+@router.get("/{link_id}/reminders")
+def reminders(link: models.CaregiverLink = Depends(access("reminders")), user=Depends(caregiver), db: Session = Depends(get_db)):
+    """When her reminders are due. The names and instructions of medicine and vaccine reminders appear only if she also allows the doctor's summaries."""
+    _prompt_reminders(db, user)
+    return {"items": caregiver_service.reminders_for(db, link), "detailsAllowed": bool((link.permissions or {}).get("care_plan"))}
 
 
 @router.get("/{link_id}/emergency")

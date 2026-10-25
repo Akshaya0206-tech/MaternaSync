@@ -6,7 +6,8 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import config, models, server_text
+from .. import caregiver_service, config, models, server_text
+from ..models.caregiver import PERMISSIONS
 from ..database import get_db
 from ..deps import require_role
 from .. import continuity_schemas as S
@@ -208,6 +209,116 @@ def respond(reminder_id: str, payload: S.ReminderResponse, user=Depends(patient)
     audit(db, user, "reminder_response_recorded", reminder, after=row(reminder))
     db.commit()
     return row(reminder)
+
+
+# ---------------------------------------------------------------- the trusted people she has added (read-only for a doctor)
+@router.get("/episodes/{episode_id}/trusted-people")
+def trusted_people(episode_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
+    """Who helps her and what she lets each of them do. A doctor can look but never change it: the woman owns this. No contact details or
+    invite codes are included."""
+    ep = episode(db, user, episode_id)
+    asked = db.get(models.CheckInHelper, ep.id)
+    links = db.query(models.CaregiverLink).filter_by(episode_id=ep.id, status="ACTIVE").order_by(models.CaregiverLink.accepted_at).all()
+    items = []
+    for link in links:
+        who = db.get(models.User, link.caregiver_user_id) if link.caregiver_user_id else None
+        permissions = {key: bool((link.permissions or {}).get(key)) for key in PERMISSIONS}
+        items.append({"linkId": link.id, "name": link.display_name, "relationship": link.relationship, "accountName": who.full_name if who else None,
+                      "permissions": permissions, "accessUntil": caregiver_service.iso(link.access_until), "ended": caregiver_service.is_ended(link),
+                      "checkInHelper": asked.status if asked is not None and asked.link_id == link.id else None,
+                      "canAskToHelp": caregiver_service.is_current(link) and permissions["check_in"]})
+    return {"permissions": list(PERMISSIONS), "items": items}
+
+
+@router.put("/episodes/{episode_id}/checkin-helper")
+def ask_checkin_helper(episode_id: str, payload: S.HelperIn, user=Depends(doctor), db: Session = Depends(get_db)):
+    """Ask one of her trusted people to help with her daily check-ins. Only someone she already allows to do check-ins can be asked. The person
+    can say no, she is told, and their missed-check-in reminders then come first."""
+    ep = episode(db, user, episode_id)
+    link = db.get(models.CaregiverLink, payload.link_id)
+    if link is None or link.episode_id != ep.id or not link.caregiver_user_id or not caregiver_service.is_current(link):
+        raise HTTPException(400, "Choose one of her trusted people whose access is current.")
+    if not (link.permissions or {}).get("check_in"):
+        raise HTTPException(409, "She has not allowed this person to help with check-ins, so they cannot be asked. Only she can change that.")
+    current = db.get(models.CheckInHelper, ep.id)
+    if current is not None and current.link_id == link.id and current.status != "DECLINED":
+        return {"linkId": link.id, "status": current.status}
+    if current is None:
+        current = models.CheckInHelper(episode_id=ep.id, link_id=link.id, asked_by_user_id=user.id)
+        db.add(current)
+    elif current.link_id != link.id and current.status != "DECLINED":  # asking someone else ends the earlier request, and that person is told
+        earlier = db.get(models.CaregiverLink, current.link_id)
+        if earlier is not None and earlier.caregiver_user_id and caregiver_service.is_current(earlier):
+            notify(db, ep.id, earlier.caregiver_user_id, "helper_ended_caregiver", name=(ep.patient_name or "").split(" ")[0], doctor=user.full_name)
+    current.link_id, current.status, current.asked_by_user_id, current.asked_at, current.responded_at = link.id, "ASKED", user.id, now(), None
+    audit(db, user, "checkin_helper_asked", link, episode_id=ep.id, details=link.display_name)
+    first_name = (ep.patient_name or "").split(" ")[0]
+    notify(db, ep.id, ep.patient_user_id, "helper_asked_her", name=link.display_name, doctor=user.full_name)
+    notify(db, ep.id, link.caregiver_user_id, "helper_asked_caregiver", name=first_name, doctor=user.full_name)
+    db.commit()
+    return {"linkId": link.id, "status": current.status}
+
+
+@router.delete("/episodes/{episode_id}/checkin-helper")
+def clear_checkin_helper(episode_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
+    ep = episode(db, user, episode_id)
+    current = db.get(models.CheckInHelper, ep.id)
+    if current is not None:
+        link = db.get(models.CaregiverLink, current.link_id)
+        audit(db, user, "checkin_helper_cleared", link, episode_id=ep.id, details=link.display_name if link else "")
+        if link is not None and link.caregiver_user_id and caregiver_service.is_current(link):
+            notify(db, ep.id, link.caregiver_user_id, "helper_ended_caregiver", name=(ep.patient_name or "").split(" ")[0], doctor=user.full_name)
+        db.delete(current)
+        db.commit()
+    return {"status": None}
+
+
+# ---------------------------------------------------------------- "getting ready for this visit": a checklist the doctor writes
+@router.get("/episodes/{episode_id}/visit-prep")
+def visit_prep_list(episode_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
+    ep = episode(db, user, episode_id)
+    return caregiver_service.prep_by_visit(db, ep.id)
+
+
+@router.post("/episodes/{episode_id}/visit-prep")
+def visit_prep_release(episode_id: str, payload: S.VisitPrepIn, user=Depends(doctor), db: Session = Depends(get_db)):
+    """Add lines to the checklist for one upcoming visit. The woman and any trusted person who may see her appointments are told and can tick them."""
+    ep = episode(db, user, episode_id)
+    visit = caregiver_service.upcoming_visits(db, ep.id).get(payload.appointment_id)
+    if visit is None:
+        raise HTTPException(400, "Choose a confirmed visit that is still to come.")
+    existing = db.query(models.VisitPrepItem).filter_by(episode_id=ep.id, appointment_id=visit.id).all()
+    have = {item.text.lower() for item in existing}
+    position = max((item.position or 0 for item in existing), default=-1) + 1
+    added = []
+    for line in payload.items:
+        if line.lower() in have:
+            continue
+        have.add(line.lower())
+        item = models.VisitPrepItem(episode_id=ep.id, appointment_id=visit.id, text=line, position=position, created_by_user_id=user.id)
+        position += 1
+        db.add(item)
+        added.append(item)
+    if added:
+        db.flush()
+        when = server_text.fmt_slot(visit.scheduled_at)
+        audit(db, user, "visit_prep_released", visit, episode_id=ep.id, details=f"{len(added)} line(s) for the visit on {when}")
+        notify(db, ep.id, ep.patient_user_id, "visit_prep_added", when=when)
+        first_name = (ep.patient_name or "").split(" ")[0]
+        for link in caregiver_service.active_links_for_episode(db, ep.id, "appointments"):
+            notify(db, ep.id, link.caregiver_user_id, "visit_prep_caregiver", name=first_name, when=when)
+    db.commit()
+    return caregiver_service.prep_by_visit(db, ep.id)
+
+
+@router.delete("/visit-prep/{item_id}")
+def visit_prep_remove(item_id: str, user=Depends(doctor), db: Session = Depends(get_db)):
+    item = get_object(db, user, models.VisitPrepItem, item_id)
+    episode_id = item.episode_id
+    audit(db, user, "visit_prep_line_removed", item, details=item.text[:200])
+    db.delete(item)
+    db.commit()
+    return caregiver_service.prep_by_visit(db, episode_id)
 
 
 @router.post("/episodes/{episode_id}/monitoring")

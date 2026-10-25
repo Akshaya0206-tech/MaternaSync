@@ -9,7 +9,7 @@ import { loadAuthDictionary } from '../i18n/dictionaries';
 const PATIENT = {
   key: 'patient',
   title: tx('Patient'),
-  description: tx('Track your pregnancy journey, review your records, and ask your care team questions.'),
+  description: tx('Track your pregnancy journey, review your records, and ask your doctor questions.'),
   icon: <HeartPulse size={24} />,
 };
 const CAREGIVER = {

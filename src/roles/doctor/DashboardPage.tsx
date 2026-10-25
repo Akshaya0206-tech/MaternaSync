@@ -54,11 +54,12 @@ export function DashboardPage() {
   const stats = dashboard
     ? [
         { label: t("Today's Patients"), value: dashboard.todaysPatients, icon: <Users size={18} />, to: '/doctor/patients' },
-        { label: t('Briefs Ready'), value: dashboard.briefsReady, icon: <ClipboardCheck size={18} />, to: '/doctor/todays-brief' },
+        // The briefs are opened from the "Today's Patients" list below (Open Brief), so this card takes you to that list.
+        { label: t('Briefs Ready'), value: dashboard.briefsReady, icon: <ClipboardCheck size={18} />, to: '/doctor/patients', scrollTo: 'todays-patients' },
         { label: t('Questions'), value: dashboard.questions, icon: <MessageCircle size={18} />, to: '/doctor/questions' },
         { label: t('Documents to Review'), value: dashboard.documentsToReview, icon: <FileCheck2 size={18} />, to: '/doctor/patients' },
         { label: t('Follow-ups'), value: dashboard.followUps, icon: <ListTodo size={18} />, to: '/doctor/follow-ups' },
-        { label: t('Drafts to Approve'), value: dashboard.draftsToApprove, icon: <Stethoscope size={18} />, to: '/doctor/documentation' },
+        { label: t('Drafts to Approve'), value: dashboard.draftsToApprove, icon: <Stethoscope size={18} />, to: '/doctor/consultations?tab=history' },
         ...(assistantOpen === null ? [] : [{ label: t('Care Assistant: needs you'), value: assistantOpen, icon: <Bot size={18} />, to: '/doctor/assistant' }]),
       ]
     : [];
@@ -79,7 +80,10 @@ export function DashboardPage() {
             {stats.map((s) => (
               <button
                 key={s.label}
-                onClick={() => navigate(s.to)}
+                onClick={() => {
+                  const target = s.scrollTo ? document.getElementById(s.scrollTo) : null;
+                  if (target) { target.scrollIntoView(); target.focus({ preventScroll: true }); } else navigate(s.to);
+                }}
                 className="glass-panel"
                 style={{ padding: '16px 18px', textAlign: 'left', cursor: 'pointer', font: 'inherit', display: 'flex', flexDirection: 'column', gap: '8px' }}
               >
@@ -90,7 +94,7 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <h2 className="page-title" style={{ fontSize: '1.05rem', margin: '0 0 12px 0' }}>{t("Today's Patients")}</h2>
+          <h2 id="todays-patients" tabIndex={-1} className="page-title" style={{ fontSize: '1.05rem', margin: '0 0 12px 0' }}>{t("Today's Patients")}</h2>
           {dashboard.todayPatientRows.length === 0 ? (
             <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
               {t('No appointments scheduled for today.')}

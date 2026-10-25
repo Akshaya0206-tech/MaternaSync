@@ -65,32 +65,8 @@ const SOURCE_STATUS_TONE: Record<string, 'green' | 'amber' | 'red' | 'blue' | 'p
   EXCLUDED: 'neutral',
 };
 
-export function GuidelinesPage() {
-  const { t } = useLanguage();
-  const [tab, setTab] = useState<'search' | 'manage'>('search');
-
-  return (
-    <main style={{ padding: '24px', flex: 1, maxWidth: '860px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 6px 0' }}>{t('Clinical Guidelines')}</h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.84rem', margin: '0 0 18px 0' }}>
-        {t("A reference assistant over approved guideline sources. It retrieves and shows real excerpts — it does not diagnose, prescribe, or generate clinical recommendations beyond what's in the approved library.")}
-      </p>
-
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
-        <button onClick={() => setTab('search')} className={tab === 'search' ? 'btn-primary' : 'btn-secondary'} style={{ fontSize: '0.82rem' }}>
-          <Search size={14} /> {t('Search')}
-        </button>
-        <button onClick={() => setTab('manage')} className={tab === 'manage' ? 'btn-primary' : 'btn-secondary'} style={{ fontSize: '0.82rem' }}>
-          <Upload size={14} /> {t('Manage Sources')}
-        </button>
-      </div>
-
-      {tab === 'search' ? <SearchView /> : <ManageSourcesView />}
-    </main>
-  );
-}
-
-function SearchView() {
+// The "Guideline search" tab of the References page (ReferencesPage.tsx).
+export function GuidelineSearchView({ onOpenSources, onOpenLibrary }: { onOpenSources: () => void; onOpenLibrary: () => void }) {
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('');
@@ -127,6 +103,9 @@ function SearchView() {
     }
   };
 
+  // Approved sources are what the filters list, so empty filters mean there is nothing to search yet. The page says so instead of looking broken.
+  const noSources = filters !== null && filters.categories.length === 0 && filters.organizations.length === 0 && filters.documentTypes.length === 0;
+
   const toggleExpand = (chunkId: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -137,6 +116,20 @@ function SearchView() {
 
   return (
     <div>
+      <p className="continuity-muted" style={{ margin: '0 0 14px 0' }}>
+        {t("A reference assistant over approved guideline sources. It retrieves and shows real excerpts — it does not diagnose, prescribe, or generate clinical recommendations beyond what's in the approved library.")}
+      </p>
+      {noSources && (
+        <div className="glass-panel" role="status" style={{ padding: '18px 20px', marginBottom: '16px' }}>
+          <p style={{ color: 'var(--text-primary)', fontSize: '0.86rem', margin: '0 0 12px 0', lineHeight: 1.5 }}>
+            {t('No guideline documents have been approved yet, so there is nothing here to search. Add a guideline PDF under Guideline sources and approve it, or look things up in the published PDFs in the Reference Library.')}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={onOpenSources} className="btn-primary" style={{ fontSize: '0.8rem' }}>{t('Guideline sources')}</button>
+            <button onClick={onOpenLibrary} className="btn-secondary" style={{ fontSize: '0.8rem' }}>{t('Reference Library')}</button>
+          </div>
+        </div>
+      )}
       <div className="glass-panel" style={{ padding: '18px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
           <input
@@ -153,22 +146,22 @@ function SearchView() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle}>
+          <select aria-label={t('All categories')} value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle}>
             <option value="">{t('All categories')}</option>
             {(filters?.categories ?? GUIDELINE_CATEGORIES).map((c) => <option key={c} value={c}>{prettyLabel(c)}</option>)}
           </select>
-          <select value={organization} onChange={(e) => setOrganization(e.target.value)} style={selectStyle}>
+          <select aria-label={t('All organizations')} value={organization} onChange={(e) => setOrganization(e.target.value)} style={selectStyle}>
             <option value="">{t('All organizations')}</option>
             {(filters?.organizations ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
-          <select value={documentType} onChange={(e) => setDocumentType(e.target.value)} style={selectStyle}>
+          <select aria-label={t('All document types')} value={documentType} onChange={(e) => setDocumentType(e.target.value)} style={selectStyle}>
             <option value="">{t('All document types')}</option>
             {(filters?.documentTypes ?? GUIDELINE_DOCUMENT_TYPES).map((d) => <option key={d} value={d}>{documentTypeLabel(d)}</option>)}
           </select>
         </div>
       </div>
 
-      {!result && !isLoading && !error && (
+      {!result && !isLoading && !error && !noSources && (
         <div className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
           <BookOpen size={28} style={{ color: 'var(--text-muted)', marginBottom: '10px' }} />
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginBottom: '12px' }}>
@@ -244,7 +237,8 @@ const selectStyle: React.CSSProperties = {
   background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.8rem', cursor: 'pointer',
 };
 
-function ManageSourcesView() {
+// The "Guideline sources" tab of the References page: upload a guideline PDF, then approve or reject it.
+export function GuidelineSourcesView() {
   const { t } = useLanguage();
   const [sources, setSources] = useState<GuidelineSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -320,16 +314,16 @@ function ManageSourcesView() {
     <div>
       <form onSubmit={handleUpload} className="glass-panel" style={{ padding: '18px', marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)' }}>{t('Upload a Guideline Source (PDF)')}</div>
-        <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.82rem' }} />
+        <input type="file" aria-label={t('Upload a Guideline Source (PDF)')} accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.82rem' }} />
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <input placeholder={t('Title')} value={title} onChange={(e) => setTitle(e.target.value)} style={textInputStyle} />
           <input placeholder={t('Issuing organization')} value={org} onChange={(e) => setOrg(e.target.value)} style={textInputStyle} />
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle}>
+          <select aria-label={t('Topic area')} value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle}>
             {GUIDELINE_CATEGORIES.map((c) => <option key={c} value={c}>{prettyLabel(c)}</option>)}
           </select>
-          <select value={docType} onChange={(e) => setDocType(e.target.value)} style={selectStyle}>
+          <select aria-label={t('Document type')} value={docType} onChange={(e) => setDocType(e.target.value)} style={selectStyle}>
             {GUIDELINE_DOCUMENT_TYPES.map((d) => <option key={d} value={d}>{documentTypeLabel(d)}</option>)}
           </select>
           <input placeholder={t('Version (optional)')} value={version} onChange={(e) => setVersion(e.target.value)} style={{ ...textInputStyle, maxWidth: '140px' }} />
@@ -425,7 +419,7 @@ function SourceRow({ source, children }: { source: GuidelineSource; children?: R
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <StatusBadge label={prettyLabel(source.status)} tone={SOURCE_STATUS_TONE[source.status] ?? 'neutral'} />
-          <button onClick={() => setExpanded((v) => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+          <button onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} aria-label={expanded ? t('Show less') : t('Show more')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         </div>

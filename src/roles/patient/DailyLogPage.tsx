@@ -81,7 +81,7 @@ export function DailyLogPage() {
         const { other, ...rest } = form;
         const payload = {
           ...rest,
-          // The buttons and the typed text reach the care team as one plain line.
+          // The buttons and the typed text reach the doctor as one plain line.
           symptoms: [form.symptoms, other.trim()].filter(Boolean).join(", "),
           recordedAt: new Date(form.recordedAt).toISOString(),
           skipped,
@@ -112,7 +112,7 @@ export function DailyLogPage() {
       },
       skipped
         ? t("Check-in skipped. No clinical conclusion has been recorded.")
-        : t("Your check-in was saved for your care team."),
+        : t("Your check-in was saved for your doctor."),
     );
   function edit(log: DailyLog) {
     setEditing(log.id);
@@ -139,7 +139,7 @@ export function DailyLogPage() {
     <Page
       title={t("Daily check-in")}
       subtitle={t(
-        "A few optional details to help your team understand how you’ve been between visits.",
+        "A few optional details to help your doctor understand how you’ve been between visits.",
       )}
     >
       <Feedback
@@ -151,9 +151,9 @@ export function DailyLogPage() {
         <>
           <div className="continuity-note">
             {t(
-              "Your entries are patient-reported and are not monitored continuously. If you are concerned about your health or your baby’s movements, contact your maternity team.",
+              "Your entries are reported by you and are not monitored continuously. If you are worried about your health or your baby’s movements, contact your doctor.",
             )}{" "}
-            <Link to="/patient/questions">{t("Ask your care team")}</Link>.
+            <Link to="/patient/questions">{t("Ask your doctor")}</Link>.
           </div>
           {!editing && (
             <div className="continuity-note guided-invite">
@@ -308,7 +308,7 @@ export function DailyLogPage() {
           >
             <p className="continuity-muted">
               {t(
-                "Use the instructions your maternity team has given you. This counter records movements and time; it does not interpret a count or indicate that everything is well.",
+                "Use the instructions your doctor has given you. This counter records movements and time; it does not interpret a count or indicate that everything is well.",
               )}
             </p>
             <div className="continuity-count" aria-live="polite">

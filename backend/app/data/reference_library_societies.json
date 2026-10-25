@@ -21,37 +21,37 @@
   "id": "figo-pe-second-third-2021", "title": "A literature review and best practice advice for second and third trimester risk stratification, monitoring, and management of pre-eclampsia: Compiled by the Pregnancy and Non-Communicable Diseases Committee of FIGO",
   "issuer": "FIGO", "jurisdiction": "International", "category": "HIGH_RISK", "topic": "Hypertensive disorders (pre-eclampsia)", "publication_date": "2021-07",
   "version_note": "Int J Gynaecol Obstet 2021;154(Suppl 1):3-31; PMID 34327714.",
-  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9290930", "document_url": null, "section": "IJGO supplement",
-  "rights": "Open access under CC BY 4.0 (as stated on the article page). Link only.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9290930", "document_url": "https://europepmc.org/articles/PMC9290930?pdf=render", "section": "IJGO supplement",
+  "rights": "Open access under CC BY 4.0 (as stated on the article page; Europe PMC lists the licence as cc by). The PDF is kept on this server for passage search, with attribution to FIGO and the article's authors.",
   "summary": "A FIGO consensus review with practical advice on predicting, monitoring and managing pre-eclampsia in the second and third trimesters, tailored to different resource settings.",
-  "passage_search": false
+  "passage_search": true
  },
  {
   "id": "figo-pph-2022", "title": "FIGO recommendations on the management of postpartum hemorrhage 2022",
   "issuer": "FIGO", "jurisdiction": "International", "category": "POSTPARTUM", "topic": "Postpartum haemorrhage", "publication_date": "2022-03-17",
   "version_note": "Int J Gynaecol Obstet 2022;157(Suppl 1):3-50; DOI 10.1002/ijgo.14116. FIGO's own recommendation set; the WHO, FIGO and ICM 2025 consolidated guideline (listed under WHO) is the newer joint document.",
-  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9313855/", "document_url": null, "section": "IJGO supplement",
-  "rights": "Open access under CC BY-NC 4.0 (as stated on the article page): non-commercial use with attribution. Link only.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9313855/", "document_url": "https://europepmc.org/articles/PMC9313855?pdf=render", "section": "IJGO supplement",
+  "rights": "Open access under CC BY-NC 4.0 (as stated on the article page; Europe PMC lists the licence as cc by-nc). Non-commercial use with attribution. The PDF is kept on this server for passage search, with attribution to FIGO and the article's authors.",
   "summary": "FIGO's update on preventing and treating postpartum haemorrhage, aimed mainly at health workers in low- and middle-income settings, covering uterotonics, tranexamic acid, balloon tamponade, surgical options, shock index and resuscitation.",
-  "passage_search": false
+  "passage_search": true
  },
  {
   "id": "figo-anaemia-2025", "title": "FIGO good practice recommendations on anemia in pregnancy, to reduce the incidence and impact of postpartum hemorrhage (PPH)",
   "issuer": "FIGO", "jurisdiction": "International", "category": "ANTENATAL_CARE", "topic": "Anaemia in pregnancy", "publication_date": "2025-10-01",
   "version_note": "Int J Gynaecol Obstet 2025;171(3):993-1007; DOI 10.1002/ijgo.70529; FIGO Committee on Childbirth and Postpartum Haemorrhage.",
-  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12640178/", "document_url": null, "section": "IJGO article",
-  "rights": "Open access under CC BY 4.0 (as stated on the article page). Link only.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12640178/", "document_url": "https://europepmc.org/articles/PMC12640178?pdf=render", "section": "IJGO article",
+  "rights": "Open access under CC BY 4.0 (as stated on the article page; Europe PMC lists the licence as cc by). The PDF is kept on this server for passage search, with attribution to FIGO and the article's authors.",
   "summary": "Reviews the burden of anaemia in pregnancy and its link to postpartum haemorrhage, recommending screening at booking and again at 28 weeks, a single haemoglobin cut-off, and routine iron and folic acid, with notes on malaria and helminth prophylaxis and haemoglobinopathies.",
-  "passage_search": false
+  "passage_search": true
  },
  {
   "id": "figo-blood-loss-2025", "title": "FIGO recommendations on objective measurement of blood loss after birth for early detection of postpartum hemorrhage",
   "issuer": "FIGO", "jurisdiction": "International", "category": "POSTPARTUM", "topic": "Postpartum haemorrhage detection", "publication_date": "2025-09-23",
   "version_note": "Int J Gynaecol Obstet 2025;171(3):933-950; DOI 10.1002/ijgo.70523; FIGO Committee on Childbirth and PPH.",
-  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12640184/", "document_url": null, "section": "IJGO article",
-  "rights": "Open access under CC BY 4.0 (as stated on the article page). Link only.",
+  "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12640184/", "document_url": "https://europepmc.org/articles/PMC12640184?pdf=render", "section": "IJGO article",
+  "rights": "Open access under CC BY 4.0 (as stated on the article page; Europe PMC lists the licence as cc by). The PDF is kept on this server for passage search, with attribution to FIGO and the article's authors.",
   "summary": "Argues that visual estimation of blood loss is unreliable and delays treatment, and recommends routine objective, cumulative measurement using calibrated drapes, weighing or graduated containers combined with early-warning triggers.",
-  "passage_search": false
+  "passage_search": true
  },
  {
   "id": "rcog-gtg52-pph", "title": "Prevention and Management of Postpartum Haemorrhage",

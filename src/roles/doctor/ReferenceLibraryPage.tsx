@@ -5,7 +5,7 @@ import {
   openReferencePdf, saveReferenceNote, searchReferences,
 } from '../../api/references';
 import type { Passage, Reference, ReferenceInput, ReferenceSearch } from '../../api/references';
-import { Badge, Empty, Feedback, Field, Page, Panel, useAction } from '../../components/continuity/shared';
+import { Badge, Empty, Feedback, Field, Panel, useAction } from '../../components/continuity/shared';
 import { tx, useLanguage } from '../../i18n';
 import type { LanguageValue } from '../../i18n';
 
@@ -21,7 +21,7 @@ const CATEGORIES: Record<string, string> = {
 };
 const WHERE: Record<string, string> = {
   title: tx('its title'), tags: tx('your search words'), auto_core: tx('a related term in its title or topic'), topic: tx('its topic'), issuer: tx('its publisher'),
-  notes: tx('your notes'), summary: tx('its summary'), auto_wide: tx('a related term in its summary'), pdf: tx('a passage inside its PDF'),
+  notes: tx('your notes'), summary: tx('its summary'), auto_wide: tx('a related term in its summary'), pdf: tx('a passage inside its PDF'), meaning: tx('its meaning'),
 };
 const EXAMPLES = ['sugar', 'BP in pregnancy', 'bleeding after delivery', 'anaemia', 'c section', 'twins'];
 const blank: ReferenceInput = { title: '', issuer: '', topic: '', category: '', jurisdiction: '', publicationDate: '', sourceUrl: '', summary: '', notes: '', tags: [] };
@@ -49,7 +49,8 @@ function useDebounced<T>(value: T, delay = 300): T {
   return debounced;
 }
 
-export function ReferenceLibraryPage() {
+// The first tab of the References page (ReferencesPage.tsx), which supplies the heading.
+export function ReferenceLibraryView() {
   const { t } = useLanguage();
   const action = useAction();
   const [catalog, setCatalog] = useState<Reference[]>([]);
@@ -105,10 +106,10 @@ export function ReferenceLibraryPage() {
   };
 
   return (
-    <Page
-      title={t('Reference Library')}
-      subtitle={t('Your own shelf of references to look things up in. What you add is visible to you only, and nothing here feeds any other page of the app.')}
-    >
+    <>
+      <p className="continuity-muted" style={{ margin: '0 0 14px 0' }}>
+        {t('Your own shelf of references to look things up in. What you add is visible to you only, and nothing here feeds any other page of the app.')}
+      </p>
       <Feedback error={t(error) || action.error} message={notice || action.message} />
       <form className="reflib-search" role="search" onSubmit={(e) => { e.preventDefault(); void load(); }}>
         <input
@@ -128,6 +129,11 @@ export function ReferenceLibraryPage() {
           <button key={example} type="button" className="continuity-chip" onClick={() => setText(example)}>{example}</button>
         ))}
       </div>
+      {result?.semantic && (
+        <p className="continuity-muted">
+          {t('You can also type in Hindi, Tamil or Telugu. The search then matches by meaning and finds the English passage; the extract stays exactly as the document wrote it.')}
+        </p>
+      )}
       <div className="continuity-fields">
         <Field label={t('Topic area')}>
           <select value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -184,7 +190,7 @@ export function ReferenceLibraryPage() {
           <ReferenceCard key={item.id} item={item} searching={searching} edit={() => setEditing(item)} changed={refreshAll} announce={setNotice} />
         ))}
       </Panel>
-    </Page>
+    </>
   );
 }
 
@@ -195,6 +201,7 @@ function PassageCard({ passage, onError }: { passage: Passage; onError: (message
       <h3>{passage.title}</h3>
       <p className="continuity-muted">
         {[passage.issuer, passage.page ? t('page {page}', { page: passage.page }) : null, passage.section].filter(Boolean).join(' · ')}
+        {passage.matchedBy === 'meaning' && <> <Badge>{t('Found by meaning')}</Badge></>}
       </p>
       <p className="reflib-quote">“{highlight(passage.text, passage.marks)}”</p>
       <button

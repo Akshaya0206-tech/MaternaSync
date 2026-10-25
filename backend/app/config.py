@@ -22,6 +22,13 @@ CARE_TEAM_ENABLED = _flag("MATERNASYNC_CARE_TEAM_ENABLED", "false")
 CARE_TEAM_OFF_MESSAGE = ("The care-team sign-in is switched off. The clinic's care assistant and your doctor now do that work. "
                          "A trusted family member can use a caregiver login instead.")
 
+# Searching the Reference Library by meaning too, so a question in Hindi, Tamil or Telugu finds the English passage (see semantic_search.py).
+# "auto" does it when the model and the index of passages are installed (fetch_search_model.py, build_semantic_index.py); "off" never does.
+# An unknown value means "off".
+SEMANTIC_SEARCH = os.environ.get("MATERNASYNC_SEMANTIC_SEARCH", "auto").strip().lower()
+if SEMANTIC_SEARCH not in ("auto", "off"):
+    SEMANTIC_SEARCH = "off"
+
 # The care assistant (see ai workflow.md). Modes: "off" does nothing; "shadow" only records what it would have done;
 # "assist" lets it do low-risk administrative steps and turns everything else into a proposal a doctor approves.
 # There is deliberately no "auto" mode yet.

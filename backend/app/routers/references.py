@@ -15,7 +15,7 @@ from pydantic import Field, field_validator
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from .. import models, reference_library, reference_search as search
+from .. import models, reference_library, reference_search as search, semantic_search
 from ..continuity_schemas import Input
 from ..continuity_service import now
 from ..database import get_db
@@ -124,7 +124,7 @@ def find(q: str = Query("", max_length=300), category: str = "", topic: str = ""
     if not q.strip():
         items.sort(key=lambda i: (i.title or "").lower())
         return {"query": "", "items": [item_out(i, user, notes.get(i.id, ""), search.index_item(i, notes.get(i.id, ""))) for i in items],
-                "passages": [], "interpretation": None, "total": len(items)}
+                "passages": [], "interpretation": None, "total": len(items), "semantic": semantic_search.enabled()}
 
     indexes = {i.id: search.index_item(i, notes.get(i.id, "")) for i in items}
     frequencies: Counter = Counter()
@@ -135,7 +135,7 @@ def find(q: str = Query("", max_length=300), category: str = "", topic: str = ""
             surfaces.setdefault((search.tokens(word) or [""])[0], word.lower())
     data = reference_library.corpus(db)
     allowed = {i.id for i in items}
-    chunks = [c for c in data["chunks"] if c["item_id"] in allowed]
+    chunks = [c for c in data["chunks"] if c["item_id"] in allowed and not c["boiler"]]  # not the reference lists and licence pages of the PDFs
     vocabulary: Counter = Counter(frequencies)
     vocabulary.update(data["frequencies"])
     plan = search.plan(q, vocabulary, surfaces)
@@ -154,20 +154,47 @@ def find(q: str = Query("", max_length=300), category: str = "", topic: str = ""
     best = ranked[0][0] if ranked else 1.0
     boost = {item.id: 1 + 0.6 * score / best for score, item, _ in ranked}
     boosted = sorted(((c, s * boost.get(c["item_id"], 1.0), m) for c, s, m in search.passage_scores(units, chunks)), key=lambda r: r[1], reverse=True)
+
+    # Looking by meaning as well, when the model is installed: the same references and passages, found by what they say and not by the
+    # words typed, so a question in Hindi, Tamil or Telugu reaches the English text. The two searches are merged by rank. Nothing is
+    # generated: a hit is still the document's own sentence and page, and every hit says whether it was found by words, meaning or both.
+    meaning = semantic_search.enabled()
+    ordered_items = [(item, list(where), "words") for _, item, where in ranked]
+    ordered_passages = [(chunk, matched, "words") for chunk, _, matched in boosted[:40]]
+    if meaning:
+        item_names = {semantic_search.text_key(semantic_search.item_text(i)): i for i in items}
+        found_items = semantic_search.rank(q, item_names, semantic_search.ITEM_FLOOR, limit=10, lazy={name: semantic_search.item_text(i) for name, i in item_names.items()})
+        where_by_item = {item.id: list(where) for _, item, where in ranked}
+        ordered_items = [(by_id[iid], where_by_item.get(iid, []) + ([] if source == "words" else ["meaning"]), source)
+                         for iid, _, source in semantic_search.fuse([item.id for _, item, _ in ranked], [item_names[name].id for name, _ in found_items])]
+        by_chunk, by_name = {c["id"]: c for c in chunks}, {}
+        for c in chunks:
+            by_name.setdefault(c["key"], c)
+        found_passages = semantic_search.rank(q, [c["key"] for c in chunks if len(c["text"]) >= semantic_search.MIN_PASSAGE_CHARS], semantic_search.PASSAGE_FLOOR, limit=24)
+        if not semantic_search.confident(found_items, found_passages):  # nothing in the library clearly answers it: do not show the nearest passages
+            found_passages = []
+        matched_words = {c["id"]: m for c, _, m in boosted}
+        ordered_passages = [(by_chunk[cid], matched_words.get(cid, set()), source)
+                            for cid, _, source in semantic_search.fuse([c["id"] for c, _, _ in boosted[:40]], [by_name[name]["id"] for name, _ in found_passages])]
+    word_score = {c["id"]: s for c, s, _ in boosted}
+
     passages, per_item = [], Counter()
-    for chunk, score, matched in boosted[:40]:
+    for chunk, matched, source in ordered_passages[:40]:
         if per_item[chunk["item_id"]] >= 2 or len(passages) >= 8:
             continue
         per_item[chunk["item_id"]] += 1
-        text, marks = search.snippet(chunk["text"], matched)
+        if source == "meaning":  # no matching words to centre the extract on: show the sentence closest in meaning to the question
+            text, marks = semantic_search.best_extract(q, chunk["text"]), []
+        else:
+            text, marks = search.snippet(chunk["text"], matched)
         item = by_id[chunk["item_id"]]
         passages.append({"itemId": item.id, "title": item.title, "issuer": item.issuer, "page": chunk["page"], "section": chunk["section"],
-                         "text": text, "marks": marks, "score": round(score, 2)})
+                         "text": text, "marks": marks, "score": round(word_score.get(chunk["id"], 0.0), 2), "matchedBy": source})
 
-    out = [item_out(i, user, notes.get(i.id, ""), indexes[i.id], matchedOn=where, foundInPdf=False) for _, i, where in ranked]
+    out = [item_out(i, user, notes.get(i.id, ""), indexes[i.id], matchedOn=where, foundInPdf=False, matchedBy=source) for i, where, source in ordered_items]
     listed = {o["id"] for o in out}
     out += [item_out(by_id[iid], user, notes.get(iid, ""), indexes[iid], matchedOn=["pdf"], foundInPdf=True) for iid in dict.fromkeys(p["itemId"] for p in passages) if iid not in listed]
-    return {"query": q, "items": out, "passages": passages, "total": len(out),
+    return {"query": q, "items": out, "passages": passages, "total": len(out), "semantic": meaning,
             "interpretation": {"corrections": plan["corrections"], "alsoSearched": plan["also"], "words": [u.label for u in units]}}
 
 

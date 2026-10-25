@@ -324,7 +324,7 @@ def passage_scores(units: list[Unit], chunks: list[dict]) -> list[tuple[dict, fl
     total = len(chunks)
     average = (sum(c["len"] for c in chunks) / total) or 1
     idf = lambda token: math.log(1 + (total - frequencies.get(token, 0) + 0.5) / (frequencies.get(token, 0) + 0.5))
-    needed = max(1, math.ceil(len(units) / 2))
+    needed = max(1, math.ceil(len(units) * 0.7))  # a passage is a short paragraph, so two stray words of a long question can meet in it by chance
     scored = []
     for chunk in chunks:
         tf, length = chunk["tf"], chunk["len"]
@@ -352,6 +352,32 @@ def passage_scores(units: list[Unit], chunks: list[dict]) -> list[tuple[dict, fl
         return []
     floor = scored[0][1] * 0.4
     return [r for r in scored if r[1] >= floor]
+
+
+# ---------------------------------------------------------------- passages that are not content
+
+# A PDF's reference list, licence page and journal header are full of the words of the subject (every cited paper is about it), so a search that
+# ranks by meaning or by words puts them above real paragraphs. They are recognised by what they look like, not by what they say.
+_CITATION = re.compile(r"\b(?:19|20)\d{2}\s*;\s*\(?\d+\)?\s*(?:\([^)]{1,12}\))?\s*:\s*[\dA-Za-z]+")  # 2019;43:44-50   2012;10(56 Suppl):1-9   2020;(7):CD012129
+_NUMBERED = re.compile(r"(?:^|[\s.;])\d{1,3}\.\s+[A-Z][A-Za-z'\u2019\-]+\s+[A-Z]{1,3}[,.\s]")  # "52. Shepherd E," "117. Grivell RM,"
+_JOURNAL = re.compile(r"\b(?:Cochrane Database|Syst Rev|Obstet Gynecol|BJOG|Lancet|BMJ|N Engl J Med|JAMA|PLoS|Int J Gynaecol Obstet|J Matern Fetal|Geneva: World Health Organization|Geneva: WHO)\b")
+_LINK = re.compile(r"\bdoi\b|https?://|www\.", re.I)
+_ET_AL = re.compile(r"\bet al\b", re.I)
+_FRONT = re.compile(r"some rights reserved|creative commons|all rights reserved|wileyonlinelibrary|\u00a9|\breceived:|\baccepted:|\brevised:|\bissn\b|\bisbn\b|\bprinted in\b"
+                    r"|\bcorresponding author\b|\bconflict of interest\b|\bcite this\b|\bdisclaimer\b|\bdeclarations? of interests?\b", re.I)
+
+
+def boilerplate_cues(text: str) -> float:
+    return (2 * len(_CITATION.findall(text)) + 1.5 * len(_NUMBERED.findall(text)) + 1.5 * len(_JOURNAL.findall(text)) + len(_LINK.findall(text))
+            + 2 * len(_FRONT.findall(text)) + 0.5 * len(_ET_AL.findall(text)))
+
+
+def looks_like_boilerplate(text: str) -> bool:
+    """True for a bibliography, a licence page or a journal header: text that is about the subject only because it lists papers about it."""
+    return boilerplate_cues(text) >= BOILERPLATE_CUES
+
+
+BOILERPLATE_CUES = 3.0
 
 
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")

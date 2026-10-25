@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { MapPin } from 'lucide-react';
+import { MapPin, MapPinCheck, Navigation } from 'lucide-react';
 import { getEmergency, saveEmergency } from '../../api/emergency';
 import type { EmergencyProfile } from '../../api/emergency';
 import { ApiError } from '../../api/client';
-import { Field, inputStyle } from '../../components/auth/AuthField';
 import { tx, useLanguage } from '../../i18n';
 import { usePatientLocation } from './locationContext';
+import { CardHeading, FieldTile, LocationArt, Radar, Skyline, SuccessCheck, Confetti } from './ProfileArt';
+import { cardProps } from './profileCard';
 
 /** The place the patient lives, collected when the account is made. It decides which hospitals and numbers Emergency
  *  help shows, and what "away from home" is measured against. Only the patient sees it. */
-export function LocationCard() {
+export function LocationCard({ index = 2 }: { index?: number }) {
   const { t } = useLanguage();
   const where = usePatientLocation();
   const [profile, setProfile] = useState<EmergencyProfile | null>(null);
@@ -19,6 +20,8 @@ export function LocationCard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [messageCount, setMessageCount] = useState(0); // a new count plays the saved animation again
+  const asking = where.status === 'asking';
   const card = useRef<HTMLFormElement>(null);
   const areaInput = useRef<HTMLInputElement>(null);
   const { hash } = useLocation();
@@ -86,7 +89,10 @@ export function LocationCard() {
       setPoint(null);
       where.setHome(saved.profile);
       if (saved.located === false) setError(tx('We could not find that area on the map. Try a nearby town, or use your current location.'));
-      else setMessage(tx('Location saved.'));
+      else {
+        setMessage(tx('Location saved.'));
+        setMessageCount((n) => n + 1);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : tx('Could not save your location. Please try again.'));
     } finally {
@@ -98,44 +104,56 @@ export function LocationCard() {
   const notFound = Boolean(profile?.homeLabel && !profile.hasHome);
 
   return (
-    <form ref={card} id="location" onSubmit={save} className="glass-panel" aria-labelledby="profile-location-title" style={{ padding: '20px 24px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <h2 id="profile-location-title" style={{ fontSize: '1rem', margin: 0 }}>{t('Location')}</h2>
-      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-        {t('Where you live. Emergency help uses it to show the right numbers and the hospitals nearest to you, and to notice when you are away from it. Only you can see it.')}
-      </p>
+    <form ref={card} id="location" onSubmit={save} aria-labelledby="profile-location-title" {...cardProps('sage', index, 'pf-location')}>
+      <LocationArt locating={asking} found={point !== null && !asking} />
+      <CardHeading
+        id="profile-location-title"
+        icon={<MapPin size={23} />}
+        title={t('Location')}
+        subtitle={t('Where you live. Emergency help uses it to show the right numbers and the hospitals nearest to you, and to notice when you are away from it. Only you can see it.')}
+      />
       {profile && (
-        <p role="status" style={{ fontSize: '0.85rem', margin: 0, fontWeight: 600 }} data-testid="saved-location">
-          {profile.hasHome
-            ? t('Saved: {place}', { place: profile.homeLabel ?? '' })
-            : profile.homeLabel
-              ? t('Saved as text, but not found on the map: {place}', { place: profile.homeLabel })
-              : t('No location saved yet.')}
+        <p role="status" className="pf-saved-strip" data-testid="saved-location">
+          <span className="pf-strip-icon" aria-hidden="true">{profile.hasHome ? <MapPinCheck size={18} /> : <MapPin size={18} />}</span>
+          <span className="pf-strip-text">
+            {profile.hasHome
+              ? t('Saved: {place}', { place: profile.homeLabel ?? '' })
+              : profile.homeLabel
+                ? t('Saved as text, but not found on the map: {place}', { place: profile.homeLabel })
+                : t('No location saved yet.')}
+          </span>
+          <Skyline />
         </p>
       )}
-      <Field label={t('Your area or city')}>
+      <FieldTile icon={<MapPin size={20} />} label={t('Your area or city')}>
         <input
+          className="pf-input"
           ref={areaInput}
           maxLength={200}
           value={area}
           autoComplete="address-level2"
           placeholder={t('For example Thandalam, Chennai')}
           onChange={(e) => { setArea(e.target.value); setPoint(null); }}
-          style={inputStyle}
         />
-      </Field>
+      </FieldTile>
       {notFound && !error && (
-        <div role="alert" style={{ fontSize: '0.82rem', color: 'var(--rose-urgent)' }}>
+        <div role="alert" className="pf-error">
           {t('We could not find that area on the map. Try a nearby town, or use your current location.')}
         </div>
       )}
-      {error && <div role="alert" style={{ fontSize: '0.82rem', color: 'var(--rose-urgent)' }}>{t(error)}</div>}
-      {message && <div role="status" style={{ fontSize: '0.82rem', color: 'var(--emerald-raw)', fontWeight: 600 }}>{t(message)}</div>}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+      {error && <div role="alert" className="pf-error">{t(error)}</div>}
+      <div className="pf-locate-row">
         <button type="submit" className="btn-primary" disabled={busy || !profile}>{busy ? t('Saving…') : t('Save location')}</button>
-        <button type="button" className="btn-secondary" disabled={where.status === 'asking'} onClick={() => void fillFromDevice()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-          <MapPin size={15} aria-hidden="true" /> {where.status === 'asking' ? t('Finding your location…') : point ? t('Location found. Save to keep it.') : t('Use my current location')}
+        <button type="button" className="btn-secondary" disabled={asking} onClick={() => void fillFromDevice()}>
+          <Navigation size={16} aria-hidden="true" /> {asking ? t('Finding your location…') : point ? t('Location found. Save to keep it.') : t('Use my current location')}
         </button>
+        {message && <span key={messageCount} role="status" className="pf-success"><Confetti /><SuccessCheck />{t(message)}</span>}
       </div>
+      {(asking || point) && (
+        <div className={`pf-locate-status${asking ? ' pf-locating' : ''}`}>
+          {asking ? <Radar label={t('Finding your location…')} /> : <span role="status" className="pf-success"><SuccessCheck />{t('Location detected!')}</span>}
+        </div>
+      )}
     </form>
   );
 }

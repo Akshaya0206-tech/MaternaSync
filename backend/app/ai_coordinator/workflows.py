@@ -223,6 +223,8 @@ def run_question_routing(db, run: models.AIRun, provider) -> str:
             else:
                 body, origin = messages.pick(messages.UPLOAD_HELP, language), "the app's own instructions"
             text = f"{body}\n\n{messages.pick(messages.ASSISTANT_NOTE, language)}"
+            # Every question reaches the doctor, even one the assistant can word a reply to: it is listed on Patient Questions and the reply below stays a proposal.
+            tools.act(db, run, "assign_question_to_doctor", {**assign, "is_clinical": False}, key=f"assign:{qid}")
             tools.act(db, run, "answer_question", {"question_id": qid, "text": text}, key=f"answer:{qid}",
                       proposal={"title": "Suggested reply to an administrative question", "summary": f"Question: “{excerpt}”\nSuggested reply: {body}\nSource: {origin}.",
                                 "recommended_action": "Approve to send this reply."})
@@ -291,7 +293,12 @@ def sweep_missed_checkins(db, make_run, skip=frozenset()) -> int:
                   "kind": "assistant_reminder"}, key=f"checkin:{plan.episode_id}:{_now().date().isoformat()}:patient")
         first_name = (episode.patient_name or "").split(" ")[0]
         sent = db.query(models.AIRun).filter(models.AIRun.workflow == "missed_checkin", models.AIRun.episode_id == plan.episode_id, models.AIRun.created_at >= baseline.replace(tzinfo=None)).count()
-        for link in caregiver_service.active_links_for_episode(db, plan.episode_id, "check_in"):
+        links = caregiver_service.active_links_for_episode(db, plan.episode_id, "check_in")
+        helper = caregiver_service.helper_link(db, plan.episode_id)
+        if helper is not None and any(l.id == helper[1].id for l in links):
+            # A doctor asked one trusted person to help with check-ins, so their reminder comes first; the others join from the third reminder on.
+            links = [l for l in links if l.id == helper[1].id or sent >= 3]
+        for link in links:
             tools.act(db, run, "notify_user", {"user_id": link.caregiver_user_id, "title": messages.pick(messages.CHECKIN_TITLE, language),
                       "body": messages.pick(messages.CHECKIN_CAREGIVER, language).format(name=first_name), "kind": "assistant_reminder"},
                       key=f"checkin:{plan.episode_id}:{_now().date().isoformat()}:{link.id}")

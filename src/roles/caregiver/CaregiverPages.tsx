@@ -3,15 +3,19 @@ import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Phone } from 'lucide-react';
 import {
-  acceptInvite, askCaregiverQuestion, caregiverAppointments, caregiverCarePlan, caregiverCheckIns, caregiverEmergency, caregiverHome,
-  caregiverNotifications, caregiverQuestions, caregiverTalk, saveCaregiverCheckIn,
+  acceptInvite, answerCheckInHelper, askCaregiverQuestion, caregiverAppointments, caregiverCarePlan, caregiverCheckIns, caregiverEmergency, caregiverHome,
+  caregiverNotifications, caregiverQuestions, caregiverReminders, caregiverTalk, caregiverVisitPrep, saveCaregiverCheckIn, tickCaregiverVisitPrep,
 } from '../../api/caregiver';
-import type { CaregiverAppointment, CaregiverCheckIn, CaregiverEmergency, CaregiverNotification, CaregiverQuestion, HomeSummary, Permission } from '../../api/caregiver';
+import type {
+  CaregiverAppointment, CaregiverCheckIn, CaregiverEmergency, CaregiverNotification, CaregiverQuestion, CaregiverReminder, CaregiverReminders, HomeSummary,
+  Permission, PrepByVisit,
+} from '../../api/caregiver';
 import type { Workspace } from '../../api/continuity';
 import { formatTime } from '../../api/continuity';
 import { useAuth } from '../../auth/AuthContext';
 import { tx, useLanguage } from '../../i18n';
 import { Badge, Empty, Feedback, Field, Page, Panel, useAction } from '../../components/continuity/shared';
+import { VisitChecklist } from '../../components/continuity/VisitChecklist';
 import { formatFriendlyDate, friendlyAppointmentStatus, friendlyQuestionStatus } from '../patient/format';
 import { GuidedCheckInForm } from '../patient/GuidedCheckInForm';
 import { SummaryList } from '../patient/SupportPages';
@@ -24,7 +28,8 @@ const PERMISSION_TEXT: Record<Permission, string> = {
   appointments: tx('See her appointments'),
   check_in: tx('See her daily check-ins and fill one in with her'),
   care_plan: tx('Read the summaries and instructions her doctor has released to her'),
-  questions: tx('Ask the clinic a question, and read the replies'),
+  reminders: tx('See when her reminders are due. Medicine and vaccine names show only if she also allows the summaries and instructions above'),
+  questions: tx('Ask the doctor a question, and read the replies'),
   emergency: tx('See her emergency numbers, her emergency contact and her preferred hospital'),
 };
 
@@ -127,6 +132,34 @@ function NotLinked({ title }: { title: string }) {
   );
 }
 
+/** A doctor asked this person to help with her daily check-ins. They can say yes or no, and change their answer; she is told each time. */
+function HelperRequest({ linkId, womanName, request, onAnswered }: { linkId: string; womanName: string; request: NonNullable<HomeSummary['checkInHelper']>; onAnswered: () => void }) {
+  const { t } = useLanguage();
+  const action = useAction();
+  const answer = (status: 'ACCEPTED' | 'DECLINED') => action.run(async () => {
+    await answerCheckInHelper(linkId, status);
+    onAnswered();
+  }, '');
+  return (
+    <Panel title={t('Your doctor asked for your help')}>
+      <p>{t('{doctor} asked you to help {name} fill in her daily check-ins. If she misses one, you are reminded first.', { doctor: request.askedBy, name: womanName.split(' ')[0] })}</p>
+      <Feedback error={action.error} />
+      <div className="continuity-actions">
+        <button type="button" className={request.status === 'ACCEPTED' ? 'btn-primary' : 'btn-secondary'} aria-pressed={request.status === 'ACCEPTED'} disabled={action.busy} onClick={() => void answer('ACCEPTED')}>
+          {t("Yes, I'll help")}
+        </button>
+        <button type="button" className={request.status === 'DECLINED' ? 'btn-primary' : 'btn-secondary'} aria-pressed={request.status === 'DECLINED'} disabled={action.busy} onClick={() => void answer('DECLINED')}>
+          {t("No, I can't")}
+        </button>
+        {request.status === 'ACCEPTED' && <Link className="btn-secondary" to="/caregiver/check-in/new">{t('Fill in a check-in with her')}</Link>}
+      </div>
+      <p className="continuity-muted" role="status">
+        {request.status === 'ASKED' ? t('You have not answered yet.') : request.status === 'ACCEPTED' ? t('You said yes. She has been told.') : t('You said no. She has been told, and nothing else changes.')}
+      </p>
+    </Panel>
+  );
+}
+
 // ---------------------------------------------------------------- Home
 export function CaregiverHomePage() {
   const { t } = useLanguage();
@@ -171,6 +204,10 @@ export function CaregiverHomePage() {
             </article>
           ))}
         </Panel>
+      )}
+
+      {current.permissions.check_in && data?.checkInHelper && (
+        <HelperRequest linkId={current.linkId} womanName={current.womanName} request={data.checkInHelper} onAnswered={() => void summary.reload()} />
       )}
 
       {current.permissions.check_in && data && (
@@ -226,6 +263,7 @@ function Appointments() {
   const { t } = useLanguage();
   const { current } = useCaregiver();
   const list = useForWoman<CaregiverAppointment[]>(caregiverAppointments);
+  const prep = useForWoman<PrepByVisit>(caregiverVisitPrep);
   return (
     <Page title={t('Appointments')} subtitle={t('Her visits to the clinic.')}>
       <Feedback error={list.error} />
@@ -237,6 +275,9 @@ function Appointments() {
             <h3>{formatTime(a.scheduledAt)} <Badge>{friendlyAppointmentStatus(a.status)}</Badge></h3>
             <p>{a.type}{a.location && a.status !== 'scheduled' ? ` · ${a.location}` : ''}</p>
             {current && <VisitHelper visit={a} womanName={current.womanName} linkId={current.linkId} onChanged={() => void list.reload()} />}
+            {current && a.status === 'scheduled' && prep.data?.[a.id] && (
+              <VisitChecklist items={prep.data[a.id]} perspective="helper" onTick={async (item, done) => { await tickCaregiverVisitPrep(current.linkId, item.id, done); await prep.reload(); }} />
+            )}
           </article>
         ))}
       </Panel>
@@ -257,7 +298,7 @@ function CheckIns() {
   const { t } = useLanguage();
   const list = useForWoman<CaregiverCheckIn[]>(caregiverCheckIns);
   return (
-    <Page title={t('Daily Check-in')} subtitle={t('Fill in a check-in with her, one question at a time. It is saved as her check-in, with your name beside it so the clinic knows who helped.')}>
+    <Page title={t('Daily Check-in')} subtitle={t('Fill in a check-in with her, one question at a time. It is saved as her check-in, with your name beside it so the doctor knows who helped.')}>
       <Feedback error={list.error} />
       <div className="continuity-actions">
         <Link className="btn-primary" to="/caregiver/check-in/new">{t('Fill in a check-in with her')}</Link>
@@ -293,7 +334,7 @@ export function CaregiverNewCheckInPage() {
           filledInBy={t('You ({name}), for her', { name: user?.fullName ?? '' })}
           save={async (body) => { await saveCaregiverCheckIn(linkId, body as unknown as Record<string, unknown>); }}
           subtitle={t('One question at a time. Ask her, or read it out to her. The answers are saved as her check-in, with your name beside it.')}
-          savedText={t('The check-in was saved for her care team.')}
+          savedText={t('The check-in was saved for her doctor.')}
           doneTo="/caregiver/check-in"
           doneLabel={t('Back to the check-ins')}
         />
@@ -340,7 +381,7 @@ function Questions({ linkId }: { linkId: string }) {
   const action = useAction();
   const [text, setText] = useState('');
   return (
-    <Page title={t('Questions')} subtitle={t('Ask the clinic a question. A person reads it, and the reply appears here once a doctor has approved it.')}>
+    <Page title={t('Questions')} subtitle={t('Ask the doctor a question. The doctor reads it, and the reply appears here once they have approved it.')}>
       <Feedback error={list.error || action.error} message={action.message} />
       <Panel title={t('Ask a question')}>
         <form
@@ -350,7 +391,7 @@ function Questions({ linkId }: { linkId: string }) {
               await askCaregiverQuestion(linkId, text);
               setText('');
               await list.reload();
-            }, t('Your question was sent to the clinic.'));
+            }, t('Your question was sent to the doctor.'));
           }}
         >
           <Field label={t('Your question')}>
@@ -370,6 +411,52 @@ function Questions({ linkId }: { linkId: string }) {
             {q.replies.map((r, index) => <div key={index} className="continuity-copy">{r.text}</div>)}
           </article>
         ))}
+      </Panel>
+    </Page>
+  );
+}
+
+// ---------------------------------------------------------------- Reminders
+const REMINDER_KIND: Record<CaregiverReminder['kind'], string> = {
+  appointment: tx('Visit reminder'),
+  follow_up: tx('Follow-up reminder'),
+  medicine: tx('Medicine reminder'),
+  vaccine: tx('Vaccine reminder'),
+};
+export function CaregiverRemindersPage() {
+  const { t } = useLanguage();
+  return (
+    <Needs permission="reminders" title={t('Reminders')}>
+      {() => <Reminders />}
+    </Needs>
+  );
+}
+function Reminders() {
+  const { t } = useLanguage();
+  const { current } = useCaregiver();
+  const list = useForWoman<CaregiverReminders>(caregiverReminders);
+  const first = current?.womanName.split(' ')[0] ?? '';
+  return (
+    <Page title={t('Reminders')} subtitle={t('When her reminders are due. You can remind her, but only she can answer them.')}>
+      <Feedback error={list.error} />
+      {list.data && !list.data.detailsAllowed && (
+        <p className="continuity-note">{t('Medicine and vaccine names are hidden. {name} can show them by also allowing the summaries and instructions.', { name: first })}</p>
+      )}
+      <Panel title={t('Her reminders')}>
+        {list.loading && <p role="status" className="continuity-muted">{t('Loading…')}</p>}
+        {list.data && !list.data.items.length && <Empty>{t('No reminders are due soon.')}</Empty>}
+        {list.data?.items.map((r) => {
+          const due = !r.answered && new Date(r.scheduledAt).getTime() <= Date.now();
+          return (
+            <article key={r.id} className="continuity-item">
+              <h3>
+                {r.title ?? t(REMINDER_KIND[r.kind])} {due && <Badge>{t('Due now')}</Badge>} {r.answered && <Badge>{t('She has answered')}</Badge>}
+              </h3>
+              <p>{formatTime(r.scheduledAt)}{r.title !== null && ` · ${t(REMINDER_KIND[r.kind])}`}</p>
+              {r.instructions && <div className="continuity-copy">{r.instructions}</div>}
+            </article>
+          );
+        })}
       </Panel>
     </Page>
   );

@@ -35,6 +35,8 @@ export interface Passage {
   text: string;
   marks: string[];
   score: number;
+  /** How it was found: by the words typed, by what it says (any language), or both. */
+  matchedBy?: 'words' | 'meaning' | 'both';
 }
 
 export interface ReferenceSearch {
@@ -42,6 +44,8 @@ export interface ReferenceSearch {
   items: Reference[];
   passages: Passage[];
   total: number;
+  /** True when the server also searches by meaning, so a question in Hindi, Tamil or Telugu finds the English passage. */
+  semantic?: boolean;
   interpretation: { corrections: { from: string; to: string }[]; alsoSearched: string[]; words: string[] } | null;
 }
 

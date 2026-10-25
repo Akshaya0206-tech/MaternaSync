@@ -1,21 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, UserPlus } from 'lucide-react';
+import { Copy, UserPlus, Users } from 'lucide-react';
 import { inviteTrusted, listTrusted, newInviteCode, removeTrusted, trustedActivity, updateTrusted } from '../../api/caregiver';
 import type { Permission, Permissions, TrustedActivity, TrustedPerson } from '../../api/caregiver';
 import { formatTime } from '../../api/continuity';
 import { formatFriendlyDate } from './format';
 import { tx, useLanguage } from '../../i18n';
 import { Badge, Feedback, Field, useAction } from '../../components/continuity/shared';
+import { CardHeading } from './ProfileArt';
+import { cardProps } from './profileCard';
 
 // Each thing she can allow, in the first person. Only the first is on unless she chooses more.
 const OPTIONS: { key: Permission; label: string }[] = [
   { key: 'appointments', label: tx('See my appointments') },
   { key: 'check_in', label: tx('See my daily check-ins and fill one in with me') },
   { key: 'care_plan', label: tx('Read the summaries and instructions my doctor has released to me') },
-  { key: 'questions', label: tx('Ask the clinic a question, and read the replies') },
+  { key: 'reminders', label: tx('See when my reminders are due. Medicine and vaccine names show only if I also allow the summaries and instructions above') },
+  { key: 'questions', label: tx('Ask the doctor a question, and read the replies') },
   { key: 'emergency', label: tx('See my emergency numbers, my emergency contact and my preferred hospital') },
 ];
-const DEFAULTS: Permissions = { appointments: true, check_in: false, care_plan: false, questions: false, emergency: false };
+const DEFAULTS: Permissions = { appointments: true, check_in: false, care_plan: false, reminders: false, questions: false, emergency: false };
 const STATUS: Record<TrustedPerson['status'], string> = { INVITED: tx('Waiting to join'), ACTIVE: tx('Active'), REVOKED: tx('Removed') };
 
 function PermissionBoxes({ value, onChange, name, disabled }: { value: Permissions; onChange: (next: Permissions) => void; name: string; disabled?: boolean }) {
@@ -60,7 +63,7 @@ function AccessLimit({ person, busy, onSave }: { person: TrustedPerson; busy: bo
 }
 
 /** Profile → Trusted people. The woman invites a relative or friend, chooses exactly what they may do, sees what they did, and can remove them at any time. */
-export function TrustedPeopleCard() {
+export function TrustedPeopleCard({ index = 3 }: { index?: number }) {
   const { t } = useLanguage();
   const action = useAction();
   const [people, setPeople] = useState<TrustedPerson[] | null>(null);
@@ -114,12 +117,15 @@ export function TrustedPeopleCard() {
   };
 
   return (
-    <section className="glass-panel trusted-card" aria-labelledby="trusted-heading" id="trusted" style={{ padding: '20px 24px', marginTop: '16px' }}>
-      <h2 id="trusted-heading" style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>{t('Trusted people')}</h2>
-      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
-        {t('Invite a relative or friend to help you. They get their own login. You choose what they can see and do, you can see what they did, and you can remove them at any time.')}
-      </p>
+    <section aria-labelledby="trusted-heading" id="trusted" {...cardProps('peach', index, 'trusted-card')}>
+      <CardHeading
+        id="trusted-heading"
+        icon={<Users size={23} />}
+        title={t('Trusted people')}
+        subtitle={t('Invite a relative or friend to help you. They get their own login. You choose what they can see and do, you can see what they did, and you can remove them at any time.')}
+      />
       <Feedback error={action.error} message={action.message} />
+      <p className="continuity-muted">{t('Your doctor can see who you have added and what each person may do. Your doctor cannot change it.')}</p>
 
       {issued && (
         <div className="continuity-note trusted-code" role="status">
@@ -148,6 +154,15 @@ export function TrustedPeopleCard() {
           )}
           {person.status === 'INVITED' && <p className="continuity-muted">{t('Waiting to join. The invite stops working on {when}.', { when: formatTime(person.inviteExpiresAt) })}</p>}
           {person.status === 'REVOKED' && <p className="continuity-muted">{t('Removed on {when}. They can no longer see anything.', { when: formatTime(person.revokedAt) })}</p>}
+          {person.checkInHelper && (
+            <p className="continuity-muted">
+              {person.checkInHelper === 'ASKED'
+                ? t('Your doctor asked them to help with your check-ins. They have not answered yet.')
+                : person.checkInHelper === 'ACCEPTED'
+                  ? t('Helping with your check-ins, at your doctor’s request. They are reminded first if you miss one.')
+                  : t('They said no to helping with your check-ins.')}
+            </p>
+          )}
           {person.whatsapp === 'on' && <p className="continuity-muted">{t('They get short WhatsApp reminders on their own number. The messages never have your name, results or medicines.')}</p>}
 
           {person.status !== 'REVOKED' && (

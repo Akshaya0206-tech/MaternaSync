@@ -80,13 +80,17 @@ class VercelFilesTests(unittest.TestCase):
             self.assertIn(name, ignored)
         self.assertIn(".vercel", (ROOT / ".gitignore").read_text(encoding="utf-8"))
 
+    def test_a_render_file_at_the_root_would_make_vercel_refuse_the_build_settings(self):
+        self.assertFalse((ROOT / "render.yaml").exists())  # Vercel reads it as a backend service and then rejects vercel.json's buildCommand/framework
+        self.assertFalse((ROOT / "Dockerfile").exists())
+
     def test_the_backend_image_runs_one_worker_and_keeps_its_data_on_the_disk(self):
         dockerfile = (ROOT / "backend" / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("--workers 1", dockerfile)  # SQLite and the scheduler must not be run twice
         self.assertIn("/data", dockerfile)
         self.assertIn("HEALTHCHECK", dockerfile)
         self.assertIn("api/health", dockerfile)
-        blueprint = (ROOT / "render.yaml").read_text(encoding="utf-8")
+        blueprint = (ROOT / "deploy" / "render.yaml").read_text(encoding="utf-8")
         for needle in ("healthCheckPath: /api/health", "mountPath: /data", "MATERNASYNC_JWT_SECRET", "generateValue: true", "MATERNASYNC_CORS_ORIGINS"):
             self.assertIn(needle, blueprint)
 

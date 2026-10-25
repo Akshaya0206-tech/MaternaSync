@@ -304,7 +304,7 @@ export function CarePlanPage() {
     <Page
       title={t("My care plan")}
       subtitle={t(
-        "Follow the reminders your care team has approved, request a visit, and read your released summaries.",
+        "Follow the reminders your doctor has approved, request a visit, and read your released summaries.",
       )}
     >
       <Feedback error={w.error || action.error} message={action.message} />
@@ -328,7 +328,7 @@ export function CarePlanPage() {
             ).length && (
               <Empty>
                 {t(
-                  "No reminders in this view. Schedules are entered by your care team.",
+                  "No reminders in this view. Your doctor adds medicine, vaccine and visit reminders here.",
                 )}
               </Empty>
             )}

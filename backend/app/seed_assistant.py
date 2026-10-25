@@ -43,9 +43,11 @@ def ensure_demo_caregiver(db) -> None:
     if link is None:
         db.add(models.CaregiverLink(
             episode_id=episode.id, patient_user_id=woman.id, caregiver_user_id=user.id, display_name=DEMO_CAREGIVER["display_name"],
-            relationship=DEMO_CAREGIVER["relationship"], permissions=clean_permissions({k: True for k in ("appointments", "check_in", "care_plan", "questions", "emergency")}),
+            relationship=DEMO_CAREGIVER["relationship"], permissions=clean_permissions({k: True for k in ("appointments", "check_in", "care_plan", "reminders", "questions", "emergency")}),
             status="ACTIVE", accepted_at=datetime.now(timezone.utc),
         ))
     elif link.status == "ACTIVE" and link.accepted_at is None:
         link.accepted_at = link.created_at or datetime.now(timezone.utc)  # a demo link made before this date was recorded
+    if link is not None and link.status == "ACTIVE" and "reminders" not in (link.permissions or {}):
+        link.permissions = {**(link.permissions or {}), "reminders": True}  # the demo link predates this permission; a choice she already made is never overwritten
     db.commit()

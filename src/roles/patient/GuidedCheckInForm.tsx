@@ -14,7 +14,7 @@ import { canSpeak, speak, stopSpeaking } from './speech';
 type Step = 'who' | 'bp' | 'weight' | 'symptoms' | 'mood' | 'medicine' | 'review';
 const ALL_STEPS: Step[] = ['who', 'bp', 'weight', 'symptoms', 'mood', 'medicine', 'review'];
 
-// The English wording is what the care team reads, whatever language the screen is in.
+// The English wording is what the doctor reads, whatever language the screen is in.
 const HELPERS = [
   { key: 'self', label: tx('I am filling it in myself'), recorded: null },
   { key: 'asha', label: tx('An ASHA worker'), recorded: 'ASHA worker' },
@@ -95,7 +95,7 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
   }, [index, ready]);
 
   const questions: Record<Step, { title: string; hint?: string }> = {
-    who: { title: t('Who is filling this in?'), hint: t('This is only so the care team knows who helped. It is not a login.') },
+    who: { title: t('Who is filling this in?'), hint: t('This is only so the doctor knows who helped. It is not a login.') },
     bp: { title: t('What is the blood pressure reading?'), hint: t('Two numbers from the machine, for example 120 and 80. Leave both empty if there is no reading today.') },
     weight: { title: t('What is the weight today?') },
     symptoms: { title: t('Any symptoms today?') },

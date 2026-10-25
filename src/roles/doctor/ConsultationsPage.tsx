@@ -11,10 +11,36 @@ import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
 import { StatusBadge } from '../../components/StatusBadge';
 import { friendlyDraftStatus, DRAFT_STATUS_TONE } from './format';
 import { tx, useLanguage } from '../../i18n';
+import { DocumentationHistoryView } from './DocumentationHistoryPage';
 
 type Stage = 'select' | 'context' | 'documenting' | 'draft';
 
+// One menu item, two tabs. The consultation in progress stays mounted (only hidden) while the history is open, so a recording or a half-written
+// note is not lost; the history is read afresh each time it is opened, so a note approved a moment ago is in it.
 export function ConsultationsPage() {
+  const { t } = useLanguage();
+  const [params, setParams] = useSearchParams();
+  const view = params.get('tab') === 'history' ? 'history' : 'new';
+  const show = (next: 'new' | 'history') => setParams((previous) => {
+    const updated = new URLSearchParams(previous);
+    if (next === 'history') updated.set('tab', 'history'); else updated.delete('tab');
+    return updated;
+  }, { replace: true });
+
+  return (
+    <main style={{ padding: '24px', flex: 1, maxWidth: '900px', margin: '0 auto', width: '100%' }}>
+      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 6px 0' }}>{t('Consultations')}</h1>
+      <div className="continuity-tabs" style={{ margin: '12px 0 18px 0' }}>
+        <button aria-pressed={view === 'new'} onClick={() => show('new')}>{t('New consultation')}</button>
+        <button aria-pressed={view === 'history'} onClick={() => show('history')}>{t('Documentation history')}</button>
+      </div>
+      <div hidden={view !== 'new'} style={{ maxWidth: '760px', margin: '0 auto' }}><NewConsultationView /></div>
+      {view === 'history' && <DocumentationHistoryView />}
+    </main>
+  );
+}
+
+function NewConsultationView() {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const initialEpisodeId = searchParams.get('episodeId') ?? '';
@@ -217,8 +243,7 @@ export function ConsultationsPage() {
   };
 
   return (
-    <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 18px 0' }}>{t('Consultations')}</h1>
+    <div>
 
       {error && <div className="glass-panel" style={{ padding: '12px 18px', marginBottom: '16px', color: 'var(--rose-urgent)', fontSize: '0.84rem' }}>{t(error)}</div>}
 
@@ -226,6 +251,7 @@ export function ConsultationsPage() {
         <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '16px' }}>{t('Select a patient to begin a consultation.')}</p>
           <select
+            aria-label={t('Choose a patient')}
             onChange={(e) => handleSelectPatient(e.target.value)}
             defaultValue=""
             style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.88rem', cursor: 'pointer', minWidth: '240px' }}
@@ -239,6 +265,7 @@ export function ConsultationsPage() {
       {stage === 'context' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <select
+            aria-label={t('Choose a patient')}
             value={episodeId}
             onChange={(e) => handleSelectPatient(e.target.value)}
             style={{ padding: '9px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', fontSize: '0.86rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' }}
@@ -394,7 +421,7 @@ export function ConsultationsPage() {
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

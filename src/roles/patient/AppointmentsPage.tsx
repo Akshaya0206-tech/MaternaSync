@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Calendar, MapPin, Stethoscope } from 'lucide-react';
 import { fetchMyAppointments } from '../../api/patientPortal';
-import { visitHelpForMe } from '../../api/caregiver';
-import type { VisitHelpAnswer } from '../../api/caregiver';
+import { tickMyVisitPrep, visitHelpForMe, visitPrepForMe } from '../../api/caregiver';
+import type { PrepByVisit, VisitHelpAnswer } from '../../api/caregiver';
 import type { PatientAppointment } from '../../api/patientPortal';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { BadgeTone } from '../../components/StatusBadge';
 import { formatFriendlyDate, formatFriendlyTime, friendlyAppointmentStatus } from './format';
 import { Link } from 'react-router-dom';
 import { useWorkspace, Panel } from '../../components/continuity/shared';
+import { VisitChecklist } from '../../components/continuity/VisitChecklist';
 import { SummaryList } from './SupportPages';
 import { tx, useLanguage } from '../../i18n';
 
@@ -27,8 +28,12 @@ export function AppointmentsPage() {
   // Which trusted person said they will take her, or cannot come, to each visit (by visit id).
   const [help, setHelp] = useState<Record<string, VisitHelpAnswer[]>>({});
 
+  // The checklist her doctor wrote for each upcoming visit (by visit id), for her to tick.
+  const [prep, setPrep] = useState<PrepByVisit>({});
+
   useEffect(() => {
     visitHelpForMe().then(setHelp).catch(() => setHelp({}));
+    visitPrepForMe().then(setPrep).catch(() => setPrep({}));
   }, []);
 
   useEffect(() => {
@@ -85,6 +90,9 @@ export function AppointmentsPage() {
                     <StatusBadge label={answer.status === 'WILL_TAKE' ? t('{name} will take you', { name: answer.name }) : t('{name} cannot come', { name: answer.name })} tone={answer.status === 'WILL_TAKE' ? 'green' : 'neutral'} />
                   </div>
                 ))}
+                {appt.status === 'scheduled' && prep[appt.id] && (
+                  <VisitChecklist items={prep[appt.id]} perspective="woman" onTick={async (item, done) => { await tickMyVisitPrep(item.id, done); setPrep(await visitPrepForMe()); }} />
+                )}
               </div>
               <StatusBadge label={friendlyAppointmentStatus(appt.status)} tone={STATUS_TONE[appt.status] ?? 'neutral'} />
             </div>

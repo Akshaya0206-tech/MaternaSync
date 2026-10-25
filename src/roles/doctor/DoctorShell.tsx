@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FileCheck2, Stethoscope, MessageCircle, FileText, ListTodo, ArrowRightLeft, Bell, UserCircle, BookOpen, SlidersHorizontal, Bot } from 'lucide-react';
+import { LayoutDashboard, Users, Stethoscope, MessageCircle, ListTodo, ArrowRightLeft, Bell, UserCircle, BookOpen, SlidersHorizontal, Bot } from 'lucide-react';
 import { RoleSidebar } from '../../components/shared/RoleSidebar';
 import type { RoleNavItem } from '../../components/shared/RoleSidebar';
 import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher';
@@ -16,18 +16,15 @@ import { doctorTourLabels, doctorTourSteps } from './tour';
 const NAV_ITEMS: RoleNavItem[] = [
   { label: tx('Dashboard'), to: '/doctor/dashboard', icon: <LayoutDashboard size={18} /> },
   { label: tx('My Patients'), to: '/doctor/patients', icon: <Users size={18} /> },
-  { label: tx("Today's Brief"), to: '/doctor/todays-brief', icon: <FileCheck2 size={18} /> },
   { label: tx('Consultations'), to: '/doctor/consultations', icon: <Stethoscope size={18} /> },
   { label: tx('Patient Questions'), to: '/doctor/questions', icon: <MessageCircle size={18} /> },
   { label: tx('Care Assistant'), to: '/doctor/assistant', icon: <Bot size={18} /> },
-  { label: tx('Documentation'), to: '/doctor/documentation', icon: <FileText size={18} /> },
-  { label: tx('Document Studio'), to: '/doctor/draft-studio', icon: <FileText size={18} /> },
-  { label: tx('Connected Care'), to: '/doctor/care-workspace', icon: <ListTodo size={18} /> },
-  { label: tx('Reference Library'), to: '/doctor/library', icon: <FileCheck2 size={18} /> },
+  // Document Studio is the second tab of this page; its old address still opens it, so this item stays highlighted there.
+  { label: tx('Connected Care'), to: '/doctor/care-workspace', icon: <ListTodo size={18} />, alsoActiveOn: ['/doctor/draft-studio'] },
+  { label: tx('References'), to: '/doctor/references', icon: <BookOpen size={18} /> },
   { label: tx('Clinical Settings'), to: '/doctor/clinical-settings', icon: <SlidersHorizontal size={18} /> },
   { label: tx('Clinic Overview'), to: '/doctor/clinic', icon: <Users size={18} /> },
   { label: tx('Follow-ups'), to: '/doctor/follow-ups', icon: <ListTodo size={18} /> },
-  { label: tx('Guidelines'), to: '/doctor/guidelines', icon: <BookOpen size={18} /> },
   { label: tx('Handover'), to: '/doctor/handover', icon: <ArrowRightLeft size={18} />, badge: tx('Paused') },
   { label: tx('Updates'), to: '/doctor/updates', icon: <Bell size={18} /> },
   { label: tx('Profile'), to: '/doctor/profile', icon: <UserCircle size={18} /> },

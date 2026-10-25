@@ -20,7 +20,7 @@ interface Message {
   role: "user" | "bot";
   text: string;
   reply?: CompanionReply;
-  /** The patient's own words, kept so they can be sent to the care team on request. */
+  /** The patient's own words, kept so they can be sent to the doctor on request. */
   question?: string;
   sent?: boolean;
 }
@@ -156,18 +156,18 @@ export function CompanionPage() {
     await action.run(async () => {
       await askMyQuestion(message.question ?? "");
       setMessages((old) => old.map((m) => (m.id === message.id ? { ...m, sent: true } : m)));
-    }, t("Sent to your care team. A doctor will review it and the reply will appear in My Questions."));
+    }, t("Sent to your doctor. The reply will appear in My Questions once they have reviewed it."));
   }
 
   return (
     <Page
       title={t("Care companion")}
-      subtitle={t("Find your way, learn from reviewed information, and ask your care team.")}
+      subtitle={t("Find your way, learn from reviewed information, and ask your doctor.")}
     >
       <Feedback error={action.error} message={action.message} />
       <div className="continuity-note">
         {t(
-          "Medical questions go to your care team for review. This companion does not diagnose or recommend treatment.",
+          "Medical questions go to your doctor for review. This companion does not diagnose or recommend treatment.",
         )}
       </div>
       <div className="continuity-fields">
@@ -185,7 +185,7 @@ export function CompanionPage() {
         </Field>
       </div>
       <div className="continuity-actions">
-        <Link className="btn-primary" to="/patient/questions">{t("Ask my care team")}</Link>
+        <Link className="btn-primary" to="/patient/questions">{t("Ask my doctor")}</Link>
         <Link className="btn-secondary" to="/patient/records">{t("My records")}</Link>
         <Link className="btn-secondary" to="/patient/daily-log">{t("Daily check-in")}</Link>
         <Link className="btn-secondary" to="/patient/care-plan">{t("My care plan")}</Link>
@@ -195,7 +195,7 @@ export function CompanionPage() {
           <div className="companion-log" ref={log} role="log" aria-live="polite">
             <div className="companion-bubble bot">
               {t(
-                "Hello! I can help you find things in the app and show information that your clinic has reviewed. I cannot answer medical questions. I will pass those to your care team.",
+                "Hello! I can help you find things in the app and show information that your clinic has reviewed. I cannot answer medical questions. I will pass those to your doctor.",
               )}
             </div>
             {messages.map((message) => (
@@ -230,7 +230,7 @@ export function CompanionPage() {
                         </Link>
                       ) : message.sent ? (
                         <span key={index} className="continuity-muted">
-                          {t("Sent to your care team.")}
+                          {t("Sent to your doctor.")}
                         </span>
                       ) : (
                         <button
@@ -239,7 +239,7 @@ export function CompanionPage() {
                           disabled={action.busy}
                           onClick={() => void sendToCareTeam(message)}
                         >
-                          {t("Send this question to my care team")}
+                          {t("Send this question to my doctor")}
                         </button>
                       ),
                     )}

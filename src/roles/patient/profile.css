@@ -1,0 +1,224 @@
+/* Patient -> Profile. One look for the page and its five cards (your details, Location, Trusted people, Emergency details, Tour),
+   built only from the app's own colours: forest and teal for actions, mint and sage for calm surfaces, peach and terracotta for warmth,
+   navy for text. Every animation sits inside "prefers-reduced-motion: no-preference": with reduced motion switched on nothing moves and
+   everything is simply shown. */
+
+.pf-page { position: relative; flex: 1; width: 100%; max-width: 880px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.pf-page > * { position: relative; }
+
+/* ---- page header: plain, on the page's own background. Colour is for the cards only. ---- */
+.pf-header { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.pf-header-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; color: var(--forest-deep); }
+.pf-header h1 { font-size: 1.85rem; line-height: 1.1; margin: 0; }
+.pf-header p { margin: 4px 0 0; color: var(--text-secondary); font-size: 0.92rem; }
+.pf-loading { padding: 32px; text-align: center; color: var(--text-muted); }
+
+/* ---- the cards ---- */
+.pf-card {
+  position: relative; overflow: hidden; padding: 22px 26px 26px;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 26px; box-shadow: var(--shadow-md);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.pf-card::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 170px; pointer-events: none;
+  background: var(--pf-wash);
+  -webkit-mask-image: linear-gradient(#000 25%, transparent); mask-image: linear-gradient(#000 25%, transparent);
+}
+.pf-card > * { position: relative; }
+.pf-card:hover { box-shadow: var(--shadow-lg); }
+
+.pf-tone-teal  { --pf-wash: linear-gradient(135deg, rgba(221, 235, 227, 0.95), rgba(250, 247, 241, 0.25)); --pf-tile: linear-gradient(145deg, var(--mint-soft), var(--sage-muted)); --pf-ink: var(--forest-deep); }
+.pf-tone-sage  { --pf-wash: linear-gradient(135deg, rgba(184, 208, 194, 0.6), rgba(221, 235, 227, 0.25)); --pf-tile: linear-gradient(145deg, #CFE3D6, var(--sage-muted)); --pf-ink: var(--forest-deep); }
+.pf-tone-peach { --pf-wash: linear-gradient(135deg, rgba(243, 216, 203, 0.7), rgba(250, 247, 241, 0.2)); --pf-tile: linear-gradient(145deg, #F8E4D9, var(--peach-muted)); --pf-ink: #6F3A24; }
+.pf-tone-terra { --pf-wash: linear-gradient(135deg, rgba(200, 111, 85, 0.2), rgba(250, 247, 241, 0.15)); --pf-tile: linear-gradient(145deg, #F6D3C6, #EBB3A0); --pf-ink: #7E331D; }
+.pf-tone-navy  { --pf-wash: linear-gradient(135deg, rgba(23, 50, 77, 0.1), rgba(250, 247, 241, 0.1)); --pf-tile: linear-gradient(145deg, #DCE4EC, #BCCADA); --pf-ink: var(--navy-deep); }
+[data-theme='dark'] .pf-card { --pf-wash: linear-gradient(135deg, rgba(22, 124, 114, 0.28), transparent); --pf-tile: rgba(255, 255, 255, 0.1); --pf-ink: var(--cream-soft); }
+
+.pf-card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.pf-card-icon { flex: none; width: 48px; height: 48px; border-radius: 17px; display: grid; place-items: center; color: var(--pf-ink); background: var(--pf-tile); box-shadow: var(--shadow-sm), inset 0 0 0 1px rgba(255, 255, 255, 0.55); }
+.pf-card-head h2 { margin: 0; font-family: var(--font-serif); font-weight: 500; font-size: 1.4rem; letter-spacing: -0.01em; color: var(--text-primary); }
+.pf-card-head p { margin: 4px 0 0; max-width: 62ch; font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); }
+.pf-cta { margin-top: 2px; }
+
+/* buttons inside the cards: soft pills */
+.pf-card .btn-primary, .pf-card .btn-secondary { border-radius: 999px; padding: 10px 20px; }
+.pf-card .btn-secondary { background: var(--bg-card); box-shadow: var(--shadow-sm); }
+.pf-card .btn-secondary:hover { background: var(--mint-soft); }
+.pf-save { min-width: 168px; padding: 12px 28px !important; }
+.pf-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 20px; }
+.pf-error { margin-top: 14px; font-size: 0.85rem; font-weight: 600; color: var(--rose-urgent); }
+
+/* ---- details card: hero ---- */
+.pf-hero { display: flex; align-items: center; gap: 22px; padding: 2px 0 22px; min-height: 110px; }
+.pf-avatar {
+  position: relative; flex: none; width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-serif); font-size: 2.1rem; letter-spacing: 0.02em; color: var(--cream-soft);
+  background: radial-gradient(circle at 30% 24%, #2E9F92, var(--teal-primary) 42%, var(--forest-deep));
+  box-shadow: 0 0 0 6px rgba(221, 235, 227, 0.95), 0 0 0 7px rgba(22, 124, 114, 0.28), 0 14px 28px rgba(18, 60, 53, 0.22);
+}
+.pf-hero-text { min-width: 0; }
+.pf-hero-name { margin: 0; font-family: var(--font-serif); font-weight: 500; font-size: 1.85rem; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.pf-role { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); }
+.pf-role svg { color: var(--teal-primary); }
+.pf-heartbeat { position: absolute !important; right: 4px; top: 2px; width: min(290px, 44%); height: auto; color: var(--teal-primary); opacity: 0.5; pointer-events: none; }
+.pf-heartbeat path { stroke-dasharray: none; }
+
+/* ---- field tiles ---- */
+.pf-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.pf-tile {
+  position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 10px; cursor: text;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.pf-tile-icon { flex: none; width: 44px; height: 44px; border-radius: 15px; display: grid; place-items: center; color: var(--forest-deep); background: var(--mint-soft); transition: background 0.2s ease, color 0.2s ease; }
+.pf-tile-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pf-tile-label { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.01em; color: var(--text-secondary); }
+.pf-tile::after {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 2px; pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
+  background: linear-gradient(100deg, var(--teal-primary) 0%, var(--sage-muted) 38%, var(--peach-muted) 62%, var(--teal-primary) 100%); background-size: 260% 100%; background-position: 0 0;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.pf-tile:focus-within { border-color: transparent; box-shadow: 0 0 0 4px rgba(22, 124, 114, 0.14), 0 12px 24px rgba(22, 124, 114, 0.12); }
+.pf-tile:focus-within::after { opacity: 1; }
+.pf-tile:focus-within .pf-tile-icon { background: var(--teal-primary); color: #fff; }
+
+.pf-input {
+  width: 100%; box-sizing: border-box; border: 1px solid transparent; border-radius: 13px; padding: 9px 12px;
+  background: var(--bg-primary); color: var(--text-primary); font: inherit; font-size: 0.95rem; outline: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.pf-input { text-overflow: ellipsis; }
+.pf-input::placeholder { color: var(--text-muted); }
+.pf-input[readonly] { background: rgba(18, 60, 53, 0.05); color: var(--text-secondary); cursor: default; }
+/* The tile shows the glow; the box inside only needs the keyboard ring, which index.css supplies. */
+.pf-tile .pf-input:focus { background: var(--bg-card); }
+
+/* any other box in these cards (Trusted people forms, dates, drop-downs) glows when it takes focus */
+.pf-card input:not(.pf-input):not([type="checkbox"]):not([type="radio"]), .pf-card select, .pf-card textarea { transition: border-color 0.2s ease, box-shadow 0.25s ease, background 0.2s ease; }
+.pf-card input:not(.pf-input):not([type="checkbox"]):not([type="radio"]):focus, .pf-card select:focus, .pf-card textarea:focus { border-color: var(--teal-primary); box-shadow: 0 0 0 4px rgba(22, 124, 114, 0.16); background: var(--bg-card); }
+
+/* ---- Save feedback: a check that draws itself, and a brief burst ---- */
+.pf-saved, .pf-success { position: relative; display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; font-weight: 700; font-size: 0.92rem; color: #0F6158; background: var(--emerald-raw-bg); padding: 7px 16px 7px 10px; }
+.pf-success { margin: 0; }
+.pf-check { flex: none; }
+.pf-check-ring, .pf-check-tick { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.pf-confetti { position: absolute; left: 20px; top: 50%; width: 0; height: 0; pointer-events: none; display: none; }
+.pf-confetti i { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 2px; background: var(--c); opacity: 0; }
+.pf-saved::before, .pf-success::before { content: ""; position: absolute; left: 6px; top: 50%; width: 36px; height: 36px; margin-top: -18px; border-radius: 50%; pointer-events: none; opacity: 0; background: radial-gradient(circle, rgba(22, 124, 114, 0.4), transparent 70%); }
+
+/* Trusted people already reports saves in the shared green box; give it the same check */
+.pf-card .continuity-success { position: relative; padding-left: 42px; border-radius: 14px; }
+.pf-card .continuity-success::before {
+  content: ""; position: absolute; left: 14px; top: 50%; width: 20px; height: 20px; margin-top: -10px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M7.5 12.5l3 3 6-6.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M7.5 12.5l3 3 6-6.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* ---- Location ---- */
+.pf-location-art { position: absolute !important; right: 14px; top: 6px; width: 250px; height: auto; pointer-events: none; }
+.pf-location .pf-card-head { padding-right: 250px; }
+.pf-art-ring { fill: none; stroke: var(--teal-primary); stroke-width: 1.6; opacity: 0.28; transform-box: fill-box; transform-origin: center; }
+.pf-saved-strip {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; margin: 0 0 14px; padding: 13px 16px; border-radius: 18px;
+  font-size: 0.95rem; font-weight: 600; color: var(--text-primary);
+  background: linear-gradient(90deg, rgba(22, 124, 114, 0.13), rgba(221, 235, 227, 0.55)); border: 1px solid var(--emerald-raw-border);
+}
+.pf-strip-icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: var(--teal-primary); }
+.pf-strip-text { min-width: 0; overflow-wrap: anywhere; }
+.pf-skyline { position: absolute !important; right: 12px; bottom: 0; width: 150px; height: auto; color: var(--teal-primary); opacity: 0.22; pointer-events: none; }
+.pf-locate-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+.pf-locate-status { display: inline-flex; align-items: center; gap: 10px; margin-top: 14px; font-weight: 700; font-size: 0.92rem; color: #0F6158; }
+.pf-radar { position: relative; flex: none; width: 40px; height: 40px; display: grid; place-items: center; color: var(--teal-primary); border-radius: 50%; }
+.pf-radar i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor; opacity: 0.35; }
+.pf-radar i:nth-child(1) { transform: scale(0.55); }
+.pf-radar i:nth-child(2) { transform: scale(0.8); opacity: 0.25; }
+.pf-radar i:nth-child(3) { transform: scale(1); opacity: 0.15; }
+.pf-radar b { width: 12px; height: 12px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px rgba(22, 124, 114, 0.2); }
+
+/* ---- Trusted people: keep its own lists and forms, just calmer ---- */
+.trusted-card .trusted-person { border-radius: 20px; background: var(--bg-card); box-shadow: var(--shadow-sm); }
+.trusted-card .trusted-permissions { border-radius: 16px; }
+
+/* ---- small screens ---- */
+/* From here the app shows its menu button in the top left corner, so the heading makes room for it instead of sitting under it. */
+@media (max-width: 960px) {
+  .pf-header-icon { display: none; }
+  .pf-header { padding-left: 48px; min-height: 40px; }
+}
+@media (max-width: 760px) {
+  .pf-page { padding: 16px; gap: 14px; }
+  .pf-card { padding: 18px 16px 20px; border-radius: 22px; }
+  .pf-location-art { display: none; }
+  .pf-location .pf-card-head { padding-right: 0; }
+}
+@media (max-width: 620px) {
+  .pf-fields { grid-template-columns: 1fr; }
+  .pf-tile { gap: 10px; padding: 8px 10px 8px 8px; border-radius: 18px; }
+  .pf-tile-icon { width: 38px; height: 38px; border-radius: 13px; }
+  .pf-input { padding: 8px 10px; font-size: 0.92rem; }
+  .pf-hero { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .pf-heartbeat { display: none; }
+  .pf-hero-name { font-size: 1.55rem; }
+  .pf-header h1 { font-size: 1.55rem; }
+}
+
+/* ======================================================================================================================
+   Motion. Nothing below runs when the person has asked their device to reduce motion.
+   ====================================================================================================================== */
+@keyframes pf-reveal { from { opacity: 0; transform: translateY(24px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes pf-glow { 0% { box-shadow: 0 0 0 0 rgba(22, 124, 114, 0.5); } 70% { box-shadow: 0 0 0 8px rgba(22, 124, 114, 0); } 100% { box-shadow: 0 0 0 4px rgba(22, 124, 114, 0.16); } }
+@keyframes pf-tile-glow { 0% { box-shadow: 0 0 0 0 rgba(22, 124, 114, 0.45), 0 0 0 rgba(22, 124, 114, 0); } 60% { box-shadow: 0 0 0 9px rgba(22, 124, 114, 0), 0 12px 24px rgba(22, 124, 114, 0.14); } 100% { box-shadow: 0 0 0 4px rgba(22, 124, 114, 0.14), 0 12px 24px rgba(22, 124, 114, 0.12); } }
+@keyframes pf-border-sweep { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes pf-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes pf-pop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.14); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes pf-burst { 0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(0.4); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1); } }
+@keyframes pf-halo { 0% { opacity: 0; transform: scale(0.5); } 35% { opacity: 1; } 100% { opacity: 0; transform: scale(2.2); } }
+@keyframes pf-radar { 0% { transform: scale(0.3); opacity: 0.8; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes pf-sweep { to { transform: rotate(360deg); } }
+@keyframes pf-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes pf-ping { 0% { transform: scale(0.5); opacity: 0.9; } 100% { transform: scale(3.2); opacity: 0; } }
+@keyframes pf-ecg { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes pf-beat { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.16); } 28% { transform: scale(1); } 42% { transform: scale(1.1); } 56% { transform: scale(1); } }
+@keyframes pf-ring { 0% { transform: scale(0.92); opacity: 0.55; } 100% { transform: scale(1.35); opacity: 0; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 1. Card Reveal: the header and every card slide up with a soft fade when the page loads, one after the other. */
+  .pf-header, .pf-card { animation: pf-reveal 0.7s cubic-bezier(0.2, 0.75, 0.25, 1) both; animation-delay: calc(var(--pf-i, 0) * 110ms); }
+  .pf-tile { animation: pf-reveal 0.55s cubic-bezier(0.2, 0.75, 0.25, 1) both; animation-delay: calc(260ms + var(--pf-t, 0) * 70ms); }
+  .pf-card { transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease; }
+  .pf-card:hover { transform: translateY(-2px); }
+
+  /* 2. Field Focus: the box glows and its border sweeps round once as it takes focus. */
+  .pf-tile:focus-within { animation: pf-tile-glow 0.9s ease-out both; }
+  .pf-tile:focus-within::after { animation: pf-border-sweep 1.3s ease-out both; }
+  .pf-card input:not(.pf-input):not([type="checkbox"]):not([type="radio"]):focus, .pf-card select:focus, .pf-card textarea:focus { animation: pf-glow 0.9s ease-out both; }
+
+  /* 3. Save Feedback: the check draws itself, pops, and a brief burst of colour glows round it. */
+  .pf-check { animation: pf-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
+  .pf-check-ring, .pf-check-tick { stroke-dashoffset: 1; animation: pf-draw 0.45s ease-out forwards; }
+  .pf-check-tick { animation-delay: 0.28s; }
+  .pf-saved::before, .pf-success::before { animation: pf-halo 1.1s ease-out 0.2s both; }
+  .pf-confetti { display: block; }
+  .pf-confetti i { animation: pf-burst 1s ease-out var(--d, 0ms) both; }
+  .pf-card .continuity-success { animation: pf-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+  .pf-card .continuity-success::before { animation: pf-pop 0.5s 0.12s both; }
+  .pf-save:active { transform: scale(0.97); }
+
+  /* 4. Location Fetching: while the device is asked, a radar pulses, and the pin on the map bobs and sends out rings. */
+  .pf-locating .pf-radar i { opacity: 0; transform: none; animation: pf-radar 1.8s ease-out infinite; }
+  .pf-locating .pf-radar i:nth-child(2) { animation-delay: 0.6s; }
+  .pf-locating .pf-radar i:nth-child(3) { animation-delay: 1.2s; }
+  .pf-locating .pf-radar::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, rgba(22, 124, 114, 0.45), transparent 32%); animation: pf-sweep 1.5s linear infinite; }
+  .pf-location-art.is-locating .pf-pin { animation: pf-bob 1.1s ease-in-out infinite; }
+  .pf-location-art.is-locating .pf-art-ring { animation: pf-radar 1.8s ease-out infinite; }
+  .pf-location-art.is-locating .pf-art-ring:nth-of-type(2) { animation-delay: 0.6s; }
+  .pf-location-art.is-locating .pf-art-ring:nth-of-type(3) { animation-delay: 1.2s; }
+  .pf-location-art.is-found .pf-art-ring { animation: pf-ping 1.1s ease-out 1; }
+  .pf-locate-status .pf-check { animation-duration: 0.5s; }
+
+  /* the picture and the avatar are alive, quietly */
+  .pf-heartbeat path:first-child { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pf-ecg 2.2s ease-out 0.5s forwards; }
+  .pf-heartbeat .pf-heart { transform-box: fill-box; transform-origin: center; animation: pf-beat 2.4s ease-in-out 1.2s infinite; }
+  .pf-avatar::after { content: ""; position: absolute; inset: -12px; border-radius: 50%; border: 2px solid rgba(22, 124, 114, 0.4); pointer-events: none; animation: pf-ring 3.4s ease-out infinite; }
+}

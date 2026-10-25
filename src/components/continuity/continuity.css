@@ -451,6 +451,7 @@
 .trusted-invite { margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--border-color); }
 .danger-action { color: var(--rose-urgent); border-color: var(--rose-urgent); }
 .caregiver-banner { margin: 14px 24px 0; }
+@media (max-width: 960px) { .caregiver-banner { margin-left: 76px; } } /* the menu button sits at the top left on a phone */
 .caregiver-banner select { margin-left: 4px; }
 
 /* Care assistant (doctor). */
@@ -490,3 +491,17 @@
 .visit-helper-answer .continuity-actions button { min-height: 44px; }
 .visit-help-chip { margin-top: 8px; }
 .trusted-limit { margin: 10px 0; padding-top: 8px; border-top: 1px solid var(--border-color); display: grid; gap: 8px; }
+
+/* The checklist a doctor writes for one visit, ticked by her or her trusted person */
+.visit-prep { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px; margin: 10px 0 0; display: grid; gap: 6px; }
+.visit-prep legend { padding: 0 6px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.visit-prep p { margin: 0; }
+.visit-prep-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.visit-prep-line { display: flex; gap: 10px; align-items: flex-start; min-height: 44px; padding: 6px 0; font-size: 0.92rem; line-height: 1.45; }
+.visit-prep-line input { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+.visit-prep-list small { display: block; margin: -4px 0 4px 32px; }
+.trusted-doctor-view { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.trusted-doctor-view > li { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 14px; display: grid; gap: 8px; }
+.trusted-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.prep-doctor-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 0; }
+.prep-doctor-line .prep-mark { font-weight: 700; min-width: 1.4em; }

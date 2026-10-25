@@ -48,7 +48,7 @@ export function SymptomPicker({
         </button>
       </div>
       {(otherOpen || Boolean(other)) && (
-        <Field label={t('Other symptoms or anything you want your team to know')}>
+        <Field label={t('Other symptoms or anything you want your doctor to know')}>
           <textarea
             ref={box}
             autoFocus={!other}
@@ -61,7 +61,7 @@ export function SymptomPicker({
         </Field>
       )}
       <p className="continuity-muted" style={{ marginBottom: 14 }}>
-        {t('These are for everyday symptoms. If something is severe or sudden, contact your maternity team now instead of waiting to fill in a check-in.')}
+        {t('These are for everyday symptoms. If something is severe or sudden, contact your doctor now instead of waiting to fill in a check-in.')}
       </p>
     </div>
   );

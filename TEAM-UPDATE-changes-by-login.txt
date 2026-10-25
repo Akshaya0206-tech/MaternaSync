@@ -93,6 +93,20 @@ PATIENT LOGIN
            help now ... call 112") and fixed reminders for missed check-ins, in her language.
   [B] CHANGED Replies approved with the assistant's help say so ("prepared by the clinic's care
            assistant and approved by a doctor").
+  [B] CHANGED Questions and check-ins are worded as going to the DOCTOR (not "care team" /
+           "maternity team" / "your team"): Daily Check-in (subtitle, notice, "Ask your doctor"
+           link, saved message, symptom box, kick-counter note, step-by-step "who helped" hint),
+           Care Companion (subtitle, notice, greeting, "Ask my doctor", "Send this question to my
+           doctor"), the tour texts, the landing page and the companion's fixed replies from the
+           server (four languages). My Care Plan -> "Medicine, vaccine & visit reminders" now says
+           the doctor adds the reminders. Other "care team" mentions (records, appointments,
+           journey, emergency, references) are unchanged.
+  [B] NEW  Appointments -> under each confirmed visit: "Getting ready for this visit", the checklist her
+           doctor wrote. She ticks lines; "Ticked by you / by <name>" and "x of y done" show.
+  [B] NEW  Profile -> Trusted people card: a new tick "See when my reminders are due" (off by default;
+           names and instructions of a medicine or vaccine need the care-plan tick as well), a line
+           telling her the doctor can see who she added and what each may do but cannot change it, and a
+           line on a person a doctor asked to help with check-ins (asked / helping / said no).
   [B] REMOVED "High Risk / Moderate Risk" labels and risk category on patient-facing screens.
   [B] CHANGED Lab report explanation shows each result as printed with the range printed on the
            report. The "above / below / within range" wording was removed.
@@ -112,7 +126,7 @@ CAREGIVER LOGIN  (NEW, all [B])
     Daily Check-in- recent check-ins + step-by-step form; saved as "Family member: <their name>"
                     taken from their login, never from the browser     (needs: check_in)
     Care plan     - ONLY summaries a doctor approved and released to her  (needs: care_plan)
-    Questions     - ask the clinic, read approved replies               (needs: questions)
+    Questions     - ask the doctor, read approved replies               (needs: questions)
     Emergency help- numbers, her contact, preferred hospital            (needs: emergency)
     Updates       - reminders and replies for them
     Sidebar: language switcher (EN/HI/TA/TE, saved to their own account), text size, red
@@ -139,6 +153,24 @@ CAREGIVER LOGIN  (NEW, all [B])
                      check-in lapse. No name/result/medicine in it. Stops on: turn off, STOP reply, removal, end
                      date, permission withdrawn. In demo mode it is SIMULATED and the code is shown on screen.
                      In real use Meta charges per delivered template message (see README / the team chat).
+
+  DOCTOR <-> TRUSTED PERSON  (all [B]; the woman still owns every permission)
+    Visit checklist  Doctor -> Connected Care -> Tasks, visits & outcomes -> "Visit preparation checklist": the doctor
+                     writes the lines (up to 12, nothing is added by the app) for one confirmed visit. She and the
+                     trusted people who may see appointments are told and can tick them; the doctor sees "x of y done"
+                     and who ticked. Caregiver -> Appointments shows it under each visit.
+    Check-in helper  Doctor -> Connected Care -> Reminders & outreach -> "Trusted people": "Ask to help with check-ins" for
+                     someone she already allows to do check-ins. She is told, the person answers yes / no on Caregiver ->
+                     Home ("Your doctor asked for your help"), and she is told the answer. When she misses a check-in the
+                     helper is reminded first; the others from the third reminder on. A no, or her switching check-ins off,
+                     puts everyone back as before. One helper per woman; asking someone else ends the earlier request.
+    Trusted people   The same card is read-only for a doctor: who, relationship, what she allows, access end date. No invite
+                     codes or contact details.
+    Reminders        Caregiver -> Reminders (new menu item, needs the new "reminders" tick): when her reminders are due and
+                     what kind. A medicine or vaccine reminder shows no name or instructions unless she also allows the
+                     care-plan tick. How she answered is never shown, only whether she has. A due reminder makes one short
+                     Update for the person, with no names in it. The demo caregiver (Ravi) has the tick on.
+    Fixed:           Caregiver pages on a phone: the menu button no longer covers the start of the "You are looking after" banner.
 
 =====================================================================================
 DOCTOR LOGIN
@@ -179,6 +211,11 @@ DOCTOR LOGIN
            MaternaSync does not check medicines, doses, allergies or interactions.
   [B] Patient Questions page: unchanged for doctors, but clinical questions now arrive already
            assigned to them by the assistant (no care-team triage task).
+  [B] CHANGED Patient Questions: EVERY question now arrives assigned to the doctor, also an
+           administrative one the assistant could word a reply to (e.g. "When is my next
+           appointment?"). That reply is still only a proposal the doctor approves in Care
+           Assistant. The page's subtitle now reads "Questions your patients and their
+           caregivers have sent to you."
 
   CARE ASSISTANT WORKFLOWS  (all [B]; Doctor -> Care Assistant)
   [B] NEW  Card "Booking rules": days, opening hours, minutes a visit, notice, clinic clock. Saved on
@@ -329,7 +366,7 @@ BACKEND CHANGES AT A GLANCE (for developers)
 DEPLOYMENT (Vercel + an API host)  [B]
 =====================================================================================
   Read DEPLOYMENT.md. Short version: the website goes on Vercel (vercel.json, .vercelignore), the API on a host
-  that keeps running (backend/Dockerfile, render.yaml). Two settings connect them: VITE_API_BASE_URL on the website
+  that keeps running (backend/Dockerfile, deploy/render.yaml). Two settings connect them: VITE_API_BASE_URL on the website
   (set at build time) and MATERNASYNC_CORS_ORIGINS on the API. Also set MATERNASYNC_JWT_SECRET. Vercel itself cannot
   run the API (SQLite on a disk, background jobs, OCR/speech packages). Not run on Vercel/Render yet; the site was
   tested built this way with the page and API on different addresses.
@@ -383,6 +420,72 @@ KNOWN GAPS / THINGS THE TEAM SHOULD KNOW
     a doctor's review before real use. Until a doctor approves them, lab explanations have no
     general test descriptions at all.
   - All [B] work is uncommitted. Ask Andry to commit and push before you rely on it.
+
+-------------------------------------------------------------------------------------
+DOCTOR LOGIN: FEWER TABS  (25 Oct 2026, added after the notes above; NOT committed)
+-------------------------------------------------------------------------------------
+  The doctor's sidebar went from 17 tabs to 13. Old addresses still open the right place.
+  [B] CHANGED  Document Studio is no longer a sidebar tab: it is the "Document studio" tab inside
+           Connected Care. /doctor/draft-studio still works and keeps Connected Care highlighted.
+  [B] CHANGED  Today's Brief is no longer a sidebar tab. The brief is the first tab when you open a
+           patient (Dashboard -> Today's Patients -> Open Brief, or My Patients -> the patient).
+           Dashboard card "Briefs Ready" now jumps to the Today's Patients list on the same page;
+           card "Drafts to Approve" opens Consultations -> Documentation history.
+  [B] CHANGED  Reference Library and Guidelines are one sidebar tab, "References", with three tabs:
+           Reference Library, Guideline search, Guideline sources.
+  [B] CHANGED  Documentation is now Consultations -> "Documentation history", next to "New consultation".
+           Starting a consultation and then opening the history does not lose the consultation.
+  [B] NEW      Guideline search explains why it is empty. No guideline document ships with the app (the
+           synthetic ones were deleted on purpose), so until a doctor uploads one under Guideline
+           sources and approves it there is nothing to search. The tab now says so and offers
+           Guideline sources and the Reference Library. The "does not diagnose or prescribe"
+           statement stays on that tab.
+  [B] FIXED    Accessibility on these pages: the three filter drop-downs, the patient drop-down on
+           Consultations, the upload form's drop-downs and file box, and the expand arrow on a guideline
+           source (Approve and Reject are behind that arrow) all have names now. The amber status badge
+           (for example "Awaiting Review", also "Needs review" and "Waiting" elsewhere) had text at
+           3.96:1 contrast, below the 4.5:1 needed; it is now 4.76:1, on every screen that uses it.
+  [B] CHANGED  The doctor's guided tour has 13 steps (was 17).
+  New Hindi/Tamil/Telugu text: the tab names, the Guideline search notice, the References subtitle and
+  four tour sentences. They need a native speaker's review like the rest.
+
+-------------------------------------------------------------------------------------
+DOCTOR -> REFERENCES -> REFERENCE LIBRARY: MORE PDFs, READABLE PASSAGES, SEARCH BY MEANING  (25 Oct 2026; NOT committed)
+-------------------------------------------------------------------------------------
+  [B] NEW      4 more PDFs are searchable passage by passage (19 instead of 15): the FIGO papers on
+           pre-eclampsia (2021), postpartum haemorrhage (2022), anaemia in pregnancy (2025) and measuring
+           blood loss (2025). All four are open access (CC BY or CC BY-NC, confirmed on Europe PMC). The
+           other 57 references stay link-only: their publishers say "link only", "do not copy", need
+           written agreement outside the UK (NICE), or state nothing.
+  [B] NOTE     Europe PMC turns scripts away (a Cloudflare check). fetch_reference_documents.py now says so
+           and what to do (save the PDF from a browser under the printed name) instead of retrying.
+  [B] FIXED    Passages were fragments. The PDF reader gave one passage per layout block: 16,316 passages,
+           median 139 characters ("for the woman and baby."), 65% under 200. They are now joined, page by
+           page and in reading order, into passages of about 700 characters (about 5,700, median 718), the
+           words unchanged and never across a page, so every page number is still exact. 249 passages had
+           lost their first words (the reader took them for a heading); those are put back, and invisible soft
+           hyphens are removed. It happens by itself the first time the API starts. It helps the word search
+           too, which now needs 70% of a question's words in a passage (was half; a passage is longer than a
+           fragment, so two stray words could meet by chance). (Guideline sources are not changed.)
+  [B] FIXED    Reference lists, licence pages and journal headers (about 10% of the passages) no longer come
+           back as search results. They are full of the subject's words (every cited paper is about it) and
+           ranked above real paragraphs, both by words and by meaning.
+  [B] NEW      Search by meaning (optional, off until the model is installed). A question typed in Hindi,
+           Tamil or Telugu now finds the English passage and reference. A hit found only that way shows
+           "Found by meaning"; nothing is written or translated, the extract is the document's own
+           sentence and page. A hint under the search box says Hindi, Tamil and Telugu can be typed.
+           Commands (backend folder): python fetch_search_model.py ; python build_semantic_index.py ; restart.
+  [B] MEASURED python evaluate_semantic_search.py: 18 topics x 4 languages, 13 questions with no answer.
+           A right reference in the first 5: 17/72 by words, 54/72 with meaning (en 17->18, hi 0->16,
+           ta 0->11, te 0->9). A passage from a right document that also says the topic's own words, in the
+           first 8: 8/36 -> 22/36 (hi 5/9, ta 3/9, te 5/9). Unanswerable
+           questions that find nothing: 13/13 -> 12/13 (the meaning search adds one: "knee replacement surgery").
+  [B] LIMITS   Tamil and Telugu are weaker than Hindi with this small model: a Tamil question usually finds the
+           right references but often few or no passages. A larger model (e5-base) was
+           tried and was not better at telling an answer from no answer, so it is not used. The model cannot
+           reliably say "no answer"; the thresholds were set from a small test. The Hindi/Tamil/Telugu test
+           questions and new screen text need a native speaker's review. Needs about 300 MB of memory:
+           not in the Docker image, off on the free Render plan.
 
 =====================================================================================
 END

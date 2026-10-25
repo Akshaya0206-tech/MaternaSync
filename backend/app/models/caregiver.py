@@ -4,8 +4,9 @@ from ..database import Base
 from ._shared import new_id, now
 
 # What a woman can allow a trusted person to do. Only the first is on unless she chooses more.
-PERMISSIONS = ("appointments", "check_in", "care_plan", "questions", "emergency")
-DEFAULT_PERMISSIONS = {"appointments": True, "check_in": False, "care_plan": False, "questions": False, "emergency": False}
+# `reminders` lets the person see WHEN her reminders are due. Their names and instructions (a medicine, a vaccine) show only if she also allows `care_plan`.
+PERMISSIONS = ("appointments", "check_in", "care_plan", "reminders", "questions", "emergency")
+DEFAULT_PERMISSIONS = {"appointments": True, "check_in": False, "care_plan": False, "reminders": False, "questions": False, "emergency": False}
 
 
 class CaregiverLink(Base):
@@ -65,3 +66,35 @@ class CaregiverWhatsApp(Base):
     window_count = Column(Integer, default=0)
     verified_at = Column(DateTime, nullable=True)
     consent_id = Column(String, ForeignKey("sharing_consents.id"), nullable=True)
+
+
+class VisitPrepItem(Base):
+    """One line of a "getting ready for this visit" checklist. A DOCTOR writes it (the app adds nothing), for one scheduled visit.
+    The woman and any trusted person who may see her appointments can tick it; the doctor sees who did. It is a to-do list, not advice."""
+
+    __tablename__ = "visit_prep_items"
+
+    id = Column(String, primary_key=True, default=new_id)
+    episode_id = Column(String, ForeignKey("pregnancy_episodes.id"), nullable=False, index=True)
+    appointment_id = Column(String, ForeignKey("appointments.id"), nullable=False, index=True)
+    text = Column(String(300), nullable=False)
+    position = Column(Integer, default=0)
+    created_by_user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=now)
+    done_at = Column(DateTime, nullable=True)
+    done_by_user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    done_by_role = Column(String, nullable=True)  # patient | caregiver
+
+
+class CheckInHelper(Base):
+    """The trusted person a doctor has asked to help with her daily check-ins (one per pregnancy). Only someone she has already allowed to
+    do check-ins can be asked, so this never widens what she chose. The person answers yes or no; their missed-check-in reminders then come first."""
+
+    __tablename__ = "checkin_helpers"
+
+    episode_id = Column(String, ForeignKey("pregnancy_episodes.id"), primary_key=True)
+    link_id = Column(String, ForeignKey("caregiver_links.id"), nullable=False, index=True)
+    status = Column(String, default="ASKED")  # ASKED | ACCEPTED | DECLINED
+    asked_by_user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    asked_at = Column(DateTime, default=now)
+    responded_at = Column(DateTime, nullable=True)
