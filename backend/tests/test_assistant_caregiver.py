@@ -509,7 +509,7 @@ class AssistantTests(Base):
             self.assertEqual(self.items_for(qid), [])
             later = self.new_question("When is my next appointment?")
             self.assertIsNone(self.run_for(later))
-            self.assertEqual(orchestrator.run_sweeps(), {"missedCheckIns": 0, "overdueTasks": 0})
+            self.assertEqual(orchestrator.run_sweeps(), orchestrator.NO_SWEEPS)
             self.call("POST", "/api/v2/assistant/talk-to-a-person", "patient", {"message": "Please call me."})  # still works with the assistant off
 
     def test_shadow_mode_records_but_does_nothing(self):

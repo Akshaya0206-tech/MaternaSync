@@ -35,6 +35,10 @@ THE BIG CHANGES IN ONE GLANCE
   8. [B] NEW "No interpretation of medical data" clean-up: the app no longer reads a note to pick
          conditions or codes, no longer explains what a lab value means, and has an automatic guard
          test for it (see "No interpretation" below).
+  9. [B] NEW The care assistant now also does scheduling, referrals, WhatsApp reminders, paperwork
+         drafts, weekly counts and (when handover is un-paused) handover drafts. See "Care assistant
+         workflows" under DOCTOR LOGIN. Server-written Updates, WhatsApp text and handover drafts are
+         now in four languages.
 
 =====================================================================================
 SIGN-IN AND SIGN-UP PAGES (everyone)
@@ -160,6 +164,28 @@ DOCTOR LOGIN
   [B] Patient Questions page: unchanged for doctors, but clinical questions now arrive already
            assigned to them by the assistant (no care-team triage task).
 
+  CARE ASSISTANT WORKFLOWS  (all [B]; Doctor -> Care Assistant)
+  [B] NEW  Card "Booking rules": days, opening hours, minutes a visit, notice, clinic clock. Saved on
+           the server; applies to the next request only.
+  [B] NEW  Visit requests: a request inside the rules becomes a "Confirm a visit" proposal; outside
+           them an "Offer other times for a visit" proposal with the next three free times. You approve;
+           she is told in her language. Nothing about her health is looked at. Both can be undone.
+  [B] NEW  The day before a confirmed visit she (and a trusted person allowed to see visits) get one
+           fixed reminder. A visit long past but still "scheduled" becomes a "Record a missed visit"
+           proposal: you say whether she came; it is never decided automatically.
+  [B] NEW  Referrals: a new referral becomes a "Send a referral" proposal (before this, nobody could send
+           one because sending lived only in the switched-off care-team login). Unanswered referrals
+           get two "Chase a referral" proposals, then a hand-off to you. Sending cannot be undone.
+  [B] NEW  WhatsApp reminders: a due reminder you approved + her active permission = the minimal
+           "please sign in" text in her language (SIMULATED in demo mode). Cannot be undone; pause or
+           "Ask me to approve every step first" holds it.
+  [B] NEW  Visit summary drafts: approving a consultation prepares the patient's visit summary as a
+           draft (never released). Undo deletes it only if nobody has edited it.
+  [B] NEW  Card "The last 7 days" and a weekly message in Updates: plain counts worked out by code.
+  [B] NEW  Handover drafts exist but stay OFF while handover is paused (MATERNASYNC_HANDOVER_PAUSED).
+  [B] CHANGED Updates (patient, trusted person, doctor), the WhatsApp text and handover drafts are
+           worded in the reader's language. Older Updates keep their English text.
+
   NO INTERPRETATION OF MEDICAL DATA  (all [B])
   [B] CHANGED Document Studio -> "Patient explanation": a new "Topics to explain" list (tick boxes) shows
            the clinic-approved education topics in the chosen language. The draft contains ONLY the
@@ -283,7 +309,8 @@ BACKEND CHANGES AT A GLANCE (for developers)
 =====================================================================================
 TESTS - WHAT WAS RUN
 =====================================================================================
-  Backend: 130 unit/integration tests pass (46 existing + 84 new, including the scope-guard tests).
+  Backend: 156 unit/integration tests pass (46 existing + 110 new, including the scope-guard tests
+    and the workflow tests in backend/tests/test_assistant_workflows.py).
     Run:  backend/venv/Scripts/python.exe -m unittest discover -s backend/tests
     New files: backend/tests/test_assistant_caregiver.py, backend/tests/test_scope_guard.py ;
     shared setup: backend/tests/testenv.py
@@ -303,12 +330,17 @@ KNOWN GAPS / THINGS THE TEAM SHOULD KNOW
     outcomes reporting, handover. No autonomous mode. No evaluation set yet.
   - The default demo "AI" is rules-based. The Claude provider is written but untested live. If
     used for real, names are removed but document text is still sent: needs a data agreement.
+  - Still open on the assistant: the W4 daily digest, reassigning work when an owner is away,
+    drafts of insurance forms / certificates / discharge summaries, and any outcomes read from
+    documents (left out on purpose: that would interpret clinical documents). Nothing has been
+    run against a real WhatsApp account or a real hospital.
   - Hindi / Tamil / Telugu text (about 100 new strings) was written by Claude and needs a native
     speaker's review: about 1,100 new strings across sign-in and the doctor app, written by Claude.
     A few terms differ between screens (for example Tamil "Follow-up" is one word on the doctor
     screens and another on the patient screens).
-  - Not translated, on purpose: names, notes, transcripts, reference documents and publisher names, the
-    server's own notification and handover text, and the care-team screens (that login is off).
+  - Not translated, on purpose: names, notes, transcripts, reference documents and publisher names,
+    the details inside a Care Assistant item (names, file names, times), and the care-team screens
+    (that login is off). Updates, WhatsApp reminders and handover drafts ARE translated now.
   - A caregiver needs an email + password. No SMS/WhatsApp alerts to caregivers.
   - A caregiver's question and its reply are visible to the caregiver and the doctor; the woman
     sees it under Profile -> Trusted people -> "See what they did".

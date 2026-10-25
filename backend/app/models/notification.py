@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String
 
 from ..database import Base
 from ._shared import new_id, now
@@ -14,6 +14,9 @@ class Notification(Base):
     type = Column(String, nullable=False)
     title = Column(String, nullable=False)
     body = Column(String, default="")
+    # The wording is chosen in the reader's language when the notification is read (server_text.py); title and body are the English fallback.
+    message_key = Column(String, nullable=True)
+    message_params = Column(JSON, nullable=True)
     related_entity_type = Column(String, nullable=True)
     related_entity_id = Column(String, nullable=True)
     is_read = Column(Boolean, default=False)

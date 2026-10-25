@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from . import models
+from . import models, server_text
 
 OPEN_TASK_STATUSES = ("OPEN", "IN_PROGRESS", "WAITING")
 REMINDER_COOLDOWN = timedelta(hours=20)  # effectively once/day even if the sweep runs more often
@@ -50,12 +50,9 @@ def check_reminders(db: Session) -> dict:
             continue
 
         overdue = due < today
-        db.add(models.Notification(
-            recipient_user_id=task.owner_user_id, episode_id=task.episode_id,
-            type="TASK_OVERDUE" if overdue else "TASK_DUE_SOON",
-            title="Task overdue" if overdue else "Task due tomorrow",
-            body=task.title, related_entity_type="Task", related_entity_id=task.id,
-        ))
+        server_text.notify_key(db, task.owner_user_id, "task_overdue" if overdue else "task_due_soon", episode_id=task.episode_id,
+                               type_="TASK_OVERDUE" if overdue else "TASK_DUE_SOON", params={"title": task.title},
+                               related_entity_type="Task", related_entity_id=task.id)
         task.last_reminder_sent_at = now_naive
         sent += 1
 

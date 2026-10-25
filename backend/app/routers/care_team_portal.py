@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from .. import extraction, models, schemas_v2
+from .. import extraction, models, schemas_v2, server_text
 from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..deps import get_current_user, require_episode_access, require_role
@@ -234,19 +234,13 @@ def verify_document(
         actor_label=current_user.full_name,
     ))
 
-    db.add(models.Notification(
-        recipient_user_id=document.uploaded_by_user_id, episode_id=document.episode_id, type="document_verified",
-        title="Your care team reviewed your uploaded documents", body="Your journey has been updated.",
-        related_entity_type="MedicalDocument", related_entity_id=document.id,
-    ))
+    server_text.notify_key(db, document.uploaded_by_user_id, "document_verified_patient", episode_id=document.episode_id, type_="document_verified",
+                           related_entity_type="MedicalDocument", related_entity_id=document.id)
 
     doctor = _primary_doctor(db, document.episode_id)
     if doctor:
-        db.add(models.Notification(
-            recipient_user_id=doctor.id, episode_id=document.episode_id, type="document_verified",
-            title="A document was verified and added to the patient's journey",
-            body=document.filename, related_entity_type="MedicalDocument", related_entity_id=document.id,
-        ))
+        server_text.notify_key(db, doctor.id, "document_verified_doctor", episode_id=document.episode_id, type_="document_verified",
+                               params={"filename": document.filename}, related_entity_type="MedicalDocument", related_entity_id=document.id)
 
     _complete_open_tasks_for(db, "document_review", document.id)
 
@@ -269,12 +263,8 @@ def reject_document(
         action="REJECT", notes=payload.notes, reviewed_at=datetime.now(timezone.utc),
     ))
 
-    db.add(models.Notification(
-        recipient_user_id=document.uploaded_by_user_id, episode_id=document.episode_id, type="document_rejected",
-        title="Your care team reviewed an uploaded document",
-        body=payload.notes or "This document could not be used — please check it and upload again if needed.",
-        related_entity_type="MedicalDocument", related_entity_id=document.id,
-    ))
+    server_text.notify_key(db, document.uploaded_by_user_id, "document_rejected_patient" if payload.notes else "document_rejected_default", episode_id=document.episode_id,
+                           type_="document_rejected", params={"text": payload.notes or ""}, related_entity_type="MedicalDocument", related_entity_id=document.id)
 
     _log(db, document.episode_id, current_user, "document_rejected", f"Document \"{document.filename}\" rejected",
           payload.notes or "Rejected by care team review.", "MedicalDocument", document.id)
@@ -1039,7 +1029,7 @@ def share_handover(handover_id: str, current_user: models.User = Depends(require
 @router.get("/updates", response_model=list[schemas_v2.NotificationOut])
 def list_updates(current_user: models.User = Depends(require_role("care_team")), db: Session = Depends(get_db)):
     notifications = db.query(models.Notification).filter(models.Notification.recipient_user_id == current_user.id).order_by(models.Notification.created_at.desc()).all()
-    return [schemas_v2.NotificationOut.model_validate(n) for n in notifications]
+    return [server_text.notification_out(db, current_user, n) for n in notifications]
 
 
 @router.patch("/updates/{notification_id}/read", response_model=schemas_v2.NotificationOut)
@@ -1052,7 +1042,7 @@ def mark_update_read(notification_id: str, current_user: models.User = Depends(r
     notification.is_read = True
     db.commit()
     db.refresh(notification)
-    return schemas_v2.NotificationOut.model_validate(notification)
+    return server_text.notification_out(db, current_user, notification)
 
 
 # ---------- profile ----------

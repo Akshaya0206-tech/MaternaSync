@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 
-from . import config, models
+from . import config, models, server_text
 from .models.caregiver import DEFAULT_PERMISSIONS, PERMISSIONS
 
 INVITE_HOURS = 48
@@ -77,11 +77,8 @@ def accept_invite(db, link: models.CaregiverLink, user: models.User) -> None:
         action="caregiver_invite_accepted", title="A trusted person accepted the invite", details=link.display_name,
         object_type="CaregiverLink", object_id=link.id,
     ))
-    db.add(models.Notification(
-        recipient_user_id=link.patient_user_id, episode_id=link.episode_id, type="caregiver_joined",
-        title="A trusted person joined", body=f"{user.full_name} can now use MaternaSync for you, within what you allowed.",
-        related_entity_type="CaregiverLink", related_entity_id=link.id,
-    ))
+    server_text.notify_key(db, link.patient_user_id, "caregiver_joined", episode_id=link.episode_id, type_="caregiver_joined", params={"name": user.full_name},
+                           related_entity_type="CaregiverLink", related_entity_id=link.id)
 
 
 def active_links_for_episode(db, episode_id: str, permission: str | None = None) -> list[models.CaregiverLink]:

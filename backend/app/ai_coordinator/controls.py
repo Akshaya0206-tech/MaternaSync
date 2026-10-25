@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from .. import models
 
 PAUSED, REVIEW_ALL, PAUSED_EPISODES = "paused", "review_all", "paused_episodes"
+SCHEDULING = "scheduling_rules"  # days, opening hours, visit length and notice; see scheduling.py
 
 
 def _now():
@@ -33,6 +34,15 @@ def _write(db, user, key, value) -> None:
 def load(db) -> dict:
     return {"paused": bool(_read(db, PAUSED, False)), "review_all": bool(_read(db, REVIEW_ALL, False)),
             "paused_episodes": list(_read(db, PAUSED_EPISODES, []))}
+
+
+def load_scheduling(db) -> dict:
+    value = _read(db, SCHEDULING, {})
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def set_scheduling(db, user, rules: dict) -> None:
+    _write(db, user, SCHEDULING, rules)
 
 
 def is_held(db, episode_id: str | None, state: dict | None = None) -> bool:

@@ -71,6 +71,10 @@ ADDITIVE_COLUMNS = {
         ("undone_by_user_id", "VARCHAR"),
         ("undo_note", "VARCHAR"),
     ],
+    "notifications": [
+        ("message_key", "VARCHAR"),
+        ("message_params", "JSON"),
+    ],
     "outreach_messages": [
         ("provider", "VARCHAR"),
         ("sent_at", "DATETIME"),

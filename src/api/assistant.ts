@@ -5,6 +5,8 @@ export interface AssistantStatus {
   provider: 'rules' | 'claude';
   model: string | null;
   careTeamEnabled: boolean;
+  /** Handover is paused in the app, so the assistant prepares no handover drafts. */
+  handoverPaused: boolean;
   open: number;
   urgent: number;
   proposals: number;
@@ -59,7 +61,38 @@ export interface AssistantAction {
   mode: string | null;
 }
 
+/** The clinic's booking rules. Weekdays count from Monday = 0; times are the clinic's own clock. */
+export interface SchedulingRules {
+  days: number[];
+  start: string;
+  end: string;
+  minutes: number;
+  noticeHours: number;
+  offsetMinutes: number;
+  graceHours: number;
+  weekdays: string[];
+}
+
+/** Plain counts for a doctor's own patients, worked out by code on the server. */
+export interface AssistantSummary {
+  days: number;
+  from: string;
+  to: string;
+  questions: { received: number; answered: number; hoursToReply: number | null };
+  documents: { uploaded: number; verified: number; hoursToVerify: number | null };
+  checkIns: { recorded: number; patientsOverdue: number };
+  tasks: { open: number; overdue: number };
+  visits: { waitingForAnswer: number; completed: number; missed: number };
+  assistant: { stepsDone: number; proposed: number; approved: number; dismissed: number; undone: number };
+}
+
 const BASE = '/api/v2/assistant';
+export const getSchedulingRules = () => api.get<SchedulingRules>(`${BASE}/scheduling-rules`);
+export const saveSchedulingRules = (rules: SchedulingRules) => {
+  const { weekdays: _weekdays, ...body } = rules;
+  return api.put<SchedulingRules>(`${BASE}/scheduling-rules`, body);
+};
+export const assistantSummary = (days = 7) => api.get<AssistantSummary>(`${BASE}/summary?days=${days}`);
 export const assistantStatus = () => api.get<AssistantStatus>(`${BASE}/status`);
 export const assistantItems = (scope: 'open' | 'all') => api.get<AssistantItem[]>(`${BASE}/exceptions?scope=${scope}`);
 export const decideAssistantItem = (id: string, decision: 'approve' | 'dismiss' | 'acknowledge', note = '') =>
@@ -69,6 +102,6 @@ export const changeAssistantSettings = (body: { paused?: boolean; reviewAll?: bo
 export const pauseAssistantForPatient = (episodeId: string) => api.post<AssistantStatus>(`${BASE}/patients/${episodeId}/pause`);
 export const resumeAssistantForPatient = (episodeId: string) => api.post<AssistantStatus>(`${BASE}/patients/${episodeId}/resume`);
 export const undoAssistantAction = (id: string, note: string) => api.post<AssistantAction & { message: string }>(`${BASE}/actions/${id}/undo`, { note });
-export const runAssistantNow = () => api.post<{ queued: number; missedCheckIns: number; overdueTasks: number }>(`${BASE}/run-now`);
+export const runAssistantNow = () => api.post<{ queued: number } & Record<string, number>>(`${BASE}/run-now`);
 /** The patient's own button: always reaches a doctor, whatever mode the assistant is in. */
 export const talkToAPerson = (message: string) => api.post<{ message: string }>(`${BASE}/talk-to-a-person`, { message });

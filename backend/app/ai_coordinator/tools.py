@@ -11,9 +11,12 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException
 
-from .. import companion, models
+from .. import companion, config, models, server_text, whatsapp
+from ..handover_content import build_doctor_handover_content
+from ..handover_service import HandoverService
+from ..referral_communication import ReferralCommunicationService, ReferralTransitionError
 from ..seed_assistant import ensure_assistant_user
-from . import messages, policy
+from . import messages, policy, scheduling
 
 
 @dataclass
@@ -47,8 +50,8 @@ def raise_exception(db, *, episode_id: str, run_id: str | None, kind: str, urgen
     db.add(item)
     db.flush()
     for doctor_id in doctor_ids(db, episode_id):
-        db.add(models.Notification(recipient_user_id=doctor_id, episode_id=episode_id, type="assistant_exception",
-                                   title=f"Care assistant: {title}", body=summary[:200], related_entity_type="ExceptionItem", related_entity_id=item.id))
+        server_text.notify_key(db, doctor_id, "assistant_item_urgent" if urgency == "urgent" else "assistant_item", episode_id=episode_id, type_="assistant_exception",
+                               params={"text": f"{title}. {summary}"[:200]}, related_entity_type="ExceptionItem", related_entity_id=item.id)
     return item
 
 
@@ -66,9 +69,8 @@ def route_question_to_doctor(db, question: models.PatientQuestion) -> None:
     if question.status == "NEW":
         question.status = "ASSIGNED"
     urgent = companion.respond(question.question_text, "en", [])["safety"] == "urgent"
-    db.add(models.Notification(recipient_user_id=doctors[0], episode_id=question.episode_id, type="PATIENT_QUESTION_CREATED",
-                               title="Possible warning-sign wording in a patient question" if urgent else "A patient question needs you",
-                               body=question.question_text[:200], related_entity_type="PatientQuestion", related_entity_id=question.id))
+    server_text.notify_key(db, doctors[0], "question_warning_wording" if urgent else "question_needs_you", episode_id=question.episode_id, type_="PATIENT_QUESTION_CREATED",
+                           params={"text": question.question_text[:200]}, related_entity_type="PatientQuestion", related_entity_id=question.id)
     _audit(db, None, question.episode_id, "question_routed_by_rule", "A patient question was assigned to the doctor",
            "The care assistant was not handling it, so the fixed rule assigned it.", "PatientQuestion", question.id)
 
@@ -76,9 +78,8 @@ def route_question_to_doctor(db, question: models.PatientQuestion) -> None:
 def notify_doctors_of_document(db, document: models.MedicalDocument) -> None:
     """Same idea for an upload while the assistant is not handling it: tell the doctor it is waiting for review."""
     for doctor_id in doctor_ids(db, document.episode_id):
-        db.add(models.Notification(recipient_user_id=doctor_id, episode_id=document.episode_id, type="DOCUMENT_UPLOADED",
-                                   title="New document uploaded", body=f"{document.filename} needs review.",
-                                   related_entity_type="MedicalDocument", related_entity_id=document.id))
+        server_text.notify_key(db, doctor_id, "document_for_review", episode_id=document.episode_id, type_="DOCUMENT_UPLOADED", params={"filename": document.filename},
+                               related_entity_type="MedicalDocument", related_entity_id=document.id)
 
 
 # ---------------------------------------------------------------- the tools
@@ -90,6 +91,10 @@ def _create_attention(db, args, actor, episode_id) -> Outcome:
 
 
 def _notify_user(db, args, actor, episode_id) -> Outcome:
+    if args.get("key"):  # fixed wording from server_text, worded in the reader's language when it is read
+        note = server_text.notify_key(db, args["user_id"], args["key"], episode_id=episode_id, type_=args.get("kind", "assistant"), params=args.get("params"),
+                                      related_entity_type=args.get("entity_type"), related_entity_id=args.get("entity_id"), flush=True)
+        return Outcome("Notification sent.", {"kind": "notifications", "notification_ids": [note.id]})
     note = models.Notification(recipient_user_id=args["user_id"], episode_id=episode_id, type=args.get("kind", "assistant"),
                                title=args["title"], body=args.get("body", ""), related_entity_type=args.get("entity_type"), related_entity_id=args.get("entity_id"))
     db.add(note)
@@ -117,11 +122,8 @@ def _assign_question_to_doctor(db, args, actor, episode_id) -> Outcome:
         question.status = "ASSIGNED"
     ids = []
     if doctor_id:
-        note = models.Notification(recipient_user_id=doctor_id, episode_id=episode_id, type="PATIENT_QUESTION_CREATED",
-                                   title="A patient question needs you", body=question.question_text[:200],
-                                   related_entity_type="PatientQuestion", related_entity_id=question.id)
-        db.add(note)
-        db.flush()
+        note = server_text.notify_key(db, doctor_id, "question_needs_you", episode_id=episode_id, type_="PATIENT_QUESTION_CREATED", params={"text": question.question_text[:200]},
+                                      related_entity_type="PatientQuestion", related_entity_id=question.id, flush=True)
         ids.append(note.id)
     return Outcome("The question was assigned to the doctor.", {"kind": "assign", "question_id": question.id, "before": before, "assigned_to_user_id": doctor_id,
                                                               "after_status": question.status, "notification_ids": ids})
@@ -159,10 +161,9 @@ def _verify_document(db, args, actor, episode_id) -> Outcome:
         event_date=document.document_date or (ext.event_date if ext else None) or now().date().isoformat(),
         gestational_age_weeks=episode.gestational_age_weeks if episode else 0, gestational_age_days=episode.gestational_age_days if episode else 0,
         actor_label=actor.full_name)
-    note = models.Notification(recipient_user_id=document.uploaded_by_user_id, episode_id=episode_id, type="document_verified",
-                               title="Your care team reviewed your uploaded documents", body="Your journey has been updated.",
-                               related_entity_type="MedicalDocument", related_entity_id=document.id)
-    db.add_all([review, event, note])
+    note = server_text.notify_key(db, document.uploaded_by_user_id, "document_verified_patient", episode_id=episode_id, type_="document_verified",
+                                  related_entity_type="MedicalDocument", related_entity_id=document.id)
+    db.add_all([review, event])
     closed = _complete_review_tasks(db, document.id)
     db.flush()
     return Outcome(f"Document {document.filename} verified.", {"kind": "verify", "document_id": document.id, "before_status": before, "review_id": review.id,
@@ -175,10 +176,9 @@ def _reject_document(db, args, actor, episode_id) -> Outcome:
     text = args.get("note") or "This document could not be used. Please check it and upload it again if needed."
     document.status = "REJECTED"
     review = models.DocumentReview(document_id=document.id, reviewer_user_id=actor.id, reviewer_role=actor.role, action="REJECT", notes=text, reviewed_at=now())
-    note = models.Notification(recipient_user_id=document.uploaded_by_user_id, episode_id=episode_id, type="document_rejected",
-                               title="Your care team reviewed an uploaded document", body=text,
-                               related_entity_type="MedicalDocument", related_entity_id=document.id)
-    db.add_all([review, note])
+    note = server_text.notify_key(db, document.uploaded_by_user_id, "document_rejected_patient", episode_id=episode_id, type_="document_rejected", params={"text": text},
+                                  related_entity_type="MedicalDocument", related_entity_id=document.id)
+    db.add(review)
     closed = _complete_review_tasks(db, document.id)
     db.flush()
     return Outcome(f"Document {document.filename} rejected.", {"kind": "reject", "document_id": document.id, "before_status": before, "review_id": review.id,
@@ -195,19 +195,168 @@ def _answer_question(db, args, actor, episode_id) -> Outcome:
     reply = models.QuestionResponse(question_id=question.id, responder_user_id=actor.id, responder_role=actor.role, response_text=args["text"],
                                     status="APPROVED", approved_by_user_id=actor.id, approved_at=now(), visible_to_patient=True)
     question.status = "ANSWERED"
-    note = models.Notification(recipient_user_id=question.asked_by_user_id, episode_id=episode_id, type="question_answered",
-                               title="Your question was answered", body="Open My Questions to read the reply.",
-                               related_entity_type="PatientQuestion", related_entity_id=question.id)
-    db.add_all([reply, note])
+    note = server_text.notify_key(db, question.asked_by_user_id, "question_answered", episode_id=episode_id, type_="question_answered",
+                                  related_entity_type="PatientQuestion", related_entity_id=question.id)
+    db.add(reply)
     db.flush()
     return Outcome("The reply was sent.", {"kind": "answer", "question_id": question.id, "before_status": before, "response_id": reply.id,
                                           "notification_ids": [note.id], "text": args["text"][:300]})
+
+
+# ---------------------------------------------------------------- visits (scheduling)
+def _patient_id(db, episode_id: str) -> str:
+    return db.get(models.PregnancyEpisode, episode_id).patient_user_id
+
+
+def _visit(db, args, episode_id: str, status: str) -> models.Appointment:
+    appt = db.get(models.Appointment, args["appointment_id"])
+    if appt is None or appt.episode_id != episode_id:
+        raise HTTPException(404, "Appointment not found for this patient.")
+    if appt.status != status:
+        raise HTTPException(409, "This visit has already been handled.")
+    return appt
+
+
+def _visit_message(db, appt, episode_id: str, key: str, **params) -> models.Notification:
+    return server_text.notify_key(db, _patient_id(db, episode_id), key, episode_id=episode_id, params=params,
+                                  related_entity_type="Appointment", related_entity_id=appt.id, flush=True)
+
+
+def _confirm_appointment(db, args, actor, episode_id) -> Outcome:
+    appt = _visit(db, args, episode_id, "requested")
+    when = scheduling.local_text(appt.scheduled_at, scheduling.rules(db))
+    appt.status = "scheduled"
+    note = _visit_message(db, appt, episode_id, "visit_confirmed", kind=appt.appointment_type, when=when)
+    return Outcome(f"Visit confirmed for {when}.", {"kind": "visit", "appointment_id": appt.id, "before": "requested", "after": "scheduled", "notification_ids": [note.id]})
+
+
+def _offer_new_times(db, args, actor, episode_id) -> Outcome:
+    appt = _visit(db, args, episode_id, "requested")
+    rules = scheduling.rules(db)
+    slots = [datetime.fromisoformat(s) for s in args.get("slots", [])][:3]
+    if not slots:
+        raise HTTPException(400, "There are no free times to offer.")
+    appt.status = "cancelled"
+    text = ", ".join(scheduling.local_text(s, rules) for s in slots)
+    note = _visit_message(db, appt, episode_id, "new_times_offered", slots=text)
+    return Outcome(f"Offered {len(slots)} other time(s) and closed the request.",
+                   {"kind": "visit", "appointment_id": appt.id, "before": "requested", "after": "cancelled", "notification_ids": [note.id]})
+
+
+def _record_missed_visit(db, args, actor, episode_id) -> Outcome:
+    appt = _visit(db, args, episode_id, "scheduled")
+    if scheduling.utc(appt.scheduled_at) > now():
+        raise HTTPException(409, "This visit has not happened yet.")
+    when = scheduling.local_text(appt.scheduled_at, scheduling.rules(db))
+    appt.status = "no_show"
+    note = _visit_message(db, appt, episode_id, "visit_missed", when=when)
+    return Outcome(f"Recorded the visit on {when} as missed and told her she can ask for a new time.",
+                   {"kind": "visit", "appointment_id": appt.id, "before": "scheduled", "after": "no_show", "notification_ids": [note.id]})
+
+
+# ---------------------------------------------------------------- referrals
+def _referral(db, args, episode_id: str, allowed: tuple) -> models.Referral:
+    referral = db.get(models.Referral, args["referral_id"])
+    if referral is None or referral.episode_id != episode_id:
+        raise HTTPException(404, "Referral not found for this patient.")
+    if referral.status not in allowed:
+        raise HTTPException(409, "This referral has moved on, so nothing was done.")
+    return referral
+
+
+def _send_referral(db, args, actor, episode_id) -> Outcome:
+    referral = _referral(db, args, episode_id, ("DRAFT",))
+    try:
+        ReferralCommunicationService(db).send_referral(referral, actor)
+    except ReferralTransitionError as exc:
+        raise HTTPException(409, str(exc))
+    db.flush()
+    return Outcome(f"Referral {referral.reference_code} sent to {referral.destination}.")  # a sent referral cannot be recalled
+
+
+def _chase_referral(db, args, actor, episode_id) -> Outcome:
+    referral = _referral(db, args, episode_id, ("SENT", "APPOINTMENT_SCHEDULED"))
+    round_number = int(args.get("round", 1))
+    waiting = "that you received" if referral.status == "SENT" else "the response to"
+    comm = models.Communication(
+        episode_id=episode_id, related_referral_id=referral.id, type="REFERRAL_OUTBOUND", direction="OUTBOUND", sender_label=actor.full_name,
+        recipient_label=referral.destination or "External hospital", subject=f"Reminder {round_number}: referral {referral.reference_code}",
+        content=(f"Reminder {round_number}: please confirm {waiting} referral {referral.reference_code} ({referral.title}). "
+                 "This reminder is recorded in MaternaSync; nothing is sent to a real hospital in this demonstration."),
+        status="SENT", source="MANUAL_ENTRY", created_by_user_id=actor.id)
+    db.add(comm)
+    db.flush()
+    return Outcome(f"Recorded reminder {round_number} for referral {referral.reference_code}.", {"kind": "communication", "communication_id": comm.id})
+
+
+# ---------------------------------------------------------------- WhatsApp reminders
+def _send_outreach(db, args, actor, episode_id) -> Outcome:
+    reminder = db.get(models.CareReminder, args["reminder_id"])
+    consent = db.get(models.SharingConsent, args["consent_id"])
+    # The woman's permission is checked here, in code, on every send: right purpose, not expired, not withdrawn.
+    if (consent is None or consent.episode_id != episode_id or consent.purpose != "reminders" or consent.revoked_at is not None
+            or scheduling.utc(consent.expires_at) <= now()):
+        raise HTTPException(409, "There is no active permission to message this number about reminders.")
+    if db.query(models.Outreach).filter_by(episode_id=episode_id, source_type="reminder", source_id=reminder.id).first():
+        raise HTTPException(409, "A message for this reminder was already prepared.")
+    language = server_text.language_of(db, _patient_id(db, episode_id))
+    item = models.Outreach(episode_id=episode_id, consent_id=consent.id, recipient=consent.recipient, source_type="reminder", source_id=reminder.id,
+                           message=server_text.outreach_text("reminder", language), created_by_user_id=actor.id)
+    db.add(item)
+    db.flush()
+    if not whatsapp.automatic():
+        return Outcome("Prepared a WhatsApp reminder. Automatic sending is not set up, so a person sends it from the composer link.", {"kind": "outreach", "outreach_id": item.id})
+    try:
+        result = whatsapp.send(item.recipient, item.message)
+    except whatsapp.WhatsAppError as error:
+        item.status, item.failed_reason, item.updated_at = "FAILED", str(error)[:300], now()
+        raise HTTPException(502, item.failed_reason)
+    item.status, item.provider, item.provider_reference = "SENT", result["provider"], result["reference"]
+    item.sent_at = item.updated_at = now()
+    return Outcome(f"Sent the WhatsApp reminder through {result['provider']}. Minimal sign-in text only.")  # a sent message cannot be recalled
+
+
+# ---------------------------------------------------------------- paperwork and handover drafts
+def _prepare_draft(db, args, actor, episode_id) -> Outcome:
+    from .. import continuity_schemas as S
+    from ..continuity_service import create_output_draft
+    episode = db.get(models.PregnancyEpisode, episode_id)
+    payload = S.OutputIn(kind=args["kind"], source_type=args["source_type"], source_id=args["source_id"], language=args["language"])
+    output = create_output_draft(db, actor, episode, payload)  # the same builder as Document Studio's button
+    db.flush()
+    ids = [server_text.notify_key(db, doctor_id, "draft_ready", episode_id=episode_id, type_="assistant", params={"patient": episode.patient_name, "title": output.title},
+                                  related_entity_type="ClinicalOutput", related_entity_id=output.id, flush=True).id for doctor_id in doctor_ids(db, episode_id)]
+    return Outcome(f"Prepared a draft: {output.title}. It is not released; a doctor reviews, edits and signs it.", {"kind": "draft", "output_id": output.id, "notification_ids": ids})
+
+
+def _prepare_handover(db, args, actor, episode_id) -> Outcome:
+    if config.HANDOVER_PAUSED:
+        raise HTTPException(423, config.HANDOVER_PAUSED_MESSAGE)
+    episode = db.get(models.PregnancyEpisode, episode_id)
+    doctor = db.get(models.User, args["doctor_id"])
+    previous = db.query(models.Handover).filter_by(episode_id=episode_id, status="DRAFT").first()
+    handover = HandoverService(db).generate_new_version(episode, actor, build_doctor_handover_content(db, episode, doctor))
+    note = server_text.notify_key(db, doctor.id, "handover_ready", episode_id=episode_id, type_="assistant", params={"patient": episode.patient_name},
+                                  related_entity_type="Handover", related_entity_id=handover.id, flush=True)
+    return Outcome("Prepared a handover draft from open tasks, requests and questions. A doctor edits and shares it.",
+                   {"kind": "handover", "handover_id": handover.id, "previous_id": previous.id if previous else None, "notification_ids": [note.id]})
+
+
+def _post_weekly_summary(db, args, actor, episode_id) -> Outcome:
+    s = args["summary"]
+    note = server_text.notify_key(db, args["doctor_id"], "weekly_summary", type_="assistant_summary",
+                                  params={"questions": s["questions"]["received"], "answered": s["questions"]["answered"], "documents": s["documents"]["uploaded"],
+                                          "verified": s["documents"]["verified"], "steps": s["assistant"]["stepsDone"], "undone": s["assistant"]["undone"]}, flush=True)
+    return Outcome("Posted the weekly counts to the doctor's Updates.", {"kind": "notifications", "notification_ids": [note.id]})
 
 
 _IMPLEMENTATIONS = {
     "create_attention": _create_attention, "notify_user": _notify_user, "send_urgent_message": _send_urgent_message,
     "assign_question_to_doctor": _assign_question_to_doctor, "verify_document": _verify_document,
     "reject_document": _reject_document, "answer_question": _answer_question,
+    "confirm_appointment": _confirm_appointment, "offer_new_times": _offer_new_times, "record_missed_visit": _record_missed_visit,
+    "send_referral": _send_referral, "chase_referral": _chase_referral, "send_outreach": _send_outreach,
+    "prepare_draft": _prepare_draft, "prepare_handover": _prepare_handover, "post_weekly_summary": _post_weekly_summary,
 }
 
 
@@ -290,8 +439,55 @@ def _undo_answer(db, undo: dict, actor, note: str) -> str:
     return "The reply was withdrawn and the question is open again."
 
 
+def _undo_visit(db, undo: dict, actor, note: str) -> str:
+    appt = db.get(models.Appointment, undo["appointment_id"])
+    if appt is None or appt.status != undo["after"]:
+        raise _gone("The visit")
+    appt.status = undo["before"]
+    _remove_notifications(db, undo.get("notification_ids", []))
+    return "The visit is back as it was and her message was withdrawn from Updates."
+
+
+def _undo_communication(db, undo: dict, actor, note: str) -> str:
+    comm = db.get(models.Communication, undo["communication_id"])
+    if comm is None:
+        raise _gone("The reminder")
+    db.delete(comm)
+    return "The reminder was removed from the referral's messages."
+
+
+def _undo_outreach(db, undo: dict, actor, note: str) -> str:
+    item = db.get(models.Outreach, undo["outreach_id"])
+    if item is None or item.status != "PREPARED":
+        raise _gone("The WhatsApp message")
+    item.status, item.updated_at = "CANCELLED", now()
+    return "The prepared WhatsApp message was cancelled."
+
+
+def _undo_draft(db, undo: dict, actor, note: str) -> str:
+    output = db.get(models.ClinicalOutput, undo["output_id"])
+    if output is None or output.status != "DRAFT" or output.revision != 1:
+        raise _gone("The draft")  # a doctor already worked on it, so it is kept
+    db.delete(output)
+    _remove_notifications(db, undo.get("notification_ids", []))
+    return "The unedited draft was deleted."
+
+
+def _undo_handover(db, undo: dict, actor, note: str) -> str:
+    handover = db.get(models.Handover, undo["handover_id"])
+    if handover is None or handover.status != "DRAFT":
+        raise _gone("The handover draft")
+    previous = db.get(models.Handover, undo["previous_id"]) if undo.get("previous_id") else None
+    if previous is not None and previous.status == "SUPERSEDED" and previous.superseded_by_id == handover.id:
+        previous.status, previous.superseded_by_id = "DRAFT", None
+    db.delete(handover)
+    _remove_notifications(db, undo.get("notification_ids", []))
+    return "The handover draft was deleted and the earlier draft is current again."
+
+
 _UNDO = {"exception": _undo_exception, "notifications": _undo_notifications, "assign": _undo_assign, "verify": _undo_document,
-         "reject": _undo_document, "answer": _undo_answer}
+         "reject": _undo_document, "answer": _undo_answer, "visit": _undo_visit, "communication": _undo_communication, "outreach": _undo_outreach,
+         "draft": _undo_draft, "handover": _undo_handover}
 
 
 def can_undo(action: models.AIAction) -> bool:
@@ -317,7 +513,8 @@ def undo(db, action: models.AIAction, actor: models.User, note: str) -> str:
 def _default_proposal(db, tool: str, args: dict) -> dict:
     """What a doctor reads when a routine step waits for approval (review-every-step mode) and the workflow gave no wording."""
     if tool == "notify_user":
-        return {"title": "Send a reminder", "summary": f"{args.get('title', '')}: {args.get('body', '')}", "recommended_action": "Approve to send this fixed reminder."}
+        title, body = server_text.render(args["key"], "en", args.get("params")) if args.get("key") else (args.get("title", ""), args.get("body", ""))
+        return {"title": "Send a reminder", "summary": f"{title}: {body}", "recommended_action": "Approve to send this fixed reminder."}
     return {"title": tool.replace("_", " ").capitalize(), "summary": "", "recommended_action": "Approve to run this step."}
 
 

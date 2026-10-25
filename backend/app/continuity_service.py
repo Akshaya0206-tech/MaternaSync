@@ -5,7 +5,7 @@ import re
 from fastapi import HTTPException
 from sqlalchemy import inspect
 
-from . import models
+from . import models, server_text
 from .deps import require_episode_access
 from .plain_language import (LAB_NOTE_PREFIX, SECTIONED_KINDS, build_explanation, build_lab_explanation, build_visit_summary,
                              format_when, review_notes, section_kinds, stage_for_weeks)
@@ -83,22 +83,15 @@ def get_object(db, user, table, object_id):
     return obj
 
 
-def notify(db, episode_id, recipient, title, body=""):
-    db.add(models.Notification(recipient_user_id=recipient, episode_id=episode_id,
-                               type="continuity", title=title, body=body))
+def notify(db, episode_id, recipient, key, **params):
+    """A notification worded from server_text.CATALOG in the reader's language; `params` fill in the blanks."""
+    server_text.notify_key(db, recipient, key, episode_id=episode_id, params=params)
 
 
-def handover_continuity(db, episode_id):
+def handover_continuity(db, episode_id, language="en"):
     """Unresolved new work is carried into existing handover drafts."""
-    tasks = db.query(models.Task).filter(models.Task.episode_id == episode_id, models.Task.status.in_(["OPEN", "IN_PROGRESS", "WAITING"])).all()
-    lines = [f"{t.title} — owner: {name(db, t.owner_user_id)}; due: {t.due_date or 'not set'}; source: {t.source_type or 'manual'}" for t in tasks]
-    requests = db.query(models.Appointment).filter_by(episode_id=episode_id, status="requested").count()
-    drafts = db.query(models.ClinicalOutput).filter_by(episode_id=episode_id, status="DRAFT").count()
-    if requests:
-        lines.append(f"{requests} appointment request(s) awaiting confirmation.")
-    if drafts:
-        lines.append(f"{drafts} document / explanation draft(s) awaiting review.")
-    return "\n".join(lines)
+    from .handover_content import continuity_lines
+    return continuity_lines(db, episode_id, language)
 
 
 def due_reminders(db, patient_user_id):
@@ -112,9 +105,8 @@ def due_reminders(db, patient_user_id):
             models.CareReminder.status == "pending", models.CareReminder.scheduled_at <= now()).all()
         for reminder in reminders:
             if not db.query(models.Notification).filter_by(recipient_user_id=patient_user_id, related_entity_type="CareReminder", related_entity_id=reminder.id).first():
-                db.add(models.Notification(recipient_user_id=patient_user_id, episode_id=ep.id, type="reminder_due",
-                    title=f"Reminder: {reminder.title}", body=reminder.instructions,
-                    related_entity_type="CareReminder", related_entity_id=reminder.id))
+                server_text.notify_key(db, patient_user_id, "reminder_due", episode_id=ep.id, type_="reminder_due", params={"title": reminder.title, "text": reminder.instructions},
+                                       related_entity_type="CareReminder", related_entity_id=reminder.id)
     db.commit()
 
 
@@ -186,6 +178,62 @@ def plain_language_draft(db, ep, payload, snapshot):
     return build_visit_summary(kind=payload.kind, language=payload.language, episode=ep, approved_content=approved.final_content or {},
                                consult_date=format_when(approved.approved_at), next_appointment=next_appointment,
                                education=education, open_questions=open_questions, education_available=bool(education))
+
+
+def create_output_draft(db, user, ep, payload):
+    """Build an editable draft from a verified source. Shared by Document Studio and the care assistant; the caller commits.
+    Nothing here releases anything: a doctor still edits, signs and releases."""
+    if payload.kind == "lab_explanation" and payload.source_type != "document":
+        raise HTTPException(400, "A lab explanation requires a verified document.")
+    if payload.kind in ("visit_summary", "explanation", "prescription") and payload.source_type != "consultation":
+        raise HTTPException(400, "Select an approved consultation for this output.")
+    if payload.kind == "reply" and payload.source_type != "question":
+        raise HTTPException(400, "A reply requires a patient question.")
+    if payload.source_type == "question" and payload.kind != "reply":
+        raise HTTPException(400, "Formal documents require verified records or an approved consultation.")
+    snapshot = source_snapshot(db, ep, payload.source_type, payload.source_id)
+    if payload.appointment_id:
+        appt = db.get(models.Appointment, payload.appointment_id)
+        if not appt or appt.episode_id != ep.id:
+            raise HTTPException(400, "Select an appointment for this patient.")
+    template = db.get(models.ClinicalResource, payload.template_id) if payload.template_id else None
+    if payload.template_id and (not current_resource(template) or template.kind != "template"):
+        raise HTTPException(400, "Select a current, approved note template.")
+    fields = template.configuration.get("fields", []) if template else []
+    structured = {field: "" for field in fields}
+    content = f"Patient: {ep.patient_name}\nSource: {snapshot['title']}\n\n{snapshot['text']}"
+    title = payload.kind.replace("_", " ").title()
+    appointment_id = payload.appointment_id or suggested_appointment(db, ep, payload)
+    if payload.kind in SECTIONED_KINDS:
+        built = plain_language_draft(db, ep, payload, snapshot)
+        title, content, structured = built["title"], built["content"], built["structured"]
+        snapshot = {**snapshot, "draftNotes": built["notes"], **({"parsedResults": built["parsed"]} if "parsed" in built else {})}
+    elif payload.kind == "reply":
+        content = ADMIN_REPLIES[payload.language]
+    elif payload.kind == "prescription":
+        content = f"Patient: {ep.patient_name}\nAllergies recorded: {', '.join(ep.allergies or []) or 'Not documented'}\n\nClinician-entered prescription. Every medicine and dose below was entered by the doctor."
+        structured = {"Medicine": "", "Dose": "", "Route": "", "Frequency": "", "Duration": "", "Instructions": ""}
+    elif fields:
+        content += "\n\n" + "\n\n".join(f"{field}\n[Complete from verified information]" for field in fields)
+    else:
+        headings = {
+            "discharge_summary": ["Reason for admission", "Documented course", "Discharge plan", "Follow-up"],
+            "referral_letter": ["Recipient", "Reason for referral", "Relevant verified findings", "Requested review"],
+            "consent_form": ["Proposed procedure", "Discussion of benefits and risks", "Alternatives discussed", "Patient questions", "Patient signature and date"],
+            "certificate": ["Purpose", "Facts certified", "Validity period", "Professional signature"],
+            "operative_note": ["Procedure", "Team", "Documented findings", "Procedure details", "Postoperative plan"],
+            "insurance": ["Insurer", "Policy / claim reference", "Documented service", "Supporting records", "Authorized signature"],
+            "note": ["Documented history", "Observations", "Clinician assessment", "Confirmed plan"],
+        }
+        content += "\n\n" + "\n\n".join(f"{heading}\n[Complete from verified information]" for heading in headings.get(payload.kind, []))
+    output = models.ClinicalOutput(episode_id=ep.id, kind=payload.kind, title=title,
+        content=content, language=payload.language, source_type=payload.source_type, source_id=payload.source_id,
+        source_snapshot=snapshot, appointment_id=appointment_id, template_id=payload.template_id,
+        structured_data=structured, created_by_user_id=user.id)
+    db.add(output)
+    db.flush()
+    audit(db, user, "clinical_output_drafted", output, details="Source-based template draft; requires human editing and approval.")
+    return output
 
 
 def source_snapshot(db, ep, source_type, source_id):

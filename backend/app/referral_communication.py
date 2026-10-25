@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from . import models
+from . import models, server_text
 
 OPEN_TASK_STATUSES = ("OPEN", "IN_PROGRESS", "WAITING")
 
@@ -95,8 +95,10 @@ class ReferralCommunicationService:
         for uid in self._care_team_user_ids(episode_id):
             self._notify(uid, episode_id, type_, title, body, referral_id)
 
-    def _notify_patient(self, episode: models.PregnancyEpisode, referral_id: str, type_: str, title: str, body: str) -> None:
-        self._notify(episode.patient_user_id, episode.id, type_, title, body, referral_id)
+    def _notify_patient(self, episode: models.PregnancyEpisode, referral_id: str, type_: str, key: str) -> None:
+        """The patient's referral updates are fixed wording in her language (server_text.CATALOG)."""
+        server_text.notify_key(self.db, episode.patient_user_id, key, episode_id=episode.id, type_=type_,
+                               related_entity_type="Referral", related_entity_id=referral_id)
 
     def _audit(self, episode_id: str, actor_user_id: str | None, actor_role: str | None, actor_name: str,
                action: str, title: str, details: str, referral_id: str) -> None:
@@ -216,10 +218,10 @@ class ReferralCommunicationService:
 
         doctor_id = self._primary_doctor_id(episode.id)
         if doctor_id:
-            self._notify(doctor_id, episode.id, "REFERRAL_SENT", "Your referral has been sent",
-                         f"{episode.patient_name}: {referral.title} sent to {referral.destination}.", referral.id)
-        self._notify_patient(episode, referral.id, "REFERRAL_SENT", "Referral update",
-                              "Your referral has been sent and is being processed.")
+            server_text.notify_key(self.db, doctor_id, "referral_sent_doctor", episode_id=episode.id, type_="REFERRAL_SENT",
+                                   params={"patient": episode.patient_name, "title": referral.title, "destination": referral.destination},
+                                   related_entity_type="Referral", related_entity_id=referral.id)
+        self._notify_patient(episode, referral.id, "REFERRAL_SENT", "referral_sent_patient")
         self._journey(episode, "Referral sent", "Your referral was sent to a specialist.",
                       now.date().isoformat())
         return referral
@@ -282,8 +284,7 @@ class ReferralCommunicationService:
                     f"{appointment_date} {appointment_time or ''}", referral.id)
         self._notify_care_team(episode.id, referral.id, "APPOINTMENT_SCHEDULED", "Referral appointment scheduled",
                                 f"{episode.patient_name}: appointment on {appointment_date}.")
-        self._notify_patient(episode, referral.id, "APPOINTMENT_SCHEDULED", "Referral update",
-                              "Your appointment has been scheduled.")
+        self._notify_patient(episode, referral.id, "APPOINTMENT_SCHEDULED", "referral_appointment_patient")
         self._journey(episode, "Referral appointment scheduled", "Your specialist appointment was scheduled.",
                       now.date().isoformat())
         return referral
@@ -316,10 +317,9 @@ class ReferralCommunicationService:
         self._notify_care_team(episode.id, referral.id, "REFERRAL_RESPONSE_RECEIVED", "Referral response received",
                                 f"{episode.patient_name}: response received for {referral.title}.")
         if doctor_id:
-            self._notify(doctor_id, episode.id, "DOCTOR_REVIEW_REQUIRED", "Referral response received — review required.",
-                         f"{episode.patient_name}: {referral.title}", referral.id)
-        self._notify_patient(episode, referral.id, "REFERRAL_RESPONSE_RECEIVED", "Referral update",
-                              "Your referral response has been received.")
+            server_text.notify_key(self.db, doctor_id, "referral_review_doctor", episode_id=episode.id, type_="DOCTOR_REVIEW_REQUIRED",
+                                   params={"patient": episode.patient_name, "title": referral.title}, related_entity_type="Referral", related_entity_id=referral.id)
+        self._notify_patient(episode, referral.id, "REFERRAL_RESPONSE_RECEIVED", "referral_response_patient")
         self._journey(episode, "Referral response received", "A response was received from your specialist referral.",
                       now.date().isoformat())
         return referral

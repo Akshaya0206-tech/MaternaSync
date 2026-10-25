@@ -473,3 +473,11 @@
 .assistant-log { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 .assistant-log th, .assistant-log td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
 .assistant-log th { color: var(--text-muted); font-weight: 700; white-space: nowrap; }
+
+/* Care Assistant: booking rules and the plain counts */
+.assistant-days { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 8px; }
+.assistant-days legend { padding: 0 6px; font-weight: 600; }
+.assistant-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 18px; }
+.assistant-counts .assistant-count { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border-color); }
+.assistant-counts dt { margin: 0; }
+.assistant-counts dd { margin: 0; font-weight: 700; }

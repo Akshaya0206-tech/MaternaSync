@@ -6,15 +6,16 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import config, models
+from .. import config, models, server_text
 from ..database import get_db
 from ..deps import require_role
 from .. import continuity_schemas as S
-from ..continuity_service import (ADMIN_REPLIES, allowed_ids, audit, current_resource, known_codes, search_codes,
+from ..continuity_service import (ADMIN_REPLIES, allowed_ids, audit, create_output_draft, current_resource, known_codes, search_codes,
     episode, get_object, member_ids, name, notify, now, output_out, plain_language_draft, require_member,
     resource_out, row, source_snapshot, suggested_appointment, trend_data, utc, due_reminders)
 from ..plain_language import LAB_NOTE_PREFIX, SECTIONED_KINDS, unresolved_placeholders
 from .. import whatsapp
+from ..ai_coordinator import orchestrator
 
 router = APIRouter(prefix="/api/v2/continuity", tags=["continuity"])
 authenticated = require_role("patient", "doctor", "care_team")
@@ -182,7 +183,7 @@ def create_reminder(episode_id: str, payload: S.ReminderIn, user=Depends(staff),
         db.flush()
         audit(db, user, "reminder_schedule_approved", item)
         reminders.append(item)
-    notify(db, ep.id, ep.patient_user_id, "Your care team added reminders", payload.title)
+    notify(db, ep.id, ep.patient_user_id, "reminders_added", title=payload.title)
     db.commit()
     return [row(r) for r in reminders]
 
@@ -201,7 +202,7 @@ def respond(reminder_id: str, payload: S.ReminderResponse, user=Depends(patient)
             description="Patient requested support with a reminder. Contact them to clarify; do not infer non-adherence.",
             owner_user_id=owner, created_by_user_id=user.id, due_date=now().date().isoformat(), source_type="reminder", source_id=reminder.id)
         db.add(task)
-        notify(db, reminder.episode_id, owner, "Patient requested help with a reminder", reminder.title)
+        notify(db, reminder.episode_id, owner, "help_requested", title=reminder.title)
     audit(db, user, "reminder_response_recorded", reminder, after=row(reminder))
     db.commit()
     return row(reminder)
@@ -252,7 +253,7 @@ def confirm_follow_up_flag(episode_id: str, payload: S.FlagConfirmIn, user=Depen
         db.add(task)
         db.flush()
         db.add(models.TaskAssignment(task_id=task.id, assigned_to_user_id=payload.owner_user_id, assigned_by_user_id=user.id))
-        notify(db, episode_id, payload.owner_user_id, "Follow-up assigned", flag["ruleTitle"])
+        notify(db, episode_id, payload.owner_user_id, "follow_up_assigned", title=flag["ruleTitle"])
     db.add(models.AuditLog(
         episode_id=episode_id, actor_user_id=user.id, actor_role=user.role, actor_display_name=user.full_name, action="follow_up_flag_confirmed",
         title="Follow-up flag confirmed by a doctor", details=payload.note, object_type="FollowUpFlag", object_id=flag["id"],
@@ -266,56 +267,7 @@ def draft_output(episode_id: str, payload: S.OutputIn, user=Depends(staff), db: 
     ep = episode(db, user, episode_id)
     if user.role != "doctor" and payload.kind not in ("insurance", "certificate", "reply"):
         raise HTTPException(403, "A doctor must prepare this clinical draft.")
-    if payload.kind == "lab_explanation" and payload.source_type != "document":
-        raise HTTPException(400, "A lab explanation requires a verified document.")
-    if payload.kind in ("visit_summary", "explanation", "prescription") and payload.source_type != "consultation":
-        raise HTTPException(400, "Select an approved consultation for this output.")
-    if payload.kind == "reply" and payload.source_type != "question":
-        raise HTTPException(400, "A reply requires a patient question.")
-    if payload.source_type == "question" and payload.kind != "reply":
-        raise HTTPException(400, "Formal documents require verified records or an approved consultation.")
-    snapshot = source_snapshot(db, ep, payload.source_type, payload.source_id)
-    if payload.appointment_id:
-        appt = db.get(models.Appointment, payload.appointment_id)
-        if not appt or appt.episode_id != ep.id:
-            raise HTTPException(400, "Select an appointment for this patient.")
-    template = db.get(models.ClinicalResource, payload.template_id) if payload.template_id else None
-    if payload.template_id and (not current_resource(template) or template.kind != "template"):
-        raise HTTPException(400, "Select a current, approved note template.")
-    fields = template.configuration.get("fields", []) if template else []
-    structured = {field: "" for field in fields}
-    content = f"Patient: {ep.patient_name}\nSource: {snapshot['title']}\n\n{snapshot['text']}"
-    title = payload.kind.replace("_", " ").title()
-    appointment_id = payload.appointment_id or suggested_appointment(db, ep, payload)
-    if payload.kind in SECTIONED_KINDS:
-        built = plain_language_draft(db, ep, payload, snapshot)
-        title, content, structured = built["title"], built["content"], built["structured"]
-        snapshot = {**snapshot, "draftNotes": built["notes"], **({"parsedResults": built["parsed"]} if "parsed" in built else {})}
-    elif payload.kind == "reply":
-        content = ADMIN_REPLIES[payload.language]
-    elif payload.kind == "prescription":
-        content = f"Patient: {ep.patient_name}\nAllergies recorded: {', '.join(ep.allergies or []) or 'Not documented'}\n\nClinician-entered prescription. Every medicine and dose below was entered by the doctor."
-        structured = {"Medicine": "", "Dose": "", "Route": "", "Frequency": "", "Duration": "", "Instructions": ""}
-    elif fields:
-        content += "\n\n" + "\n\n".join(f"{field}\n[Complete from verified information]" for field in fields)
-    else:
-        headings = {
-            "discharge_summary": ["Reason for admission", "Documented course", "Discharge plan", "Follow-up"],
-            "referral_letter": ["Recipient", "Reason for referral", "Relevant verified findings", "Requested review"],
-            "consent_form": ["Proposed procedure", "Discussion of benefits and risks", "Alternatives discussed", "Patient questions", "Patient signature and date"],
-            "certificate": ["Purpose", "Facts certified", "Validity period", "Professional signature"],
-            "operative_note": ["Procedure", "Team", "Documented findings", "Procedure details", "Postoperative plan"],
-            "insurance": ["Insurer", "Policy / claim reference", "Documented service", "Supporting records", "Authorized signature"],
-            "note": ["Documented history", "Observations", "Clinician assessment", "Confirmed plan"],
-        }
-        content += "\n\n" + "\n\n".join(f"{heading}\n[Complete from verified information]" for heading in headings.get(payload.kind, []))
-    output = models.ClinicalOutput(episode_id=ep.id, kind=payload.kind, title=title,
-        content=content, language=payload.language, source_type=payload.source_type, source_id=payload.source_id,
-        source_snapshot=snapshot, appointment_id=appointment_id, template_id=payload.template_id,
-        structured_data=structured, created_by_user_id=user.id)
-    db.add(output)
-    db.flush()
-    audit(db, user, "clinical_output_drafted", output, details="Source-based template draft; requires human editing and approval.")
+    output = create_output_draft(db, user, ep, payload)
     db.commit()
     return output_out(db, output)
 
@@ -394,7 +346,7 @@ def approve_output(output_id: str, payload: S.PublishIn, user=Depends(staff), db
             body += "\n\n" + "\n".join(f"{key}: {value}" for key, value in output.structured_data.items())
         db.add(models.JourneyEvent(episode_id=ep.id, event_type="approved_output", title=output.title, summary=body,
             event_date=now().date().isoformat(), gestational_age_weeks=ep.gestational_age_weeks, gestational_age_days=ep.gestational_age_days))
-        notify(db, ep.id, ep.patient_user_id, f"New approved {output.title.lower()}", "Your care team reviewed and released this document.")
+        notify(db, ep.id, ep.patient_user_id, "approved_document", title=output.title)
         if output.kind == "reply":
             q = db.get(models.PatientQuestion, output.source_id)
             db.add(models.QuestionResponse(question_id=q.id, responder_user_id=user.id, responder_role=user.role,
@@ -425,7 +377,7 @@ def enroll(episode_id: str, payload: S.EnrollIn, user=Depends(doctor), db: Sessi
         db.flush()
         db.add(models.TaskAssignment(task_id=task.id, assigned_to_user_id=payload.owner_user_id, assigned_by_user_id=user.id))
     audit(db, user, "pathway_confirmed", enrollment, details=f"{resource.title} v{resource.version}; {len(resource.configuration['steps'])} administrative tasks")
-    notify(db, episode_id, payload.owner_user_id, "Pathway tasks assigned", resource.title)
+    notify(db, episode_id, payload.owner_user_id, "pathway_assigned", title=resource.title)
     db.commit()
     return row(enrollment)
 
@@ -443,7 +395,8 @@ def prepare_outreach(episode_id: str, payload: S.OutreachIn, user=Depends(staff)
     if payload.source_type == "output" and (source.status != "APPROVED" or not source.visible_to_patient):
         raise HTTPException(400, "Only approved, patient-visible documents may be shared.")
     # Minimum necessary content: no patient name, diagnosis, medication or record text in the URL.
-    message = "MaternaSync: you have a care reminder. Please sign in to view it." if payload.source_type == "reminder" else "MaternaSync: your care team has shared an approved document. Please sign in to view it."
+    ep = db.get(models.PregnancyEpisode, episode_id)
+    message = server_text.outreach_text("reminder" if payload.source_type == "reminder" else "output", server_text.language_of(db, ep.patient_user_id))
     item = models.Outreach(episode_id=episode_id, consent_id=consent.id, recipient=consent.recipient,
         source_type=payload.source_type, source_id=source.id, message=message, created_by_user_id=user.id)
     db.add(item)
@@ -533,8 +486,9 @@ def request_appointment(episode_id: str, payload: S.AppointmentIn, user=Depends(
     appt = models.Appointment(episode_id=episode_id, **payload.model_dump(), status="requested")
     db.add(appt)
     db.flush()
+    orchestrator.enqueue(db, "appointment_request", episode_id=episode_id, source_type="Appointment", source_id=appt.id)  # the care assistant checks it against the clinic's rules
     for uid in member_ids(db, episode_id):
-        notify(db, episode_id, uid, "Appointment requested", payload.appointment_type)
+        notify(db, episode_id, uid, "appointment_requested", kind=payload.appointment_type)
     audit(db, user, "appointment_requested", appt)
     db.commit()
     return row(appt)
@@ -550,7 +504,7 @@ def appointment_status(appointment_id: str, payload: S.AppointmentStatusIn, user
         raise HTTPException(400, "A future appointment cannot be marked completed or no-show.")
     appt.status = payload.status
     ep = db.get(models.PregnancyEpisode, appt.episode_id)
-    notify(db, ep.id, ep.patient_user_id, f"Appointment {payload.status.replace('_', ' ')}", appt.appointment_type)
+    notify(db, ep.id, ep.patient_user_id, f"appointment_{payload.status}", kind=appt.appointment_type)
     audit(db, user, "appointment_status_changed", appt, after=row(appt))
     db.commit()
     return row(appt)

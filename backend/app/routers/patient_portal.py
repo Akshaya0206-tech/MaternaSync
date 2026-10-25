@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from .. import automation, extraction, models, schemas_v2
+from .. import automation, extraction, models, schemas_v2, server_text
 from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..deps import get_current_user, get_my_patient_episode, require_role
@@ -345,7 +345,7 @@ def list_my_updates(
         .order_by(models.Notification.created_at.desc())
         .all()
     )
-    return [schemas_v2.NotificationOut.model_validate(n) for n in notifications]
+    return [server_text.notification_out(db, current_user, n) for n in notifications]
 
 
 @router.patch("/updates/{notification_id}/read", response_model=schemas_v2.NotificationOut)
@@ -364,7 +364,7 @@ def mark_my_update_read(
     notification.is_read = True
     db.commit()
     db.refresh(notification)
-    return schemas_v2.NotificationOut.model_validate(notification)
+    return server_text.notification_out(db, current_user, notification)
 
 
 # ---------- Profile ----------

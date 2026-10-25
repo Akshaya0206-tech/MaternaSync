@@ -31,6 +31,19 @@ TOOLS = {
     "verify_document": T1,
     "reject_document": T1,
     "answer_question": T1,
+    # Visits: a doctor approves each change to a booking.
+    "confirm_appointment": T1,
+    "offer_new_times": T1,
+    "record_missed_visit": T1,
+    # Referrals: sending leaves the clinic and a chase is a message to a third party, so a doctor approves both.
+    "send_referral": T1,
+    "chase_referral": T1,
+    # A WhatsApp reminder the doctor already approved, to a number the woman consented to; consent is checked in code on every send.
+    "send_outreach": T0,
+    # Drafts and counts: nothing here is released to a patient or changes a clinical record.
+    "prepare_draft": T0,
+    "prepare_handover": T0,
+    "post_weekly_summary": T0,
 }
 
 
@@ -59,13 +72,18 @@ def decide(db, run: models.AIRun, tool: str, args: dict, key: str | None, safety
         return Decision("deny", "A doctor paused the care assistant, so this waits.", quiet=True)
 
     # Everything the action touches must belong to the same patient the run is about.
-    for field, table in (("document_id", models.MedicalDocument), ("question_id", models.PatientQuestion), ("task_id", models.Task)):
+    for field, table in (("document_id", models.MedicalDocument), ("question_id", models.PatientQuestion), ("task_id", models.Task),
+                         ("appointment_id", models.Appointment), ("referral_id", models.Referral), ("reminder_id", models.CareReminder)):
         if field in args:
             item = db.get(table, args[field])
             if item is None or item.episode_id != run.episode_id:
                 return Decision("deny", "The item does not belong to this patient, so nothing was done.")
     if tool == "notify_user" and not _recipient_belongs(db, run.episode_id, args.get("user_id")):
         return Decision("deny", "That person is not linked to this patient, so no message was sent.")
+    if tool in ("prepare_handover", "post_weekly_summary"):
+        doctor = db.get(models.User, args.get("doctor_id"))
+        if doctor is None or doctor.role != "doctor" or (run.episode_id and not db.query(models.PatientDoctorAssignment).filter_by(episode_id=run.episode_id, doctor_user_id=doctor.id).first()):
+            return Decision("deny", "That doctor is not assigned to this patient, so nothing was prepared.")
 
     if key and db.query(models.AIAction).filter_by(idempotency_key=key).first():
         return Decision("deny", "This step was already done.", quiet=True)

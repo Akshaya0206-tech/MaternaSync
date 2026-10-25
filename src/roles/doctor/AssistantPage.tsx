@@ -7,6 +7,8 @@ import {
 import type { AssistantAction, AssistantItem, AssistantStatus } from '../../api/assistant';
 import { formatTime, getContext } from '../../api/continuity';
 import { Badge, Empty, Feedback, Field, Page, Panel, useAction } from '../../components/continuity/shared';
+import { AssistantBookingRules } from './AssistantBookingRules';
+import { AssistantCounts } from './AssistantCounts';
 import { tx, useLanguage } from '../../i18n';
 
 const MODE_TEXT: Record<AssistantStatus['mode'], string> = {
@@ -20,6 +22,15 @@ const WORKFLOW_TEXT: Record<string, string> = {
   question_routing: tx('Question routing'),
   missed_checkin: tx('Missed check-in reminder'),
   overdue_task: tx('Overdue task'),
+  appointment_request: tx('Visit request'),
+  referral_followup: tx('New referral'),
+  paperwork: tx('Visit summary draft'),
+  visit_reminder: tx('Visit reminder'),
+  missed_visit: tx('Past visit check'),
+  referral_chase: tx('Referral follow-up'),
+  outreach: tx('WhatsApp reminder'),
+  handover: tx('Handover draft'),
+  weekly_summary: tx('Weekly counts'),
 };
 
 const TOOL_TEXT: Record<string, string> = {
@@ -30,6 +41,15 @@ const TOOL_TEXT: Record<string, string> = {
   verify_document: tx('Verify a document'),
   reject_document: tx('Reject a document'),
   answer_question: tx('Send a reply'),
+  confirm_appointment: tx('Confirm a visit'),
+  offer_new_times: tx('Offer other times'),
+  record_missed_visit: tx('Record a missed visit'),
+  send_referral: tx('Send a referral'),
+  chase_referral: tx('Chase a referral'),
+  send_outreach: tx('Send a WhatsApp reminder'),
+  prepare_draft: tx('Prepare a draft'),
+  prepare_handover: tx('Prepare a handover draft'),
+  post_weekly_summary: tx('Post the weekly counts'),
 };
 
 const OUTCOME_TEXT: Record<string, string> = {
@@ -50,6 +70,14 @@ const UNDO_TEXT: Record<string, string> = {
   verify_document: tx('This puts the document back under review and removes it from her journey.'),
   reject_document: tx('This puts the document back under review and withdraws the message asking her to upload it again.'),
   answer_question: tx('This withdraws the reply and opens the question again. She will no longer see it.'),
+  confirm_appointment: tx('This puts the visit back to a request and withdraws the confirmation from her Updates.'),
+  offer_new_times: tx('This reopens her request and withdraws the message with the other times from her Updates.'),
+  record_missed_visit: tx('This puts the visit back to scheduled and withdraws the missed-visit message from her Updates.'),
+  chase_referral: tx("This removes the reminder from the referral's messages."),
+  send_outreach: tx('This cancels the prepared WhatsApp message.'),
+  prepare_draft: tx('This deletes the draft, if nobody has edited it yet.'),
+  prepare_handover: tx('This deletes the handover draft and makes the earlier draft current again.'),
+  post_weekly_summary: tx('This removes the message from your Updates.'),
 };
 
 /** The doctor's side of the care assistant: what it did, what it proposes, what it handed over, and the controls to pause it or undo a step. */
@@ -151,6 +179,8 @@ export function AssistantPage() {
             <dt>{t('Waiting for you')}</dt><dd>{t('{open} ({proposals} to approve, {urgent} urgent)', { open: status.open, proposals: status.proposals, urgent: status.urgent })}</dd>
             <dt>{t('Handled today')}</dt><dd>{t('{count} routine steps', { count: status.handledToday })}</dd>
             {(status.paused || status.pausedPatients.length > 0) && <><dt>{t('Held back')}</dt><dd>{t('{count} job(s) are waiting for you to resume', { count: status.waiting })}</dd></>}
+            <dt>{t('Handover drafts')}</dt>
+            <dd>{status.handoverPaused ? t('Handover is paused, so the assistant prepares none.') : t('On. It prepares a draft from open tasks, visit requests and questions, and you edit and share it.')}</dd>
           </dl>
           <p className="continuity-muted">
             {t('To switch it off at once, set MATERNASYNC_AI_COORDINATOR_MODE=off and restart the API. The “Talk to a person” buttons for patients and trusted people keep working either way.')}
@@ -204,6 +234,8 @@ export function AssistantPage() {
         </Panel>
       )}
 
+      <AssistantBookingRules />
+
       <Panel title={t('Needs you')}>
         {open === null && !error && <p role="status" className="continuity-muted">{t('Loading…')}</p>}
         {open && !open.length && <Empty>{t('Nothing is waiting for you.')}</Empty>}
@@ -241,6 +273,8 @@ export function AssistantPage() {
           </article>
         ))}
       </Panel>
+
+      <AssistantCounts refresh={log.length + decided.length} />
 
       <Panel title={t('What the assistant did')}>
         {!log.length && <Empty>{t('It has not done anything yet.')}</Empty>}

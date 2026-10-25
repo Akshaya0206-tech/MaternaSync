@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from .. import models, schemas_v2, transcription
+from .. import models, schemas_v2, server_text, transcription
 from ..config import UPLOAD_DIR
 from ..database import get_db
 from ..schemas import as_utc
@@ -135,23 +135,8 @@ def _to_handover_history_out(db: Session, h: models.Handover, is_latest: bool, d
 
 
 def _build_doctor_handover_content(db: Session, episode: models.PregnancyEpisode, current_user: models.User) -> dict:
-    recent_event = db.query(models.JourneyEvent).filter(models.JourneyEvent.episode_id == episode.id).order_by(models.JourneyEvent.event_date.desc()).first()
-    what_happened = f"{recent_event.title} ({recent_event.event_date})." if recent_event else "No recent recorded activity."
-
-    open_tasks = db.query(models.Task).filter(models.Task.episode_id == episode.id, models.Task.status.in_(OPEN_TASK_STATUSES)).count()
-    open_questions = db.query(models.PatientQuestion).filter(models.PatientQuestion.episode_id == episode.id, models.PatientQuestion.status.in_(OPEN_QUESTION_STATUSES)).count()
-    what_remains = f"{open_tasks} open task(s)." if open_tasks else "Nothing outstanding."
-    from ..continuity_service import handover_continuity
-    continuity_items = handover_continuity(db, episode.id)
-    if continuity_items:
-        what_remains += "\n" + continuity_items
-    what_to_discuss = f"{open_questions} patient question(s) pending response." if open_questions else "No pending patient questions."
-
-    return {
-        "context": f"GA {episode.gestational_age_weeks}w{episode.gestational_age_days}d.",
-        "what_happened": what_happened, "what_remains": what_remains,
-        "who_owns_it": f"{current_user.full_name} (clinical).", "what_to_discuss": what_to_discuss,
-    }
+    from ..handover_content import build_doctor_handover_content
+    return build_doctor_handover_content(db, episode, current_user)
 
 
 # ---------- dashboard ----------
@@ -479,11 +464,8 @@ def verify_document(document_id: str, current_user: models.User = Depends(requir
         gestational_age_weeks=episode.gestational_age_weeks if episode else 0, gestational_age_days=episode.gestational_age_days if episode else 0,
         actor_label=current_user.full_name,
     ))
-    db.add(models.Notification(
-        recipient_user_id=document.uploaded_by_user_id, episode_id=document.episode_id, type="document_verified",
-        title="Your care team reviewed your uploaded documents", body="Your journey has been updated.",
-        related_entity_type="MedicalDocument", related_entity_id=document.id,
-    ))
+    server_text.notify_key(db, document.uploaded_by_user_id, "document_verified_patient", episode_id=document.episode_id, type_="document_verified",
+                           related_entity_type="MedicalDocument", related_entity_id=document.id)
     _complete_open_tasks_for(db, "document_review", document.id)
     _log(db, document.episode_id, current_user, "document_verified", f"{current_user.full_name} verified \"{document.filename}\"", "Clinically verified and added to journey.", "MedicalDocument", document.id)
     db.commit()
@@ -733,6 +715,8 @@ def approve_draft(draft_id: str, current_user: models.User = Depends(require_rol
     suggested_follow_up = follow_up_text.strip() if follow_up_text and follow_up_text.strip() != "Not documented." else None
 
     _log(db, episode.id, current_user, "draft_approved", f"{current_user.full_name} approved consultation documentation (v{draft.version})", "Added to patient journey.", "ConsultationDraft", draft.id)
+    from ..ai_coordinator import orchestrator
+    orchestrator.enqueue(db, "paperwork", episode_id=episode.id, source_type="ApprovedConsultation", source_id=approved.id)  # the care assistant prepares the visit summary draft
     db.commit()
     db.refresh(approved)
 
@@ -887,11 +871,8 @@ def approve_question_response(question_id: str, current_user: models.User = Depe
     _complete_open_tasks_for(db, "question_response", question.id)
     _complete_open_tasks_for(db, "question_triage", question.id)
 
-    db.add(models.Notification(
-        recipient_user_id=question.asked_by_user_id, episode_id=question.episode_id, type="question_answered",
-        title="Your doctor answered your question", body=draft.response_text[:200],
-        related_entity_type="PatientQuestion", related_entity_id=question.id,
-    ))
+    server_text.notify_key(db, question.asked_by_user_id, "question_answered_doctor", episode_id=question.episode_id, type_="question_answered",
+                           params={"text": draft.response_text[:200]}, related_entity_type="PatientQuestion", related_entity_id=question.id)
     _log(db, question.episode_id, current_user, "response_approved", "Dr. approved and sent a clinical response", draft.response_text[:200], "PatientQuestion", question.id)
     db.commit()
     db.refresh(question)
@@ -990,6 +971,8 @@ def create_referral(
         episode, current_user, title, payload.description or "", payload.destination or "",
         payload.referred_to, payload.due_date,
     )
+    from ..ai_coordinator import orchestrator
+    orchestrator.enqueue(db, "referral_followup", episode_id=episode.id, source_type="Referral", source_id=referral.id)  # the care assistant proposes sending it
     db.commit()
     db.refresh(referral)
     return _referral_out(db, referral)
@@ -1117,7 +1100,7 @@ def share_handover(handover_id: str, current_user: models.User = Depends(require
 @router.get("/updates", response_model=list[schemas_v2.NotificationOut])
 def list_updates(current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
     notifications = db.query(models.Notification).filter(models.Notification.recipient_user_id == current_user.id).order_by(models.Notification.created_at.desc()).all()
-    return [schemas_v2.NotificationOut.model_validate(n) for n in notifications]
+    return [server_text.notification_out(db, current_user, n) for n in notifications]
 
 
 @router.patch("/updates/{notification_id}/read", response_model=schemas_v2.NotificationOut)
@@ -1128,7 +1111,7 @@ def mark_update_read(notification_id: str, current_user: models.User = Depends(r
     notification.is_read = True
     db.commit()
     db.refresh(notification)
-    return schemas_v2.NotificationOut.model_validate(notification)
+    return server_text.notification_out(db, current_user, notification)
 
 
 # ---------- profile ----------

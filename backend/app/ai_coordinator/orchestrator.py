@@ -14,7 +14,9 @@ from ..database import SessionLocal
 from . import controls, prompts, tools, workflows
 from .providers import get_provider
 
-WORKFLOWS = {"document_intake": workflows.run_document_intake, "question_routing": workflows.run_question_routing}
+WORKFLOWS = {"document_intake": workflows.run_document_intake, "question_routing": workflows.run_question_routing,
+             "appointment_request": workflows.run_appointment_request, "referral_followup": workflows.run_referral_followup, "paperwork": workflows.run_paperwork}
+NO_SWEEPS = {"missedCheckIns": 0, "overdueTasks": 0, "visitReminders": 0, "missedVisits": 0, "referrals": 0, "outreach": 0, "handover": 0, "weeklySummaries": 0}
 PROMPT_VERSIONS = {"document_intake": prompts.INTAKE_VERSION, "question_routing": prompts.TRIAGE_VERSION}
 _LOCK = threading.Lock()
 
@@ -101,16 +103,17 @@ def process_queue(session_factory=None, limit: int = 25) -> int:
 
 
 def run_sweeps(session_factory=None) -> dict:
-    """The scheduled follow-up work: reminders for missed check-ins, and overdue tasks raised to a doctor."""
+    """The scheduled follow-up work: reminders for missed check-ins and visits, overdue tasks and missed visits raised to a doctor,
+    referral chasing, WhatsApp reminders, handover drafts and the weekly counts."""
     if config.AI_COORDINATOR_MODE == "off":
-        return {"missedCheckIns": 0, "overdueTasks": 0}
+        return dict(NO_SWEEPS)
     factory = session_factory or SessionLocal
     with _LOCK:
         db = factory()
         try:
             state = controls.load(db)
             if state["paused"]:  # a doctor paused everything: no reminders until they resume
-                return {"missedCheckIns": 0, "overdueTasks": 0, "paused": True}
+                return {**NO_SWEEPS, "paused": True}
             skip = frozenset(state["paused_episodes"])
             provider = get_provider()
 
@@ -124,13 +127,17 @@ def run_sweeps(session_factory=None) -> dict:
                 db.flush()
                 return run
 
-            counts = {"missedCheckIns": workflows.sweep_missed_checkins(db, make_run, skip), "overdueTasks": workflows.sweep_overdue_tasks(db, make_run, skip=skip)}
+            visits = workflows.sweep_visits(db, make_run, skip)
+            counts = {"missedCheckIns": workflows.sweep_missed_checkins(db, make_run, skip), "overdueTasks": workflows.sweep_overdue_tasks(db, make_run, skip=skip),
+                      "visitReminders": visits["reminders"], "missedVisits": visits["missed"], "referrals": workflows.sweep_referrals(db, make_run, skip),
+                      "outreach": workflows.sweep_outreach(db, make_run, skip), "handover": workflows.sweep_handover(db, make_run, skip),
+                      "weeklySummaries": workflows.sweep_summary(db, make_run, skip)}
             db.commit()
             return counts
         except Exception:  # noqa: BLE001: a failed sweep must not stop the scheduler
             logging.getLogger(__name__).exception("The care assistant's follow-up sweep failed")
             db.rollback()
-            return {"missedCheckIns": 0, "overdueTasks": 0, "error": True}
+            return {**NO_SWEEPS, "error": True}
         finally:
             db.close()
 

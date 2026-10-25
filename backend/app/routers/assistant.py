@@ -4,11 +4,11 @@ from datetime import datetime, time, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import Field
+from pydantic import Field, model_validator
 from sqlalchemy.orm import Session
 
 from .. import config, models
-from ..ai_coordinator import controls, messages, orchestrator, tools
+from ..ai_coordinator import controls, messages, orchestrator, reporting, scheduling, tools
 from ..continuity_schemas import Input
 from ..continuity_service import allowed_ids, episode
 from ..database import get_db
@@ -35,6 +35,27 @@ class SettingsIn(Input):
 
 class UndoIn(Input):
     note: str = Field("", max_length=500)
+
+
+class SchedulingIn(Input):
+    """The clinic's booking rules. Weekdays count from Monday = 0. Times are the clinic's own clock (offset_minutes ahead of UTC)."""
+    days: list[int] = Field(min_length=1, max_length=7)
+    start: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    end: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    minutes: int = Field(ge=10, le=240)
+    notice_hours: int = Field(ge=0, le=168)
+    offset_minutes: int = Field(ge=-720, le=840)
+    grace_hours: int = Field(ge=0, le=48)
+
+    @model_validator(mode="after")
+    def check(self):
+        if any(d < 0 or d > 6 for d in self.days):
+            raise ValueError("Days must be 0 (Monday) to 6 (Sunday).")
+        if self.start >= self.end:
+            raise ValueError("The clinic must open before it closes.")
+        if int(self.end[:2]) * 60 + int(self.end[3:]) - (int(self.start[:2]) * 60 + int(self.start[3:])) < self.minutes:
+            raise ValueError("The opening hours are shorter than one visit.")
+        return self
 
 
 def _iso(value):
@@ -81,7 +102,7 @@ def _state(db: Session, user: models.User) -> dict:
             paused_here.append({"episodeId": episode_id, "patientName": ep.patient_name if ep else "Unknown"})
     setting = db.get(models.AssistantSetting, controls.PAUSED)
     return {"mode": config.AI_COORDINATOR_MODE, "provider": config.AI_PROVIDER, "model": config.AI_MODEL if config.AI_PROVIDER == "claude" else None,
-            "careTeamEnabled": config.CARE_TEAM_ENABLED, "open": len(open_items), "urgent": sum(i.urgency == "urgent" for i in open_items),
+            "careTeamEnabled": config.CARE_TEAM_ENABLED, "handoverPaused": config.HANDOVER_PAUSED, "open": len(open_items), "urgent": sum(i.urgency == "urgent" for i in open_items),
             "proposals": sum(i.kind == "proposal" for i in open_items), "handledToday": handled,
             "paused": state["paused"], "pausedBy": _name(db, setting.updated_by_user_id) if setting and state["paused"] else None,
             "reviewAll": state["review_all"], "pausedPatients": paused_here, "waiting": queued}
@@ -105,6 +126,28 @@ def change_settings(payload: SettingsIn, user=Depends(doctor), db: Session = Dep
              "Switched on review of every assistant step" if payload.review_all else "Switched off review of every assistant step")
     db.commit()
     return _state(db, user)
+
+
+@router.get("/scheduling-rules")
+def get_scheduling_rules(user=Depends(doctor), db: Session = Depends(get_db)):
+    return {**scheduling.rules(db), "weekdays": list(scheduling.WEEKDAYS)}
+
+
+@router.put("/scheduling-rules")
+def set_scheduling_rules(payload: SchedulingIn, user=Depends(doctor), db: Session = Depends(get_db)):
+    """The rules the assistant checks a visit request against. A change applies to the next request; it never moves a booked visit."""
+    rules = {**payload.model_dump(), "days": sorted(set(payload.days))}
+    controls.set_scheduling(db, user, rules)
+    _log(db, user, None, "assistant_scheduling_rules_changed", "Changed the clinic's booking rules",
+         f"{', '.join(scheduling.WEEKDAYS[d] for d in rules['days'])}; {rules['start']}-{rules['end']}; {rules['minutes']} minutes a visit; {rules['notice_hours']} hours' notice")
+    db.commit()
+    return {**scheduling.rules(db), "weekdays": list(scheduling.WEEKDAYS)}
+
+
+@router.get("/summary")
+def summary(days: int = 7, user=Depends(doctor), db: Session = Depends(get_db)):
+    """Plain counts for this doctor's own patients, worked out by code: what arrived, what was handled, how long it waited."""
+    return reporting.summary(db, allowed_ids(db, user), min(max(days, 1), 90))
 
 
 @router.post("/patients/{episode_id}/pause")

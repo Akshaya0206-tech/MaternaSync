@@ -547,6 +547,7 @@ class ContinuityTests(unittest.TestCase):
         env = {"MATERNASYNC_WHATSAPP_PROVIDER": "cloud_api", "MATERNASYNC_WHATSAPP_TOKEN": "test-token", "MATERNASYNC_WHATSAPP_PHONE_ID": "12345"}
         from backend.app import whatsapp
         with patch.dict(os.environ, env):
+            self.request("PATCH", ROOT + "/preferences", "patient", {"language": "en"})  # the text goes out in the woman's language
             item, _ = self.outreach("+917777700003")
             with patch.object(whatsapp, "_post", side_effect=whatsapp.WhatsAppError("The WhatsApp provider rejected the message (HTTP 400).")) as post:
                 self.request("POST", f"{ROOT}/outreach/{item['id']}/send", "staff", expected=502)
@@ -564,6 +565,11 @@ class ContinuityTests(unittest.TestCase):
             with patch.dict(os.environ, {"MATERNASYNC_WHATSAPP_TEMPLATE": "care_reminder", "MATERNASYNC_WHATSAPP_TEMPLATE_LANGUAGE": "hi"}), patch.object(whatsapp, "_post", return_value={"messages": [{"id": "wamid.TEST2"}]}) as post:
                 self.request("POST", f"{ROOT}/outreach/{second['id']}/send", "staff")
             self.assertEqual(post.call_args.args[2]["template"], {"name": "care_reminder", "language": {"code": "hi"}})
+            # In Hindi the same minimal text goes out in Hindi, still with no name, result or medicine.
+            self.request("PATCH", ROOT + "/preferences", "patient", {"language": "hi"})
+            hindi, _ = self.outreach("+917777700009")
+            self.assertEqual(self.outreach_state(hindi["id"])["message"], "MaternaSync: आपके लिए एक देखभाल रिमाइंडर है। देखने के लिए कृपया साइन इन करें।")
+            self.request("PATCH", ROOT + "/preferences", "patient", {"language": "en"})
 
     def post_webhook(self, payload, secret="whsec", signature=None):
         import hashlib

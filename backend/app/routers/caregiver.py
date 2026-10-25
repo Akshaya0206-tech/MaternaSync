@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import Field
 from sqlalchemy.orm import Session
 
-from .. import automation, caregiver_service, models
+from .. import automation, caregiver_service, models, server_text
 from ..ai_coordinator import messages, tools
 from ..continuity_schemas import Input, LogIn
 from ..continuity_service import output_out
@@ -122,8 +122,7 @@ def remove_trusted(link_id: str, user=Depends(patient), db: Session = Depends(ge
     if link.status != "REVOKED":
         link.status, link.revoked_at, link.code_hash, link.code_expires_at = "REVOKED", _now(), None, None
         if link.caregiver_user_id:
-            db.add(models.Notification(recipient_user_id=link.caregiver_user_id, episode_id=link.episode_id, type="caregiver_removed",
-                                       title="Your access was removed", body="You can no longer see this person's information in MaternaSync."))
+            server_text.notify_key(db, link.caregiver_user_id, "caregiver_removed", episode_id=link.episode_id, type_="caregiver_removed")
         _log(db, user, link, "caregiver_removed", "Removed a trusted person", link.display_name)
         db.commit()
     return link_out(db, link)
@@ -218,7 +217,7 @@ def set_preferences(payload: PreferenceIn, user=Depends(caregiver), db: Session 
 @router.get("/notifications")
 def notifications(user=Depends(caregiver), db: Session = Depends(get_db)):
     rows = db.query(models.Notification).filter_by(recipient_user_id=user.id).order_by(models.Notification.created_at.desc()).limit(30).all()
-    return [{"id": n.id, "title": n.title, "body": n.body, "createdAt": _iso(n.created_at), "type": n.type} for n in rows]
+    return [{"id": n.id, "title": (text := server_text.texts(db, user.id, n))[0], "body": text[1], "createdAt": _iso(n.created_at), "type": n.type} for n in rows]
 
 
 @router.get("/{link_id}/home")

@@ -1,9 +1,11 @@
 """The care assistant's workflows, each a small LangGraph state machine: gather -> analyse (the model step) -> check
 (plain code) -> decide (the policy engine and tools). A graph never touches the database except through `tools.act`.
 
-Workflows here: document intake, question routing, and the two follow-up sweeps (missed check-ins, overdue tasks).
+Workflows here: document intake, question routing, visit requests (scheduling), referrals, paperwork drafts, and the sweeps
+(missed check-ins, overdue tasks, visit reminders and missed visits, referral chasing, WhatsApp reminders, handover drafts, weekly counts).
 What it deliberately does not do: read the clinical meaning of a document, answer a clinical question, grade urgency
-beyond the fixed warning-sign wording, or release anything to a patient without a doctor.
+beyond the fixed warning-sign wording, rank patients, record clinical outcomes from documents, or release anything to a
+patient without a doctor.
 """
 import hashlib
 import re
@@ -12,9 +14,9 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from .. import models
+from .. import config, models
 from ..plain_language import format_when
-from . import messages, tools
+from . import messages, reporting, scheduling, tools
 from .providers import ProviderError, rules_question
 
 MIN_CONFIDENCE = 0.7  # below this a document is never proposed for verification
@@ -316,5 +318,275 @@ def sweep_overdue_tasks(db, make_run, days: int = 3, skip=frozenset()) -> int:
         tools.act(db, run, "create_attention", {"title": "A task is overdue", "urgency": "normal", "run_id": run.id, "source_type": "Task", "source_id": task.id,
                   "summary": f"“{task.title}” was due on {str(task.due_date)[:10]}.", "recommended_action": "Reassign it or close it."}, key=f"attention:task:{task.id}")
         run.summary = "Raised an overdue task to the doctor."
+        done += 1
+    return done
+
+
+# ================================================================= visit requests (scheduling)
+class SimpleState(TypedDict, total=False):
+    skip: str
+    ctx: dict
+    summary: str
+
+
+def _simple_graph(gather, decide, check=None):
+    nodes = [("gather", gather)] + ([("check", check)] if check else []) + [("decide", decide)]
+    after = "check" if check else "decide"
+    edges = [(START, "gather"), ("gather", lambda s: "end" if s.get("skip") else after, {"end": END, after: after})]
+    if check:
+        edges.append(("check", "decide"))
+    edges.append(("decide", END))
+    result = _graph(SimpleState, nodes, edges).invoke({})
+    return result.get("summary") or result.get("skip") or ""
+
+
+def run_appointment_request(db, run: models.AIRun, provider) -> str:
+    """A woman asks for a visit. Inside the clinic's rules and free: propose confirming it. Outside them: propose the next free
+    times. Nothing about her health is looked at, so nobody is moved ahead of or behind anyone else."""
+    def gather(state):
+        appt = db.get(models.Appointment, run.source_id)
+        if appt is None or appt.episode_id != run.episode_id:
+            return {"skip": "The request no longer exists."}
+        if appt.status != "requested":
+            return {"skip": "A person already handled this request."}
+        episode = db.get(models.PregnancyEpisode, appt.episode_id)
+        run.inputs_digest = hashlib.sha256(f"{appt.id}:{appt.scheduled_at.isoformat()}".encode()).hexdigest()
+        return {"ctx": {"appointment_id": appt.id, "kind": appt.appointment_type, "patient": episode.patient_name, "rules": scheduling.rules(db)}}
+
+    def check(state):
+        ctx = state["ctx"]
+        appt = db.get(models.Appointment, ctx["appointment_id"])
+        found = scheduling.problems(db, ctx["rules"], appt)
+        slots = scheduling.free_slots(db, ctx["rules"], appt.episode_id, appt.scheduled_at) if found else []
+        return {"ctx": {**ctx, "problems": found, "slots": slots, "asked": scheduling.local_text(appt.scheduled_at, ctx["rules"])}}
+
+    def decide(state):
+        ctx = state["ctx"]
+        rules, appointment_id = ctx["rules"], ctx["appointment_id"]
+        source = {"source_type": "Appointment", "source_id": appointment_id, "run_id": run.id}
+        if not ctx["problems"]:
+            tools.act(db, run, "confirm_appointment", {"appointment_id": appointment_id}, key=f"confirm:{appointment_id}",
+                      proposal={"title": "Confirm a visit", "summary": f"{ctx['patient']} asked for a {ctx['kind']} visit on {ctx['asked']}. That time is inside the clinic's hours and nobody else is booked then.",
+                                "recommended_action": "Approve to confirm the visit and tell her."})
+            return {"summary": "Proposed confirming a visit inside the clinic's rules."}
+        why = scheduling.explain(ctx["problems"], rules)
+        if ctx["slots"]:
+            options = ", ".join(scheduling.local_text(s, rules) for s in ctx["slots"])
+            tools.act(db, run, "offer_new_times", {"appointment_id": appointment_id, "slots": [s.isoformat() for s in ctx["slots"]]}, key=f"offer:{appointment_id}",
+                      proposal={"title": "Offer other times for a visit", "summary": f"{ctx['patient']} asked for {ctx['asked']}, but {why}. The next free times are: {options}.",
+                                "recommended_action": "Approve to close this request and send her those times, or dismiss and answer it yourself."})
+            return {"summary": "Proposed other times for a request outside the clinic's rules."}
+        tools.act(db, run, "create_attention", {"title": "A visit request needs you", "urgency": "normal", "summary": f"{ctx['patient']} asked for {ctx['asked']}, but {why}. No free time was found in the next three weeks.",
+                  "recommended_action": "Please answer the request yourself.", **source}, key=f"attention:visit:{appointment_id}")
+        return {"summary": "Handed a visit request to the doctor: no free time inside the rules."}
+
+    return _simple_graph(gather, decide, check)
+
+
+# ================================================================= referrals
+def run_referral_followup(db, run: models.AIRun, provider) -> str:
+    """A doctor wrote a referral. Sending is a proposal the doctor approves (it leaves the clinic); the doctor's approval is the signature."""
+    def gather(state):
+        referral = db.get(models.Referral, run.source_id)
+        if referral is None or referral.episode_id != run.episode_id:
+            return {"skip": "The referral no longer exists."}
+        if referral.status != "DRAFT":
+            return {"skip": "A person already sent this referral."}
+        episode = db.get(models.PregnancyEpisode, referral.episode_id)
+        run.inputs_digest = hashlib.sha256(f"{referral.id}:{referral.destination}".encode()).hexdigest()
+        return {"ctx": {"referral_id": referral.id, "code": referral.reference_code, "title": referral.title, "destination": referral.destination, "patient": episode.patient_name}}
+
+    def decide(state):
+        ctx = state["ctx"]
+        if not ctx["destination"]:
+            tools.act(db, run, "create_attention", {"title": "A referral has no destination", "urgency": "normal", "run_id": run.id, "source_type": "Referral", "source_id": ctx["referral_id"],
+                      "summary": f"{ctx['code']} “{ctx['title']}” for {ctx['patient']} cannot be sent: no destination is written on it.", "recommended_action": "Add the destination, then send it."},
+                      key=f"attention:referral:{ctx['referral_id']}:destination")
+            return {"summary": "Handed a referral with no destination to the doctor."}
+        tools.act(db, run, "send_referral", {"referral_id": ctx["referral_id"]}, key=f"send:{ctx['referral_id']}",
+                  proposal={"title": "Send a referral", "summary": f"{ctx['code']} “{ctx['title']}” for {ctx['patient']} to {ctx['destination']}. Approving sends it now, under your name. The message holds the referral reason and your name only.",
+                            "recommended_action": "Approve to send the referral."})
+        return {"summary": "Proposed sending a referral."}
+
+    return _simple_graph(gather, decide)
+
+
+# ================================================================= paperwork
+def run_paperwork(db, run: models.AIRun, provider) -> str:
+    """After a doctor approves a consultation, prepare the patient's visit summary as an editable draft. The wording is the
+    same fixed builder as Document Studio's button; the doctor reads, edits, signs and releases it. Nothing is released here."""
+    def gather(state):
+        approved = db.get(models.ApprovedConsultation, run.source_id)
+        consultation = db.get(models.Consultation, approved.consultation_id) if approved else None
+        if consultation is None or consultation.episode_id != run.episode_id:
+            return {"skip": "The consultation no longer exists."}
+        if db.query(models.ClinicalOutput).filter_by(episode_id=run.episode_id, source_type="consultation", source_id=approved.id, kind="visit_summary").first():
+            return {"skip": "A summary for this visit already exists."}
+        episode = db.get(models.PregnancyEpisode, run.episode_id)
+        run.inputs_digest = hashlib.sha256(f"{approved.id}".encode()).hexdigest()
+        return {"ctx": {"approved_id": approved.id, "language": _language(db, episode.patient_user_id), "patient": episode.patient_name}}
+
+    def decide(state):
+        ctx = state["ctx"]
+        tools.act(db, run, "prepare_draft", {"kind": "visit_summary", "source_type": "consultation", "source_id": ctx["approved_id"], "language": ctx["language"]},
+                  key=f"draft:visit_summary:{ctx['approved_id']}",
+                  proposal={"title": "Prepare a visit summary draft", "summary": f"Prepare the plain-language visit summary for {ctx['patient']} from the consultation you approved, in her language. It stays a draft until you sign it.",
+                            "recommended_action": "Approve to prepare the draft."})
+        return {"summary": "Prepared an editable visit summary draft."}
+
+    return _simple_graph(gather, decide)
+
+
+# ================================================================= sweeps: visits, referrals, WhatsApp reminders, handover, weekly counts
+def sweep_visits(db, make_run, skip=frozenset()) -> dict:
+    """A fixed reminder the day before a confirmed visit (to the woman, and to a trusted person she allowed to see appointments),
+    and a proposal to record a visit that is long past but still marked as scheduled. Whether she attended is for a person to say."""
+    rules = scheduling.rules(db)
+    now = _now()
+    naive = now.replace(tzinfo=None)
+    reminders = missed = 0
+    for appt in db.query(models.Appointment).filter(models.Appointment.status == "scheduled", models.Appointment.scheduled_at > naive,
+                                                    models.Appointment.scheduled_at <= naive + timedelta(hours=24)).all():
+        episode = db.get(models.PregnancyEpisode, appt.episode_id)
+        if episode is None or episode.id in skip:
+            continue
+        run = make_run("visit_reminder", episode.id, "Appointment", appt.id, f"visit_reminder:{appt.id}")
+        if run is None:
+            continue
+        when = scheduling.local_text(appt.scheduled_at, rules)
+        tools.act(db, run, "notify_user", {"user_id": episode.patient_user_id, "key": "visit_reminder", "params": {"kind": appt.appointment_type, "when": when}, "kind": "assistant_visit_reminder",
+                  "entity_type": "Appointment", "entity_id": appt.id}, key=f"visit_reminder:{appt.id}:patient")
+        first_name = (episode.patient_name or "").split(" ")[0]
+        for link in db.query(models.CaregiverLink).filter_by(episode_id=episode.id, status="ACTIVE").all():
+            if link.caregiver_user_id and (link.permissions or {}).get("appointments"):
+                tools.act(db, run, "notify_user", {"user_id": link.caregiver_user_id, "key": "visit_reminder_caregiver", "params": {"name": first_name, "kind": appt.appointment_type, "when": when},
+                          "kind": "assistant_visit_reminder", "entity_type": "Appointment", "entity_id": appt.id}, key=f"visit_reminder:{appt.id}:{link.id}")
+        run.summary = "Sent the fixed visit reminder."
+        reminders += 1
+    grace = timedelta(minutes=rules["minutes"], hours=rules["grace_hours"])
+    for appt in db.query(models.Appointment).filter(models.Appointment.status == "scheduled", models.Appointment.scheduled_at < naive - grace,
+                                                    models.Appointment.scheduled_at > naive - timedelta(days=14)).all():
+        episode = db.get(models.PregnancyEpisode, appt.episode_id)
+        if episode is None or episode.id in skip:
+            continue
+        run = make_run("missed_visit", episode.id, "Appointment", appt.id, f"missed_visit:{appt.id}")
+        if run is None:
+            continue
+        when = scheduling.local_text(appt.scheduled_at, rules)
+        tools.act(db, run, "record_missed_visit", {"appointment_id": appt.id}, key=f"missed:{appt.id}",
+                  proposal={"title": "Record a missed visit", "summary": f"{episode.patient_name}'s {appt.appointment_type} visit on {when} is still marked as scheduled. Did she come?",
+                            "recommended_action": "Approve only if she did not come: the visit is recorded as missed and she is told she can ask for a new time. If she did come, dismiss this and mark the visit completed."})
+        run.summary = "Asked a doctor whether a past visit was missed."
+        missed += 1
+    return {"reminders": reminders, "missed": missed}
+
+
+CHASE_AFTER_SENT = (2, 4, 6)  # days after sending with no acknowledgement: first reminder, second reminder, then a doctor
+CHASE_AFTER_VISIT = (7, 9, 11)  # days after the referral appointment with no response
+
+
+def sweep_referrals(db, make_run, skip=frozenset()) -> int:
+    """Chase a sent referral that has not been acknowledged, or has no response after its appointment: two reminders (each a
+    proposal a doctor approves, as it is a message to a third party), then a hand-off to the doctor."""
+    done = 0
+    today = _now().date()
+    for referral in db.query(models.Referral).filter(models.Referral.status.in_(["SENT", "APPOINTMENT_SCHEDULED"])).all():
+        if referral.episode_id in skip:
+            continue
+        if referral.status == "SENT":
+            waited, steps = ((_now() - _utc(referral.sent_at)).days if referral.sent_at else 0), CHASE_AFTER_SENT
+        else:
+            try:
+                waited, steps = (today - date.fromisoformat(str(referral.appointment_date)[:10])).days, CHASE_AFTER_VISIT
+            except ValueError:
+                continue
+        step = sum(waited >= limit for limit in steps)
+        if step == 0:
+            continue
+        run = make_run("referral_chase", referral.episode_id, "Referral", referral.id, f"referral_chase:{referral.id}:{referral.status}:{step}")
+        if run is None:
+            continue
+        episode = db.get(models.PregnancyEpisode, referral.episode_id)
+        waiting_for = "an acknowledgement" if referral.status == "SENT" else "a response"
+        if step < 3:
+            tools.act(db, run, "chase_referral", {"referral_id": referral.id, "round": step}, key=f"chase:{referral.id}:{referral.status}:{step}",
+                      proposal={"title": "Chase a referral", "summary": f"{referral.reference_code} “{referral.title}” for {episode.patient_name} is still waiting for {waiting_for} from {referral.destination} ({waited} days).",
+                                "recommended_action": "Approve to record a reminder to them."})
+        else:
+            tools.act(db, run, "create_attention", {"title": "A referral has had no reply", "urgency": "normal", "run_id": run.id, "source_type": "Referral", "source_id": referral.id,
+                      "summary": f"{referral.reference_code} “{referral.title}” for {episode.patient_name} is still waiting for {waiting_for} from {referral.destination} after two reminders ({waited} days).",
+                      "recommended_action": "Please contact them yourself."}, key=f"attention:referral:{referral.id}:{referral.status}")
+        run.summary = "Chased a referral." if step < 3 else "Handed an unanswered referral to the doctor."
+        done += 1
+    return done
+
+
+def sweep_outreach(db, make_run, skip=frozenset()) -> int:
+    """A reminder a doctor approved has come due and the woman has given an active permission to message a number about reminders:
+    send the minimal "please sign in" WhatsApp message in her language. Permission is checked again in code on every send."""
+    done = 0
+    naive = _now().replace(tzinfo=None)
+    for reminder in db.query(models.CareReminder).filter(models.CareReminder.status == "pending", models.CareReminder.scheduled_at <= naive,
+                                                         models.CareReminder.scheduled_at > naive - timedelta(days=3)).all():
+        if reminder.episode_id in skip:
+            continue
+        consent = (db.query(models.SharingConsent).filter(models.SharingConsent.episode_id == reminder.episode_id, models.SharingConsent.purpose == "reminders",
+                   models.SharingConsent.revoked_at.is_(None), models.SharingConsent.expires_at > naive).order_by(models.SharingConsent.granted_at.desc()).first())
+        if consent is None or db.query(models.Outreach).filter_by(episode_id=reminder.episode_id, source_type="reminder", source_id=reminder.id).first():
+            continue
+        run = make_run("outreach", reminder.episode_id, "CareReminder", reminder.id, f"outreach:{reminder.id}")
+        if run is None:
+            continue
+        tools.act(db, run, "send_outreach", {"reminder_id": reminder.id, "consent_id": consent.id}, key=f"outreach:{reminder.id}",
+                  proposal={"title": "Send a WhatsApp reminder", "summary": "A care reminder you approved is due and she has allowed WhatsApp reminders to this number. The message only asks her to sign in.",
+                            "recommended_action": "Approve to send it."})
+        run.summary = "Sent the minimal WhatsApp reminder."
+        done += 1
+    return done
+
+
+def sweep_handover(db, make_run, skip=frozenset()) -> int:
+    """Prepare a handover draft from open tasks, visit requests and unanswered questions. Handover is paused in the app
+    (MATERNASYNC_HANDOVER_PAUSED), and while it is paused the assistant does nothing here."""
+    if config.HANDOVER_PAUSED:
+        return 0
+    done = 0
+    since = _now().replace(tzinfo=None) - timedelta(hours=24)
+    for assignment in db.query(models.PatientDoctorAssignment).filter_by(is_primary=True).all():
+        episode_id = assignment.episode_id
+        if episode_id in skip or db.query(models.Handover).filter(models.Handover.episode_id == episode_id, models.Handover.created_at >= since).first():
+            continue
+        open_work = (db.query(models.Task).filter(models.Task.episode_id == episode_id, models.Task.status.in_(["OPEN", "IN_PROGRESS", "WAITING"])).count()
+                     + db.query(models.Appointment).filter_by(episode_id=episode_id, status="requested").count()
+                     + db.query(models.PatientQuestion).filter(models.PatientQuestion.episode_id == episode_id, models.PatientQuestion.status.in_(["NEW", "ASSIGNED", "WAITING_FOR_RESPONSE"])).count())
+        if not open_work:
+            continue
+        stamp = _now().date().isoformat()
+        run = make_run("handover", episode_id, "PregnancyEpisode", episode_id, f"handover:{episode_id}:{stamp}")
+        if run is None:
+            continue
+        tools.act(db, run, "prepare_handover", {"doctor_id": assignment.doctor_user_id}, key=f"handover:{episode_id}:{stamp}",
+                  proposal={"title": "Prepare a handover draft", "summary": "Prepare a handover draft from the open tasks, visit requests and unanswered questions. You edit and share it.", "recommended_action": "Approve to prepare it."})
+        run.summary = "Prepared a handover draft."
+        done += 1
+    return done
+
+
+def sweep_summary(db, make_run, skip=frozenset()) -> int:
+    """Once a week, give each doctor plain counts for their own patients: arrived, handled, waited, what the assistant did.
+    Every number is worked out by code (reporting.py); nothing is graded."""
+    done = 0
+    iso = _now().isocalendar()
+    week = f"{iso.year}-W{iso.week:02d}"
+    for doctor in db.query(models.User).filter_by(role="doctor").all():
+        episode_ids = [a.episode_id for a in db.query(models.PatientDoctorAssignment).filter_by(doctor_user_id=doctor.id).all()]
+        if not episode_ids:
+            continue
+        run = make_run("weekly_summary", None, "User", doctor.id, f"weekly_summary:{doctor.id}:{week}")
+        if run is None:
+            continue
+        tools.act(db, run, "post_weekly_summary", {"doctor_id": doctor.id, "summary": reporting.summary(db, episode_ids, 7)}, key=f"weekly_summary:{doctor.id}:{week}",
+                  proposal={"title": "Post the weekly counts", "summary": "Post this week's plain counts to your Updates.", "recommended_action": "Approve to post them."})
+        run.summary = "Posted the weekly counts."
         done += 1
     return done
