@@ -15,6 +15,7 @@ export const loadDoctorDictionary: Loader = async () => {
     import("./dicts/doctor-workspace"),
     import("./dicts/doctor-studio"),
     import("./dicts/doctor-library"),
+    import("./dicts/doctor-about"),
   ]);
   return Object.assign({}, ...parts.map((part) => part.entries));
 };

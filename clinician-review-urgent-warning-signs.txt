@@ -1,0 +1,56 @@
+=====================================================================================
+MATERNASYNC - FOR A CLINICIAN: REVIEW OF THE "URGENT WARNING WORDS"
+Prepared 26 Oct 2026. Nothing in the app was changed because of this note.
+=====================================================================================
+
+WHAT THIS IS
+  When a patient or a trusted person types a question (Care Companion, My Questions, or a
+  question a trusted person asks), the app looks for any of the words below. If one is found it
+  shows a FIXED urgent message ("What you describe may need urgent attention. Please contact your
+  maternity unit or care team right now, or call your local emergency number (112 in India). Do
+  not wait for an online reply.") and puts the question at the top of the doctor's list.
+  The app does not assess anything. It matches words, in four languages (English, Hindi, Tamil,
+  Telugu). The list lives in backend/app/companion.py, in the table called URGENT.
+
+  Words that are NOT in this list (for example "headache", "swelling", "vomiting", "pain",
+  "discharge", "rash") are treated as "a doctor must answer", not as urgent.
+
+THE ENGLISH LIST TODAY
+  heavy bleeding, bleeding, severe pain, severe headache, blurred vision, blurry vision,
+  seizure, convulsion, fits, baby not moving, baby is not moving, no movement, less movement,
+  reduced movement, movements have reduced, water broke, waters broke, leaking fluid, fever,
+  difficulty breathing, can't breathe, cannot breathe, chest pain, fainted, unconscious.
+  (Hindi, Tamil and Telugu have the matching words; see the same file.)
+
+WHAT THE TEAM'S STUDY MATERIAL ADDS (an obstetrics textbook chapter on history and examination)
+  The chapter's lists of symptoms to ask about in the second and third trimester include a few
+  that the list above does not catch on its own:
+    1. Pain in the upper belly (just under the ribs), especially with vomiting.
+    2. Passing very little urine.
+    3. Swelling of the face or hands (as opposed to swollen feet, which are common).
+    4. Fever with a rash.   (fever alone is already in the list)
+  These are only candidates. We did not add them.
+
+WHY WE DID NOT ADD THEM OURSELVES
+  - This is a safety net. Adding a word changes who gets the urgent message, so a clinician
+    must decide, not the developers.
+  - False alarms matter too. The daily check-in has tap buttons for "Swollen feet or ankles"
+    and "Nausea or vomiting", and both are very common in a normal pregnancy. A word such as
+    "swelling" or "vomiting" on its own would send many women the urgent message.
+  - The wording should come from an official patient-facing source (WHO or MoHFW "danger signs
+    in pregnancy", for example the Mother and Child Protection card), not from a textbook for
+    clinicians.
+
+QUESTIONS FOR THE CLINICIAN
+  1. Which of the four candidates, if any, should trigger the urgent message? Only as a phrase
+     (for example "pain under my ribs"), or also as a single word?
+  2. Are there warning signs missing from the list that are not in the chapter?
+  3. Is any word in the list too wide? ("bleeding" and "fever" alone currently count.)
+  4. Please give the wording for Hindi, Tamil and Telugu in the words a woman would really use.
+  5. Should the same check also look at the "Other symptoms" box in the Daily Check-in? Today it
+     does not: that box is read by the doctor, and nothing is shown to the woman about it.
+
+WHAT HAPPENS AFTER YOUR ANSWER
+  The developers add the agreed phrases to the table in backend/app/companion.py, the tests for
+  it in backend/tests, and the matching words in the other three languages. The change is then
+  listed in the next team update so everyone knows the safety list changed.

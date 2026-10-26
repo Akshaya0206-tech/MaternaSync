@@ -1,0 +1,429 @@
+=====================================================================================
+MATERNASYNC - TEAM UPDATE 2: CHANGES SINCE YESTERDAY, BY LOGIN
+Prepared 26 Oct 2026, from the work done by Andry (with Claude Code)
+=====================================================================================
+
+HOW TO READ THIS
+  This file covers what changed AFTER commit 437c098 (25 Oct 2026, 19:58): 76 files, about
+  3,450 lines added and 390 removed. Everything from 24-25 Oct that was already committed is
+  in TEAM-UPDATE-changes-by-login.txt (the older file).
+  Those 76 files are now committed and pushed (commit 70130e3, 26 Oct 00:42). Sections 7 and 8
+  near the end (the obstetric additions and the About Website tab) were done after that commit
+  and are NOT committed yet.
+  Nothing is deployed: the copy that is live on Vercel and Render is the OLD version (see
+  "Hosting" at the end for how to update it).
+  NEW / CHANGED / FIXED / REMOVED mark what happened to each item. "Tab" is a sidebar item,
+  "card" is a box on a page.
+
+BEFORE YOU PULL / RUN
+  1. Backend:   backend/venv/Scripts/python.exe -m pip install -r backend/requirements.txt
+     (no new library is needed; the meaning search uses onnxruntime, which the speech-to-text
+     library already installs)
+  2. START THE API AGAIN. The old API does not know the new permission or the new endpoints,
+     so "Reminders" will not appear in the caregiver menu until it is restarted.
+     New database tables (visit_prep_items, checkin_helpers) are created automatically.
+  3. Optional, for the meaning search on the doctor's References tab (see section 6):
+        cd backend
+        python fetch_search_model.py        (downloads about 135 MB, once)
+        python build_semantic_index.py      (about 4 minutes the first time)
+     Without these the search works by words exactly as before. MATERNASYNC_SEMANTIC_SEARCH=off
+     switches the meaning search off even when the model is installed.
+  4. Optional, for the four FIGO papers (section 6):  python fetch_reference_documents.py
+     If Europe PMC refuses the script (HTTP 403), the script prints the link: open it in a
+     browser, save the PDF into backend/reference_documents/ and run the script again.
+  5. Demo logins (all synthetic data), unchanged:
+       Patient    sarah.jenkins@maternasync.app   SarahDemo123!
+       Doctor     demo@maternasync.app            MaternaDemo123!
+       Caregiver  ravi.jenkins@maternasync.app    RaviDemo123!
+     Ravi's demo permissions now also include the new "reminders" permission.
+
+-------------------------------------------------------------------------------------
+THE BIG CHANGES IN ONE GLANCE
+-------------------------------------------------------------------------------------
+  1. DOCTOR menu is shorter: 17 tabs -> 13. Four tabs were folded into others as sub-tabs.
+  2. DOCTOR References search now also searches BY MEANING: a question in Hindi, Tamil or
+     Telugu finds the English passage. Four FIGO papers were added. Passages are cleaner.
+  3. PATIENT Profile tab redesigned: five coloured cards and four animations.
+  4. Questions and check-ins now go to the DOCTOR, in wording and in fact: every question is
+     assigned to the doctor (before, a routine question was only a suggested reply).
+  5. FOUR new doctor <-> trusted person features: visit checklist, check-in helper,
+     reminders for the trusted person, and the doctor's "Trusted people" card.
+  6. Hosting: the site is live on Vercel and the API on a free Render plan (the live copy is
+     the old version). render.yaml moved to deploy/.
+  7. OBSTETRIC ADDITIONS (after the commit above): a first-visit history layout for the
+     doctor, seven more words explained in plain language, and a patient card "Before your
+     first visit". See section 7.
+  8. ABOUT WEBSITE: a new fourth tab on the doctor's References page, a twelve-section guide
+     for a doctor who is new to the app. See section 8.
+  9. Small fixes: phone sidebar edge strip, caregiver banner under the menu button,
+     amber badge contrast.
+
+=====================================================================================
+SIGN-IN AND SIGN-UP PAGES (everyone)
+=====================================================================================
+  [CHANGED] Landing page, Patient card: "...and ask your doctor questions." (was "care team").
+            Hindi, Tamil and Telugu updated too.
+  Nothing else changed on the landing, sign-in or sign-up pages.
+
+=====================================================================================
+PATIENT LOGIN
+=====================================================================================
+  Profile tab (redesigned)
+  [CHANGED] Five cards, each with its own colour from our palette: the personal details
+            (heading is her name, subtitle "Manage your personal and medical details"),
+            Location, Trusted people, Emergency details, and Tour. Colour is on the cards
+            only; there is no colour wash behind the "Profile" heading.
+  [NEW]     Four animations (all switched off when the device is set to "reduce motion"):
+              Card reveal     the cards rise in one after the other
+              Field focus     a field glows with a moving border and its icon turns teal
+              Save feedback   a check mark draws itself, with a small burst and a halo
+              Location        radar rings and a bobbing pin while it looks, then
+                              "Location detected!"
+  [CHANGED] Every label, button and message the tab had still exists with the same wording
+            (Use my current location, Save location, Saved: ..., Start a tour ...).
+  [NOT BUILT] From the design mock-up we left out the camera badge, "Member since" and
+            Edit/Cancel mode, because the tab has no such data or mode.
+  [FIXED]   On phones (all pages): a faint strip down the left edge when the menu was
+            closed. Fix is in src/index.css (the closed menu has no shadow).
+
+  Daily Check-in tab
+  [CHANGED] Subtitle, the grey notice ("...contact your doctor."), the link ("Ask your
+            doctor"), the saved message ("Your check-in was saved for your doctor."), the
+            symptom box, the severe-symptom line, the kick-counter note and the
+            step-by-step version's "who helped" hint all say DOCTOR now.
+
+  Care Companion tab
+  [CHANGED] Subtitle, notice, opening greeting, the "Ask my doctor" button and "Send this
+            question to my doctor" say doctor. The companion's own replies (written by the
+            server) were reworded in all four languages.
+
+  My Questions tab
+  [CHANGED] EVERY question is now assigned to the doctor, also routine ones such as "When is
+            my next appointment?". The assistant may still write a suggested reply, but the
+            doctor approves it. See "Assistant" below.
+
+  My Care Plan tab -> card "Medicine, vaccine & visit reminders"
+  [CHANGED] The subtitle and the empty-state line say the doctor adds these reminders:
+            "No reminders in this view. Your doctor adds medicine, vaccine and visit
+            reminders here." Medicine and vaccine reminders can only be created by a doctor,
+            from one of the doctor's own approved visits. The app never recommends a medicine.
+
+  Appointments tab
+  [NEW]     Under each confirmed visit: "Getting ready for this visit", the checklist her
+            doctor wrote. She ticks lines (the tick shows at once). "x of y done" and
+            "Ticked by you / by <name>" are shown. Trusted people see the same list.
+
+  Appointments tab -> card "Before your first visit" (NEW, section 7)
+  [NEW]     Nine things her doctor may ask at a first antenatal visit, so she can think about
+            them beforehand: last period, how she found out, earlier pregnancies, illnesses
+            and operations, medicines and allergies, illnesses in the family, vaccination
+            card, MCP card, her own questions. Says it is only what the doctor may ask, not
+            advice. Hindi, Tamil, Telugu.
+
+  Profile tab -> card "Trusted people"
+  [NEW]     A new tick: "See when my reminders are due" (off by default). A medicine or
+            vaccine NAME is shown to that person only if she also allows the tick above it
+            (summaries and instructions).
+  [NEW]     A line telling her the doctor can see who she added and what each may do, and
+            cannot change it.
+  [NEW]     On a person a doctor asked to help with check-ins: "asked / helping at your
+            doctor's request / said no".
+
+  Updates tab
+  [NEW]     New notes, worded in her language: the doctor asked <person> to help with
+            check-ins; the person said yes or no; the doctor added a checklist for a visit.
+
+  Tour
+  [CHANGED] The tour texts for Daily Check-in, Care Companion, My Questions and Updates say
+            doctor.
+
+  Left unchanged on purpose (still say "care team"): My Records, Appointments request notes,
+  Journey, Emergency, References, "Request sent. Your care team will confirm the time.",
+  and a few notification titles such as "Your care team added reminders".
+
+=====================================================================================
+CAREGIVER LOGIN
+=====================================================================================
+  Reminders tab (NEW)
+  [NEW]     New menu item, shown only when she has allowed "reminders". It lists her reminders
+            for the next month: when they are due and what kind (visit, follow-up, medicine,
+            vaccine), with "Due now" and "She has answered" badges. A medicine or vaccine
+            reminder shows NO name and NO instructions unless she also allows the summaries
+            and instructions, and the page says why. How she answered is never shown, only
+            whether she has.
+
+  Home tab -> card "Your doctor asked for your help" (NEW)
+  [NEW]     Appears when a doctor asked this person to help with her daily check-ins. Buttons
+            "Yes, I'll help" and "No, I can't" (can be changed later). She is told each time.
+            After yes, a link "Fill in a check-in with her". When she misses a check-in this
+            person is reminded first.
+  [CHANGED] The permission list on Home includes the new reminders permission.
+
+  Appointments tab
+  [NEW]     "Getting ready for this visit" under each confirmed visit: the doctor's checklist,
+            tickable. Needs the "appointments" permission.
+
+  Updates tab
+  [NEW]     "A reminder is due for <her first name>" (no medicine or other name in it, once
+            per reminder), "You were asked to help with check-ins", "A checklist for a visit
+            is ready", "A request was withdrawn". All in the reader's language.
+
+  Questions tab and Daily Check-in tab
+  [CHANGED] Wording says doctor ("Ask the doctor a question...", "...so the doctor knows who
+            helped", "Your question was sent to the doctor."). The permission label on the
+            woman's side reads "Ask the doctor a question, and read the replies".
+
+  [FIXED]   On a phone, the menu button covered the start of the "You are looking after..."
+            banner on every caregiver page. The banner now moves over.
+
+=====================================================================================
+DOCTOR LOGIN
+=====================================================================================
+  Sidebar: 17 tabs -> 13  [CHANGED]
+    Now: Dashboard, My Patients, Consultations, Patient Questions, Care Assistant,
+         Connected Care, References, Clinical Settings, Clinic Overview, Follow-ups,
+         Handover, Updates, Profile.
+    Today's Brief      REMOVED as a tab. The brief opens from the Dashboard's "Today's
+                       Patients" list ("Open Brief") and from My Patients -> the patient
+                       (first tab). Dashboard card "Briefs Ready" now scrolls to that list.
+                       The old address goes to the Dashboard.
+    Documentation      Now Consultations -> second tab "Documentation history". Dashboard
+                       card "Drafts to Approve" opens that tab. The old address redirects.
+    Document Studio    Now Connected Care -> second tab "Document studio". The old address
+                       opens that tab, with Connected Care highlighted.
+    Reference Library + Guidelines
+                       One tab "References" with three tabs: Reference Library, Guideline
+                       search, Guideline sources. The old addresses redirect. Guideline
+                       search says plainly when no guideline has been approved yet, with
+                       buttons to the other two tabs.
+    The consultation in progress (a recording, a half-written note) stays in place while the
+    history tab is open, so nothing is lost. The tour texts were updated for all of this.
+
+  References tab -> Reference Library
+  [NEW]     Search by meaning (see section 6). Each result says how it was found: by words,
+            by meaning (the match label "its meaning"), or both. Four more FIGO papers have
+            searchable passages. Reference lists and licence pages no longer show as results.
+
+  References tab -> About Website (NEW, section 8)
+  [NEW]     A fourth button after "Reference Library", "Guideline search" and "Guideline
+            sources". See section 8.
+
+  Patient Questions tab
+  [CHANGED] Every question from a patient or a trusted person arrives already assigned to
+            the doctor. Subtitle: "Questions your patients and their caregivers have sent
+            to you." Replies are still drafts the doctor approves.
+
+  Connected Care tab -> Reminders & outreach -> card "Trusted people" (NEW)
+  [NEW]     READ-ONLY. For each trusted person: name and relationship, what she allows
+            (Appointments, Daily check-ins, Summaries and instructions, Reminders, Questions,
+            Emergency details), access end date. No invite codes, no contact details.
+            The doctor cannot change any permission (only she can).
+  [NEW]     Button "Ask to help with check-ins" (only for someone she already allows to do
+            check-ins). Shows "Asked: waiting for an answer" / "Agreed to help with
+            check-ins" / "Said no to helping with check-ins", and "Withdraw the request".
+            One helper at a time; asking someone else ends the earlier request and tells
+            that person.
+
+  Connected Care tab -> Tasks, visits & outcomes -> card "Visit preparation checklist" (NEW)
+  [NEW]     Pick a confirmed upcoming visit, write up to 12 lines (one per line, 300 letters
+            each; the app adds nothing), "Release the checklist". She and the trusted people
+            who may see appointments are told. The card then shows "x of y done", which line
+            is ticked and by whom, and "Remove line".
+
+  Connected Care tab -> Reminders & outreach -> card "Approve a reminder schedule"
+  [UNCHANGED] This is where "medicine" comes from. Reminder type "medicine" or "vaccine" can
+            only be saved by a doctor, and the source must be one of the doctor's own
+            approved visits. The patient sees it on My Care Plan.
+
+  Clinical Settings tab -> card "Note templates" (NEW layout, section 7)
+  [NEW]     "Obstetric history (booking visit)": the twelve headings of a first-visit history
+            (patient details; gravida, para, LMP, EDD and tetanus vaccination; chief
+            complaints; present illness; present pregnancy; menstrual, marital, past
+            obstetric, past medical and drug, past surgical, family and personal history).
+            Headings only, none required. It arrives as a DRAFT like every starter layout:
+            open it with "Read source & history" and approve it.
+  Connected Care tab -> Document studio -> card "Prepare a source-based draft" (section 7)
+  [NEW]     Once approved, the layout is offered under "Approved note layout" when the
+            Document type is "Custom clinical note"; the draft then has the twelve headings.
+  [CHANGED] The same card's "Plain-language visit summary" and "Patient explanation" drafts
+            now explain GCT, NT scan, PROM, PPROM, FGR/IUGR, CPD, PPH and the G2P1 / G2 P1 L1 A0
+            shorthand once, in her language, in the draft's "Words explained" section (the
+            doctor can edit it before signing). The patient reads it on My Care Plan ->
+            "Approved summaries & instructions".
+
+  Dashboard tab
+  [CHANGED] "Briefs Ready" scrolls to the "Today's Patients" list; "Drafts to Approve" opens
+            Consultations -> Documentation history (see above).
+
+  [FIXED]   Amber badges were a little too pale for small text; they are darker now
+            (accessibility contrast).
+
+=====================================================================================
+AI CARE ASSISTANT AND BACKEND
+=====================================================================================
+  Question routing (doctor's Care Assistant tab shows the steps)
+  [CHANGED] A routine ("administrative") question used to get only a suggested reply and
+            never reached the doctor's Patient Questions list. Now it is assigned to the
+            doctor too (marked not clinical). The suggested reply is still only a proposal
+            the doctor approves. A reply the doctor withdraws returns the question to the
+            doctor's list instead of leaving it unseen.
+  Missed check-ins
+  [CHANGED] If a doctor named a check-in helper, the helper gets the missed-check-in reminder
+            first; the other trusted people (who may do check-ins) join from the third
+            reminder. A "no", the person losing the permission, or the end of their access
+            puts everyone back as before.
+  Trusted-person reminders
+  [NEW]     A due reminder of hers becomes one short note for each trusted person who may see
+            reminders, created when that person opens the app. Never includes a name.
+  Plain-language glossary (backend/app/plain_language.py), section 7
+  [NEW]     Eight entries, each in four languages; the G/P/L/A shorthand is matched by shape
+            ("G2P1", "G2 P1 L1 A0"); "G2 P1001" (the other notation) is left alone. No nested
+            brackets, and the shorthand is no longer reported as an unexplained abbreviation.
+  Fixed texts
+  [NEW]     Eight new fixed messages in four languages (server_text.py): checklist added
+            (to her, to the trusted person), helper asked (to her, to the person), request
+            withdrawn, person said yes, person said no, reminder due for the trusted person.
+  [CHANGED] The companion's fixed replies, the missed-check-in reminder to her, and the notes
+            "<name> asked your doctor a question / to get in touch" say doctor.
+  New permission and data
+  [NEW]     Permission "reminders" (off by default) next to the five existing ones.
+  [NEW]     Tables visit_prep_items and checkin_helpers (created automatically).
+  [NEW]     Endpoints: GET/PUT /api/v2/patient/caregivers/visit-prep, GET/PUT
+            /api/v2/caregiver/{link}/visit-prep, PUT /api/v2/caregiver/{link}/checkin-helper,
+            GET /api/v2/caregiver/{link}/reminders, and for a doctor
+            /api/v2/continuity/episodes/{id}/trusted-people, /checkin-helper, /visit-prep.
+  Safety rules kept
+    - The woman owns every permission. A doctor cannot widen what she chose, cannot see
+      invite codes, and can ask only someone she already allows.
+    - A trusted person's every request is re-checked for link, owner, end date and permission.
+    - Every action (release, ask, answer, tick) is written to the audit log.
+    - Nothing is written by a model; the checklist lines are the doctor's own words.
+
+=====================================================================================
+6. REFERENCE LIBRARY SEARCH BY MEANING (doctor: References tab -> Reference Library)
+=====================================================================================
+  [NEW]     backend/app/semantic_search.py. A small multilingual model (multilingual-e5-small,
+            MIT licence) turns every passage and every question into numbers; text that
+            means the same is "close", in any language it knows. Used only to RANK results.
+            It never writes, translates or summarises: a result is still the document's own
+            sentence with its page number. If the model is not installed the search works by
+            words as before.
+  [NEW]     Scripts (run from backend/): fetch_search_model.py (download once),
+            build_semantic_index.py (index the passages), evaluate_semantic_search.py
+            (our own check of how many test questions the library answers: references
+            17 -> 54 of 72, passages 8 -> 22 of 36, in the last measurement).
+  [NEW]     MATERNASYNC_SEMANTIC_SEARCH = auto (default) or off, in .env.example and README
+            ("Searching by meaning").
+  [CHANGED] Passages are cut into short paragraphs (about 700 letters, never past 1,400, never
+            across two pages, so the page number stays exact). PDFs stored the old way are
+            split again at start-up. Soft hyphens are removed.
+  [CHANGED] Bibliographies, licence pages and journal headers are recognised and left out of
+            results.
+  [CHANGED] A passage match now needs 70% of the question's words (was half), because a
+            passage is a short paragraph.
+  [CHANGED] Four FIGO papers (PMC9290930, PMC9313855, PMC12640178, PMC12640184) are kept as
+            PDFs for passage search (open access, CC BY or CC BY-NC, with attribution).
+            fetch_reference_documents.py retries three times and explains what to do if the
+            publisher refuses scripts.
+  [NOT ON THE FREE HOST] The model needs about 135 MB and 300 MB of memory, so it is off on
+            the free Render plan.
+
+=====================================================================================
+7. OBSTETRIC ADDITIONS (from the team's study material; done after commit 70130e3)
+=====================================================================================
+  Source: a textbook chapter on obstetric history taking and examination (a scan, so not added
+  to the Reference Library). Only structure and word meanings were taken, in our own words.
+  Left out on purpose: symptom -> diagnosis tables, risk lists by age or class, weight-gain and
+  Hb targets, fundal-height and other formulas, Naegele's rule, examination technique.
+  1. Doctor -> Clinical Settings -> Note templates: "Obstetric history (booking visit)".
+  2. Doctor -> Connected Care -> Document studio: plain-language words (see above) and the layout.
+  3. Patient -> Appointments -> "Before your first visit".
+  4. The urgent warning list was NOT changed. clinician-review-urgent-warning-signs.txt lists the
+     four candidates from the chapter and the questions for a clinician.
+  Tests: backend/tests/test_obstetric_additions.py (8 tests). Real browser run in English and
+  Tamil, phone width, accessibility scan: no problems.
+
+=====================================================================================
+8. ABOUT WEBSITE (doctor: References tab -> About Website; done after commit 70130e3)
+=====================================================================================
+  A button after "Guideline sources" opens a guide for a doctor who is new to MaternaSync. It
+  has a contents list ("On this page") and twelve separate section cards:
+     1 What MaternaSync is            7 Working with a patient's trusted people
+     2 Your first five minutes        8 Using References
+     3 The menu, tab by tab           9 Languages and accessibility
+     4 A visit from start to finish  10 What this website will not do
+     5 What needs your approval      11 Privacy, consent and records
+     6 The Care Assistant            12 Where to find things
+  Section 3 lists all 13 menu items, each a link to its page, with the same text as the guided
+  tour (so the two cannot disagree). Section 12 answers ten "where do I find it" questions.
+  English, Hindi, Tamil and Telugu. The address is /doctor/references?tab=about.
+  Files: src/roles/doctor/AboutWebsiteView.tsx (the page), src/roles/doctor/ReferencesPage.tsx
+  (the button), src/i18n/dicts/doctor-about.ts (translations), styles in continuity.css.
+  The References tour step and the README mention the new tab.
+
+=====================================================================================
+HOSTING (Vercel website + free Render API)
+=====================================================================================
+  [NEW]     Website: https://maternasync.vercel.app     API: https://maternasync-api.onrender.com
+  [CHANGED] render.yaml moved to deploy/render.yaml. A render.yaml at the root made Vercel
+            treat the project as a backend and refuse the build settings in vercel.json. A new
+            test (test_deployment.py) fails if it is put back at the root.
+  [CHANGED] DEPLOYMENT.md: the free Render recipe, what the free plan means (sleeps after 15
+            minutes, about 90 seconds to wake, the database and uploads are erased at every
+            sleep, restart and deploy, the demo accounts come back), and what was checked on
+            the live pair. .env.example, backend/.dockerignore and backend/.gitignore know
+            about the search model folder.
+  TO PUT THESE CHANGES LIVE:  commit and push; then Render dashboard -> Manual Deploy for the
+            API, and "vercel deploy --prod" for the website (details in DEPLOYMENT.md). Use
+            the Vercel account named in DEPLOYMENT.md, not the one saved on a machine.
+
+=====================================================================================
+CHECKS RUN BEFORE THIS FILE WAS WRITTEN
+=====================================================================================
+  Backend tests ............ 241 pass (205 before the trusted-person work; 28 new in
+                             backend/tests/test_care_partners.py, 8 new in
+                             backend/tests/test_obstetric_additions.py. The meaning search has
+                             its own backend/tests/test_semantic_search.py.)
+  Front end ................ type check clean; translation check (every new text has Hindi,
+                             Tamil and Telugu); wording guard (no risk grading, no range
+                             comparing); oxlint 0 errors (warnings of the same kinds as before)
+  Real browser runs ........ doctor, patient and caregiver screens in English and Tamil,
+                             phone width (no sideways scrolling except the existing
+                             "SIMULATED" WhatsApp note on Connected Care -> Reminders &
+                             outreach, 2 px), accessibility scan with no serious problems
+  The tests that checked the old menu names were updated (tests/browser-smoke.mjs,
+  backend/tests/test_assistant_caregiver.py for the new default permission list).
+
+=====================================================================================
+FILES: NEW, MOVED, REMOVED
+=====================================================================================
+  New       src/roles/doctor/ReferencesPage.tsx
+            src/roles/patient/ProfileArt.tsx, profile.css, profileCard.ts
+            src/components/continuity/VisitChecklist.tsx
+            backend/app/semantic_search.py, backend/build_semantic_index.py,
+            backend/evaluate_semantic_search.py, backend/fetch_search_model.py
+            backend/tests/test_semantic_search.py, backend/tests/test_care_partners.py
+  New (section 8)  src/roles/doctor/AboutWebsiteView.tsx, src/i18n/dicts/doctor-about.ts
+  New (section 7)  backend/tests/test_obstetric_additions.py
+            clinician-review-urgent-warning-signs.txt
+  Moved     render.yaml -> deploy/render.yaml
+  Removed   src/roles/doctor/TodaysBriefPage.tsx
+  Reshaped  DocumentationHistoryPage.tsx, GuidelinesPage.tsx and ReferenceLibraryPage.tsx
+            still exist but now export views that the Consultations and References pages show
+            as tabs.
+
+=====================================================================================
+KNOWN GAPS AND OPEN ITEMS
+=====================================================================================
+  - Hindi, Tamil and Telugu wording for everything above was written by an assistant and
+    needs a native speaker's review.
+  - Not built from the idea list: showing the doctor a trusted person's transport answer,
+    asking a trusted person to upload reports, "read this together" confirmations, a
+    practical-help log, and a doctor-to-trusted-person message thread.
+  - The urgent warning-word list is unchanged. A clinician has to decide which of the four
+    candidates in clinician-review-urgent-warning-signs.txt (if any) should be added.
+  - The "Before your first visit" card is for the woman only; a trusted person does not see it.
+  - Other "care team" wording (records, appointments, journey, emergency, references) is
+    unchanged; it can be switched to "doctor" the same way if wanted.
+  - WhatsApp, real hospital systems and the Claude provider were not run against live services.
+  - The live Vercel/Render copy is the old version until it is redeployed.

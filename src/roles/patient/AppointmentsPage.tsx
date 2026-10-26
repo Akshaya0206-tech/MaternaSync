@@ -13,6 +13,19 @@ import { VisitChecklist } from '../../components/continuity/VisitChecklist';
 import { SummaryList } from './SupportPages';
 import { tx, useLanguage } from '../../i18n';
 
+// What her doctor may ask at a first antenatal visit, so she can think about it beforehand. It is a list of questions to expect, not advice.
+const BEFORE_FIRST_VISIT = [
+  tx('The first day of your last period, if you remember it, and whether your periods come regularly.'),
+  tx('How and when you found out you were pregnant, and any scan reports you already have.'),
+  tx('Any earlier pregnancies, and what happened in each one.'),
+  tx('Illnesses you have or have had, and any operations.'),
+  tx('Medicines, tablets, vitamins or home remedies you take or have taken, and any allergies.'),
+  tx('Illnesses that run in your family, such as diabetes, high blood pressure or twins.'),
+  tx('Your vaccination card, especially your tetanus vaccine record.'),
+  tx('Your Mother and Child Protection (MCP) card, if you have one, and any earlier reports or blood tests.'),
+  tx('Any questions you want to ask your doctor.'),
+];
+
 const STATUS_TONE: Record<string, BadgeTone> = {
   scheduled: 'blue',
   completed: 'green',
@@ -99,6 +112,13 @@ export function AppointmentsPage() {
           ))}
         </div>
       )}
+      <Panel title={t('Before your first visit')}>
+        <p>{t('At your first antenatal visit your doctor will ask about your health and any earlier pregnancies. It helps to think about the points below before you go. You do not need to know everything: say what you remember, and your doctor will ask the rest.')}</p>
+        <ul className="continuity-list">
+          {BEFORE_FIRST_VISIT.map((line) => <li key={line}>{t(line)}</li>)}
+        </ul>
+        <p className="continuity-muted">{t('This list is only what your doctor may ask. It is not medical advice.')}</p>
+      </Panel>
       {workspace.data && <Panel title={t('Approved visit summaries')}><SummaryList data={{ ...workspace.data, outputs: workspace.data.outputs.filter(o => !!o.appointmentId) }} /></Panel>}
     </main>
   );

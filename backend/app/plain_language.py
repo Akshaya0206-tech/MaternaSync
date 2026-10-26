@@ -214,9 +214,39 @@ GLOSSARY = [
     {"aliases": ["LSCS"], "en": "caesarean birth", "hi": "सिज़ेरियन प्रसव", "ta": "சிசேரியன் பிரசவம்", "te": "సిజేరియన్ ప్రసవం"},
     {"aliases": ["IFA"], "en": "iron and folic acid tablets", "hi": "आयरन और फोलिक एसिड की गोलियाँ", "ta": "இரும்பு மற்றும் ஃபோலிக் அமில மாத்திரைகள்", "te": "ఐరన్ మరియు ఫోలిక్ యాసిడ్ మాత్రలు"},
     {"aliases": ["Td", "TT"], "en": "tetanus vaccine", "hi": "टिटनेस का टीका", "ta": "டெட்டனஸ் தடுப்பூசி", "te": "ధనుర్వాతం టీకా"},
+    # Words an obstetric note often uses. Each is only what the word means; none says anything about this patient.
+    {"aliases": ["GCT"], "en": "glucose challenge test, a blood sugar check after a sweet drink",
+     "hi": "ग्लूकोज़ चैलेंज जाँच, यानी मीठा पेय पीने के बाद रक्त शर्करा की जाँच",
+     "ta": "குளுக்கோஸ் சவால் பரிசோதனை, அதாவது இனிப்புப் பானம் குடித்த பின் இரத்தச் சர்க்கரை பரிசோதனை",
+     "te": "గ్లూకోజ్ ఛాలెంజ్ పరీక్ష, అంటే తీపి పానీయం తాగిన తర్వాత రక్తంలో చక్కెర పరీక్ష"},
+    {"aliases": ["NT scan", "NT"], "en": "early scan that measures the fluid at the back of the baby's neck",
+     "hi": "शिशु की गर्दन के पीछे के द्रव को मापने वाला शुरुआती स्कैन",
+     "ta": "குழந்தையின் கழுத்தின் பின்புற திரவத்தை அளவிடும் ஆரம்பகால ஸ்கேன்",
+     "te": "శిశువు మెడ వెనుక ఉన్న ద్రవాన్ని కొలిచే ప్రారంభ స్కాన్"},
+    {"aliases": ["PROM"], "en": "waters breaking before labour starts",
+     "hi": "प्रसव शुरू होने से पहले पानी की थैली का फटना", "ta": "பிரசவ வலி தொடங்கும் முன் பனிக்குடம் உடைதல்", "te": "ప్రసవ నొప్పులు మొదలవక ముందే ఉమ్మనీరు పోవడం"},
+    {"aliases": ["PPROM"], "en": "waters breaking before labour starts and before 37 weeks",
+     "hi": "37 सप्ताह से पहले, प्रसव शुरू होने से पहले पानी की थैली का फटना", "ta": "37 வாரங்களுக்கு முன், பிரசவ வலி தொடங்கும் முன் பனிக்குடம் உடைதல்",
+     "te": "37 వారాలకు ముందు, ప్రసవ నొప్పులు మొదలవక ముందే ఉమ్మనీరు పోవడం"},
+    {"aliases": ["FGR", "IUGR"], "en": "baby growing more slowly than expected",
+     "hi": "शिशु का अपेक्षा से धीमे बढ़ना", "ta": "குழந்தை எதிர்பார்த்ததை விட மெதுவாக வளர்தல்", "te": "శిశువు ఊహించిన దానికంటే నెమ్మదిగా పెరగడం"},
+    {"aliases": ["CPD"], "en": "baby's head and the mother's pelvis not matching in size",
+     "hi": "शिशु के सिर और माँ के श्रोणि यानी पेल्विस के आकार का मेल न होना", "ta": "குழந்தையின் தலைக்கும் தாயின் இடுப்பு எலும்புக்கும் அளவு பொருந்தாமை",
+     "te": "శిశువు తల మరియు తల్లి పెల్విస్ పరిమాణం సరిపోకపోవడం"},
+    {"aliases": ["PPH"], "en": "heavy bleeding after the birth",
+     "hi": "प्रसव के बाद अधिक रक्तस्राव", "ta": "பிரசவத்திற்குப் பின் அதிக இரத்தப்போக்கு", "te": "ప్రసవం తర్వాత ఎక్కువ రక్తస్రావం"},
 ]
+# "G2P1", "G2 P1" or "G2 P1 L1 A0", as an antenatal card writes it. The numbers differ from woman to woman, so this one is matched by its shape
+# (one or two digits after each letter, which also keeps "P1001" in the other common notation from being read as a count of births).
+_GPLA_ENTRY = {"aliases": ["G/P/L/A"], "en": "G = pregnancies, P = births, L = living children, A = miscarriages or abortions; the number after each letter is the count",
+               "hi": "G = गर्भधारण, P = प्रसव, L = जीवित बच्चे, A = गर्भपात या गर्भसमापन; हर अक्षर के बाद की संख्या उसकी गिनती है",
+               "ta": "G = கர்ப்பங்கள், P = பிரசவங்கள், L = உயிருடன் உள்ள குழந்தைகள், A = கருச்சிதைவு அல்லது கருக்கலைப்பு; ஒவ்வொரு எழுத்தின் பின் உள்ள எண் அதன் எண்ணிக்கை",
+               "te": "G = గర్భాలు, P = ప్రసవాలు, L = జీవించి ఉన్న పిల్లలు, A = గర్భస్రావం లేదా గర్భవిచ్ఛిత్తి; ప్రతి అక్షరం తర్వాత సంఖ్య దాని లెక్క"}
+GLOSSARY.append(_GPLA_ENTRY)
+_GPLA = r"G\d{1,2}\s?P\d{1,2}(?:\s?L\d{1,2})?(?:\s?A\d{1,2})?"
 _ALIAS_TO_ENTRY = {alias: entry for entry in GLOSSARY for alias in entry["aliases"]}
-_ALIAS_RE = re.compile(r"(?<![A-Za-z0-9])(" + "|".join(sorted((re.escape(a) for a in _ALIAS_TO_ENTRY), key=len, reverse=True)) + r")(?![A-Za-z0-9])")
+_ALIAS_RE = re.compile(r"(?<![A-Za-z0-9])(" + _GPLA + "|" + "|".join(sorted((re.escape(a) for a in _ALIAS_TO_ENTRY), key=len, reverse=True)) + r")(?![A-Za-z0-9])")
+_GPLA_FULL = re.compile(_GPLA)
 
 
 def explain_terms(text, language):
@@ -225,7 +255,7 @@ def explain_terms(text, language):
 
     def replace(match):
         alias = match.group(1)
-        entry = _ALIAS_TO_ENTRY[alias]
+        entry = _ALIAS_TO_ENTRY.get(alias) or _GPLA_ENTRY
         key = entry["aliases"][0]
         tail = text[match.end():match.end() + 3].lstrip()
         if key in seen:
@@ -568,7 +598,7 @@ def review_notes(output):
         for text in snapshot.get("draftNotes", []):
             notes.append({"level": "info", "text": text})
         free = re.sub(r"\[[^\]]*\]", "", body)
-        unknown = sorted({m for m in _ACRONYM.findall(free) if m not in _ACRONYM_IGNORE})
+        unknown = sorted({m for m in _ACRONYM.findall(free) if m not in _ACRONYM_IGNORE and not _GPLA_FULL.fullmatch(m)})
         if unknown:
             notes.append({"level": "warning", "text": "Abbreviations not explained in plain words: " + ", ".join(unknown[:12]) + ". Spell them out or remove them."})
         long_sentences = [s for s in re.split(r"(?<=[.!?।])\s+|\n+", free) if len(s.split()) > 30]

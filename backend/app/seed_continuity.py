@@ -175,6 +175,13 @@ def run_seed_continuity(db):
     ]:
         resources.append(dict(key="template-" + title, kind="template", title=title, issuer="Clinic template owner", topic="Documentation",
             content="Blank documentation structure. Complete from recorded facts and review before approval.", configuration={"fields": fields, "required": fields, "default": title == "SOAP"}))
+    # The headings of a first (booking) antenatal visit history and nothing else: the doctor writes every entry from what the patient says and
+    # from verified records. No field is required, so a heading that does not apply can stay empty or say "none".
+    history = ["Patient details", "Gravida, para, LMP, EDD and tetanus vaccination", "Chief complaints", "History of present illness", "History of present pregnancy",
+               "Menstrual history", "Marital history", "Past obstetric history", "Past medical and drug history", "Past surgical history", "Family history", "Personal history"]
+    resources.append(dict(key="template-Obstetric history (booking visit)", kind="template", title="Obstetric history (booking visit)", issuer="Clinic template owner", topic="Documentation",
+        content="Blank documentation structure for a first antenatal visit: the headings of an obstetric history and nothing else. Complete from what the patient tells you and from recorded facts, and review before approval.",
+        configuration={"fields": history, "required": [], "default": False}))
     for topic in ("GDM", "Pre-eclampsia", "Anaemia"):
         resources.append(dict(key="pathway-" + topic, kind="pathway", title=f"{topic} — coordination pathway", issuer="Clinical governance review required", topic=topic,
             source_url="https://www.icmr.gov.in/standard-treatment-workflows-stws", section="Local administrative pathway",

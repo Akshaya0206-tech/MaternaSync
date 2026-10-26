@@ -505,3 +505,16 @@
 .trusted-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .prep-doctor-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 0; }
 .prep-doctor-line .prep-mark { font-weight: 700; min-width: 1.4em; }
+
+/* The doctor's "About Website" tab: a contents list, then one card per section */
+.about-site { display: grid; gap: 16px; }
+.about-section { scroll-margin-top: 16px; }
+.about-section > p { margin: 0 0 12px; line-height: 1.55; }
+.about-site a { color: var(--teal-primary); text-underline-offset: 3px; }
+.about-site a:hover { color: var(--forest-deep); }
+.about-list { margin: 0; padding-left: 1.4rem; display: grid; gap: 8px; line-height: 1.55; }
+.about-toc .about-list { display: block; columns: 2 260px; column-gap: 32px; }
+.about-toc .about-list li { break-inside: avoid; padding: 3px 0; }
+.about-menu { margin: 0; display: grid; gap: 14px; }
+.about-menu dt { font-weight: 700; }
+.about-menu dd { margin: 2px 0 0; color: var(--text-secondary); line-height: 1.55; }

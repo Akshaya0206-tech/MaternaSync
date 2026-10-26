@@ -1,16 +1,18 @@
 import { useSearchParams } from 'react-router-dom';
 import { Page } from '../../components/continuity/shared';
 import { tx, useLanguage } from '../../i18n';
+import { AboutWebsiteView } from './AboutWebsiteView';
 import { GuidelineSearchView, GuidelineSourcesView } from './GuidelinesPage';
 import { ReferenceLibraryView } from './ReferenceLibraryPage';
 
-type Tab = 'library' | 'guidelines' | 'sources';
+type Tab = 'library' | 'guidelines' | 'sources' | 'about';
 
-// One menu item, three tabs. The old addresses /doctor/library and /doctor/guidelines lead here (see AppRoutes).
+// One menu item, four tabs. The old addresses /doctor/library and /doctor/guidelines lead here (see AppRoutes).
 const TABS: [Tab, string][] = [
   ['library', tx('Reference Library')],
   ['guidelines', tx('Guideline search')],
   ['sources', tx('Guideline sources')],
+  ['about', tx('About Website')],
 ];
 
 export function ReferencesPage() {
@@ -23,7 +25,9 @@ export function ReferencesPage() {
   return (
     <Page
       title={t('References')}
-      subtitle={t('Real, published documents to look things up in. A search shows the passage and its page; it does not answer a clinical question for you.')}
+      subtitle={tab === 'about'
+        ? t('A guide for a doctor who is new to MaternaSync: what it is for, where things are and what it will never do.')
+        : t('Real, published documents to look things up in. A search shows the passage and its page; it does not answer a clinical question for you.')}
     >
       <div className="continuity-tabs">
         {TABS.map(([key, label]) => (
@@ -35,6 +39,7 @@ export function ReferencesPage() {
       <div hidden={tab !== 'library'}><ReferenceLibraryView /></div>
       {tab === 'guidelines' && <GuidelineSearchView onOpenSources={() => open('sources')} onOpenLibrary={() => open('library')} />}
       {tab === 'sources' && <GuidelineSourcesView />}
+      {tab === 'about' && <AboutWebsiteView />}
     </Page>
   );
 }
