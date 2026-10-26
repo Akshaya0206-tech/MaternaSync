@@ -5,6 +5,7 @@ import { tx, useLanguage } from '../../i18n';
 import { Feedback, Field, Page, Panel, useAction } from '../../components/continuity/shared';
 import { SymptomPicker } from './SymptomPicker';
 import { canSpeak, speak, stopSpeaking } from './speech';
+import { checkNumbers } from './checkInRules';
 
 // A check-in done one question at a time, with large controls and the option to hear each question, for a patient
 // who is sitting with an ASHA worker, a nurse or a family member. It saves exactly what the ordinary daily check-in
@@ -49,11 +50,52 @@ export interface CheckInBody {
   enteredWithHelp: string | null;
 }
 
+/** What has been answered so far, kept on this device so a check-in that is interrupted can be carried on. */
+interface Draft {
+  savedAt: string;
+  index: number;
+  helper: string;
+  helperName: string;
+  systolic: string;
+  diastolic: string;
+  weight: string;
+  symptoms: string;
+  other: string;
+  otherOpen: boolean;
+  mood: string;
+  adherence: string;
+}
+const DRAFT_LIFETIME_MS = 24 * 60 * 60 * 1000; // a check-in left for a day is about a different day
+
+function readDraft(key?: string): Draft | null {
+  if (!key) return null;
+  try {
+    const draft = JSON.parse(localStorage.getItem(key) ?? 'null') as Draft | null;
+    if (!draft || Date.now() - new Date(draft.savedAt).getTime() > DRAFT_LIFETIME_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(key: string, draft: Draft | null) {
+  try {
+    if (draft) localStorage.setItem(key, JSON.stringify(draft));
+    else localStorage.removeItem(key);
+  } catch {
+    // The phone's storage is full or blocked: the check-in simply cannot be carried on later.
+  }
+}
+
 interface Props {
   /** The record has loaded, so the first question can be focused. */
   ready: boolean;
   error?: string;
-  save: (body: CheckInBody) => Promise<void>;
+  /** Returns text to show in place of `savedText` (for example, that the check-in is waiting on the phone for a signal). */
+  save: (body: CheckInBody) => Promise<void | string>;
   /** Skip the "who is filling this in" question (a trusted person's own login already says who). */
   skipWho?: boolean;
   /** Shown on the last question in place of "The patient". */
@@ -62,13 +104,17 @@ interface Props {
   savedText: string;
   doneTo: string;
   doneLabel: string;
+  /** Where this device keeps an unfinished check-in. Leave out to keep none. */
+  draftKey?: string;
 }
 
-export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, filledInBy, subtitle, savedText, doneTo, doneLabel }: Props) {
+export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, filledInBy, subtitle, savedText, doneTo, doneLabel, draftKey }: Props) {
   const { t, language } = useLanguage();
   const action = useAction();
   const heading = useRef<HTMLHeadingElement>(null);
   const steps = skipWho ? ALL_STEPS.filter((s) => s !== 'who') : ALL_STEPS;
+  const [draft, setDraft] = useState<Draft | null>(() => readDraft(draftKey));
+  const [resuming, setResuming] = useState(Boolean(draft));
   const [index, setIndex] = useState(0);
   const [helper, setHelper] = useState('self');
   const [helperName, setHelperName] = useState('');
@@ -81,18 +127,29 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
   const [mood, setMood] = useState('not_recorded');
   const [adherence, setAdherence] = useState('not_recorded');
   const [saved, setSaved] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
+  const [attempted, setAttempted] = useState<Step[]>([]);
   const [reading, setReading] = useState<'idle' | 'speaking' | 'no-voice'>('idle');
 
-  const step = steps[index];
-  const bloodPressureIncomplete = Boolean(systolic) !== Boolean(diastolic);
+  const step = steps[Math.min(index, steps.length - 1)];
+  const errors = checkNumbers({ systolic, diastolic, weightKg: weight, movementCount: '', movementMinutes: '' }, t);
+  const stepErrors = { bp: Boolean(errors.systolic || errors.diastolic), weight: Boolean(errors.weightKg) };
+  const showErrors = (which: Step) => attempted.includes(which);
   const helperChoice = HELPERS.find((h) => h.key === helper)!;
   const enteredWithHelp = skipWho ? null : helperChoice.recorded ? `${helperChoice.recorded}${helperName.trim() ? `: ${helperName.trim()}` : ''}` : null;
 
   // The question only exists once the record has loaded, so the first one is focused when it appears.
   useEffect(() => {
-    if (ready) heading.current?.focus();
+    if (ready && !resuming) heading.current?.focus();
     return () => stopSpeaking();
-  }, [index, ready]);
+  }, [index, ready, resuming]);
+
+  // Keep what has been answered, so a check-in that is interrupted (a call, a lost signal, a closed tab) can be carried on.
+  useEffect(() => {
+    if (!draftKey || saved || resuming) return;
+    const untouched = index === 0 && helper === 'self' && !helperName && !systolic && !diastolic && !weight && !symptoms && !other && mood === 'not_recorded' && adherence === 'not_recorded';
+    writeDraft(draftKey, untouched ? null : { savedAt: new Date().toISOString(), index, helper, helperName, systolic, diastolic, weight, symptoms, other, otherOpen, mood, adherence });
+  }, [draftKey, saved, resuming, index, helper, helperName, systolic, diastolic, weight, symptoms, other, otherOpen, mood, adherence]);
 
   const questions: Record<Step, { title: string; hint?: string }> = {
     who: { title: t('Who is filling this in?'), hint: t('This is only so the doctor knows who helped. It is not a login.') },
@@ -121,9 +178,31 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
     setIndex(Math.max(0, Math.min(steps.length - 1, next)));
   };
 
-  const save = () =>
-    action.run(async () => {
-      await send({
+  // Moving on from a question with a number that cannot be right stays where it is and says which box to look at.
+  const next = () => {
+    if ((step === 'bp' && stepErrors.bp) || (step === 'weight' && stepErrors.weight)) {
+      setAttempted((old) => [...old, step]);
+      return;
+    }
+    go(index + 1);
+  };
+
+  // "Skip this question" means no answer, so a number that was typed and is not valid is cleared rather than carried along.
+  const skip = () => {
+    if (step === 'bp' && stepErrors.bp) { setSystolic(''); setDiastolic(''); }
+    if (step === 'weight' && stepErrors.weight) setWeight('');
+    go(index + 1);
+  };
+
+  const save = () => {
+    const bad: Step | null = stepErrors.bp ? 'bp' : stepErrors.weight ? 'weight' : null;
+    if (bad) {
+      setAttempted((old) => [...old, bad]);
+      go(steps.indexOf(bad));
+      return Promise.resolve();
+    }
+    return action.run(async () => {
+      const own = await send({
         recordedAt: new Date(Date.now() - 1000).toISOString(),
         systolic: systolic ? Number(systolic) : null,
         diastolic: diastolic ? Number(diastolic) : null,
@@ -137,22 +216,54 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
         correctionReason: '',
         enteredWithHelp,
       });
+      if (draftKey) writeDraft(draftKey, null);
+      setSavedMessage(typeof own === 'string' ? own : '');
       setSaved(true);
     }, savedText);
+  };
 
   const restart = () => {
     setIndex(0); setHelper('self'); setHelperName(''); setSystolic(''); setDiastolic(''); setWeight('');
     setSymptoms(''); setOther(''); setOtherOpen(false); setMood('not_recorded'); setAdherence('not_recorded'); setSaved(false);
+    setSavedMessage(''); setAttempted([]);
+  };
+
+  const carryOn = () => {
+    if (draft) {
+      setIndex(Math.min(draft.index, steps.length - 1)); setHelper(draft.helper); setHelperName(draft.helperName); setSystolic(draft.systolic); setDiastolic(draft.diastolic);
+      setWeight(draft.weight); setSymptoms(draft.symptoms); setOther(draft.other); setOtherOpen(draft.otherOpen); setMood(draft.mood); setAdherence(draft.adherence);
+    }
+    setResuming(false);
+  };
+
+  const startAgain = () => {
+    if (draftKey) writeDraft(draftKey, null);
+    setDraft(null);
+    setResuming(false);
   };
 
   if (saved) {
     return (
       <Page title={t('Step-by-step check-in')}>
-        <Panel title={t('Check-in saved.')}>
-          <p role="status" className="guided-done">{savedText}</p>
+        <Panel title={savedMessage ? t('Check-in kept on this phone.') : t('Check-in saved.')}>
+          <p role="status" className="guided-done">{savedMessage || savedText}</p>
           <div className="continuity-actions">
             <Link className="btn-primary" to={doneTo}>{doneLabel}</Link>
             <button className="btn-secondary" onClick={restart}>{t('Fill in another')}</button>
+          </div>
+        </Panel>
+      </Page>
+    );
+  }
+
+  if (resuming && ready && draft) {
+    return (
+      <Page title={t('Step-by-step check-in')} subtitle={subtitle}>
+        <Panel title={t('Carry on where you stopped?')}>
+          <p>{t('A check-in was started on this phone and not finished. It was kept so you can carry on from where you stopped.')}</p>
+          <div className="continuity-actions">
+            <button type="button" className="btn-primary" onClick={carryOn}>{t('Carry on')}</button>
+            <button type="button" className="btn-secondary" onClick={startAgain}>{t('Start again')}</button>
           </div>
         </Panel>
       </Page>
@@ -203,20 +314,19 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
 
           {step === 'bp' && (
             <div className="guided-fields">
-              <Field label={t('Systolic BP (mmHg)')}>
-                <input type="number" inputMode="numeric" min="30" max="300" value={systolic} onChange={(e) => setSystolic(e.target.value)} />
+              <Field label={t('Systolic BP (mmHg)')} error={showErrors('bp') ? errors.systolic : undefined}>
+                <input type="number" inputMode="numeric" value={systolic} onChange={(e) => setSystolic(e.target.value)} />
               </Field>
-              <Field label={t('Diastolic BP (mmHg)')}>
-                <input type="number" inputMode="numeric" min="20" max="200" value={diastolic} onChange={(e) => setDiastolic(e.target.value)} />
+              <Field label={t('Diastolic BP (mmHg)')} error={showErrors('bp') ? errors.diastolic : undefined}>
+                <input type="number" inputMode="numeric" value={diastolic} onChange={(e) => setDiastolic(e.target.value)} />
               </Field>
-              {bloodPressureIncomplete && <p role="alert" className="continuity-alert">{t('Enter both numbers, or leave both empty.')}</p>}
             </div>
           )}
 
           {step === 'weight' && (
             <div className="guided-fields">
-              <Field label={t('Weight (kg)')}>
-                <input type="number" inputMode="decimal" min="20" max="400" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} />
+              <Field label={t('Weight (kg)')} error={showErrors('weight') ? errors.weightKg : undefined}>
+                <input type="number" inputMode="decimal" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} />
               </Field>
             </div>
           )}
@@ -250,9 +360,9 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
 
           <div className="guided-actions">
             {index > 0 && <button type="button" className="btn-secondary" onClick={() => go(index - 1)}>{t('Back')}</button>}
-            {step !== 'review' && <button type="button" className="btn-primary" disabled={step === 'bp' && bloodPressureIncomplete} onClick={() => go(index + 1)}>{t('Next')}</button>}
+            {step !== 'review' && <button type="button" className="btn-primary" onClick={next}>{t('Next')}</button>}
             {step === 'review' && <button type="button" className="btn-primary" disabled={action.busy} onClick={() => void save()}>{t('Save check-in')}</button>}
-            {skippable && <button type="button" className="guided-skip" onClick={() => go(index + 1)}>{t('Skip this question')}</button>}
+            {skippable && <button type="button" className="guided-skip" onClick={skip}>{t('Skip this question')}</button>}
           </div>
         </section>
       )}

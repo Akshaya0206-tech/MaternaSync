@@ -88,6 +88,9 @@ export interface AssistantSummary {
 
 const BASE = '/api/v2/assistant';
 export const getSchedulingRules = () => api.get<SchedulingRules>(`${BASE}/scheduling-rules`);
+/** The usual reply time patients see on My Questions (free text such as "within 1 working day"; empty shows nothing). */
+export const getReplyTime = () => api.get<{ text: string; mostChars: number }>(`${BASE}/reply-time`);
+export const saveReplyTime = (text: string) => api.put<{ text: string; mostChars: number }>(`${BASE}/reply-time`, { text });
 export const saveSchedulingRules = (rules: SchedulingRules) => {
   const { weekdays: _weekdays, ...body } = rules;
   return api.put<SchedulingRules>(`${BASE}/scheduling-rules`, body);

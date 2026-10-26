@@ -8,6 +8,7 @@ import type { AssistantAction, AssistantItem, AssistantStatus } from '../../api/
 import { formatTime, getContext } from '../../api/continuity';
 import { Badge, Empty, Feedback, Field, Page, Panel, useAction } from '../../components/continuity/shared';
 import { AssistantBookingRules } from './AssistantBookingRules';
+import { AssistantReplyTime } from './AssistantReplyTime';
 import { AssistantCounts } from './AssistantCounts';
 import { tx, useLanguage } from '../../i18n';
 
@@ -235,6 +236,8 @@ export function AssistantPage() {
       )}
 
       <AssistantBookingRules />
+
+      <AssistantReplyTime />
 
       <Panel title={t('Needs you')}>
         {open === null && !error && <p role="status" className="continuity-muted">{t('Loading…')}</p>}

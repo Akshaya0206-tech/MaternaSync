@@ -9,16 +9,20 @@ to it, so a cross-patient id simply doesn't match (404), never 200s.
 """
 
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from .. import automation, extraction, models, schemas_v2, server_text
+from .. import automation, extraction, models, schemas_v2, server_text, visit_changes
 from ..config import UPLOAD_DIR
+from ..continuity_service import now, utc
 from ..database import get_db
+from ..document_types import DOCUMENT_TYPES
 from ..deps import get_current_user, get_my_patient_episode, require_role
+from ..plain_language import explain_terms
 
 router = APIRouter(prefix="/api/v2/patient", tags=["patient-portal"])
 
@@ -34,16 +38,31 @@ def _to_document_out(document: models.MedicalDocument) -> schemas_v2.PatientDocu
         document_date=document.document_date,
         description=document.description,
         uploaded_at=document.uploaded_at,
+        document_type=document.document_type,
+    )
+
+
+def _change_request_out(appointment: models.Appointment) -> schemas_v2.ChangeRequestOut | None:
+    """Her request to cancel or move a visit, while the visit is still confirmed and the request is still open."""
+    if not appointment.change_kind or appointment.status != "scheduled":
+        return None
+    return schemas_v2.ChangeRequestOut(
+        kind=appointment.change_kind, note=appointment.change_note or None,
+        preferred_at=appointment.change_preferred_at, requested_at=appointment.change_requested_at,
     )
 
 
 def _to_question_out(question: models.PatientQuestion) -> schemas_v2.PatientQuestionOut:
     visible_responses = [r for r in question.responses if r.status == "APPROVED" and r.visible_to_patient]
+    earlier = question.follow_up_of
     return schemas_v2.PatientQuestionOut(
         id=question.id,
         question_text=question.question_text,
         status=question.status,
         created_at=question.created_at,
+        attachments=[schemas_v2.AttachmentOut(id=a.document_id, filename=a.document.filename) for a in question.attachments if a.document],
+        follow_up_of_id=earlier.id if earlier else None,
+        follow_up_of_text=earlier.question_text[:200] if earlier else None,
         responses=[
             schemas_v2.QuestionResponseOut(
                 id=r.id, response_text=r.response_text, responder_role=r.responder_role, created_at=r.created_at,
@@ -69,23 +88,52 @@ def _primary_doctor_name(db: Session, episode_id: str) -> str | None:
 
 @router.get("/dashboard", response_model=schemas_v2.PatientDashboardOut)
 def get_my_dashboard(
+    # Minutes her clock is behind UTC, as JavaScript's getTimezoneOffset() gives it (India is -330). It decides where "today" starts.
+    tz_offset: int = Query(0, ge=-840, le=840),
     episode: models.PregnancyEpisode = Depends(get_my_patient_episode),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    next_appt = (
-        db.query(models.Appointment)
-        .filter(models.Appointment.episode_id == episode.id, models.Appointment.status == "scheduled")
-        .order_by(models.Appointment.scheduled_at.asc())
-        .first()
-    )
+    current = now()
+    day_start = ((current - timedelta(minutes=tz_offset)).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(minutes=tz_offset)).replace(tzinfo=None)
+    day_end = day_start + timedelta(days=1)
+
+    # Only a visit that has not happened yet can be "next": a booked time that has passed is not an upcoming appointment.
+    ahead = [
+        a for a in db.query(models.Appointment)
+        .filter(models.Appointment.episode_id == episode.id, models.Appointment.status.in_(["scheduled", "requested"]))
+        .order_by(models.Appointment.scheduled_at.asc()).all()
+        if utc(a.scheduled_at) > current
+    ]
+    next_appt = next((a for a in ahead if a.status == "scheduled"), None)
+    requested_appt = next((a for a in ahead if a.status == "requested"), None)
     doctor_name = _primary_doctor_name(db, episode.id)
-    next_appointment_out = None
-    if next_appt:
-        next_appointment_out = schemas_v2.AppointmentOut(
-            id=next_appt.id, scheduled_at=next_appt.scheduled_at, appointment_type=next_appt.appointment_type,
-            location=next_appt.location, status=next_appt.status, doctor_name=doctor_name,
-        )
+
+    def appointment_out(appt):
+        return schemas_v2.AppointmentOut(
+            id=appt.id, scheduled_at=appt.scheduled_at, appointment_type=appt.appointment_type,
+            location=appt.location, status=appt.status, doctor_name=doctor_name,
+        ) if appt else None
+
+    next_appointment_out = appointment_out(next_appt)
+    visit_request_out = appointment_out(requested_appt)
+
+    # The "Today" card: what she has done today and what is waiting for her. These are counts of her own entries and her doctor's
+    # replies; nothing here reads or judges a value.
+    todays_logs = db.query(models.DailyLog.skipped).filter(
+        models.DailyLog.episode_id == episode.id, models.DailyLog.recorded_at >= day_start, models.DailyLog.recorded_at < day_end,
+    ).all()
+    check_in_today = "none" if not todays_logs else ("recorded" if any(not skipped for (skipped,) in todays_logs) else "skipped")
+    due_reminders = (
+        db.query(models.CareReminder)
+        .filter(models.CareReminder.episode_id == episode.id, models.CareReminder.status == "pending", models.CareReminder.scheduled_at < day_end)
+        .order_by(models.CareReminder.scheduled_at.asc()).all()
+    )
+    last_week = current - timedelta(days=7)
+    answered_recently = sum(
+        1 for q in db.query(models.PatientQuestion).filter(models.PatientQuestion.episode_id == episode.id, models.PatientQuestion.asked_by_user_id == current_user.id).all()
+        if any(r.status == "APPROVED" and r.visible_to_patient and utc(r.created_at) >= last_week for r in q.responses)
+    )
 
     open_questions_count = (
         db.query(models.PatientQuestion)
@@ -123,6 +171,11 @@ def get_my_dashboard(
         open_questions_count=open_questions_count,
         recent_care_title=recent_event.title if recent_event else None,
         recent_care_date=recent_event.event_date if recent_event else None,
+        visit_request=visit_request_out,
+        check_in_today=check_in_today,
+        reminders_due_count=len(due_reminders),
+        reminders_due=[r.title for r in due_reminders[:3]],
+        answered_recently_count=answered_recently,
     )
 
 
@@ -147,10 +200,13 @@ async def upload_my_document(
     file: UploadFile = File(...),
     description: str | None = Form(None),
     document_date: str | None = Form(None),
+    document_type: str | None = Form(None),
     episode: models.PregnancyEpisode = Depends(get_my_patient_episode),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if document_type and document_type not in DOCUMENT_TYPES:
+        raise HTTPException(status_code=400, detail="Choose what kind of document this is from the list.")
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Unsupported file type. Please upload a PDF, JPG, or PNG.")
@@ -180,6 +236,7 @@ async def upload_my_document(
         file_path=stored_name,
         document_date=document_date or None,
         description=description or None,
+        document_type=document_type or None,
         status="NEEDS_REVIEW",
     )
     db.add(document)
@@ -270,8 +327,15 @@ def create_my_question(
     if not text:
         raise HTTPException(status_code=400, detail="Please write your question before submitting.")
 
+    earlier = None
+    if payload.follow_up_of:
+        earlier = db.get(models.PatientQuestion, payload.follow_up_of)
+        if earlier is None or earlier.episode_id != episode.id or earlier.asked_by_user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="The question you are following up on was not found.")
+
     question = models.PatientQuestion(
         episode_id=episode.id, asked_by_user_id=current_user.id, question_text=text, status="NEW",
+        follow_up_of_id=earlier.id if earlier else None,
     )
     db.add(question)
     db.flush()
@@ -310,9 +374,10 @@ def list_my_appointments(
     return [
         schemas_v2.AppointmentOut(
             id=a.id, scheduled_at=a.scheduled_at, appointment_type=a.appointment_type,
-            location=a.location, status=a.status, doctor_name=doctor_name,
+            location=a.location, status=a.status, doctor_name=doctor_name, change_request=_change_request_out(a),
         )
         for a in appointments
+        if not (a.status == "cancelled" and (a.notes or "").endswith(visit_changes.WITHDRAWN_MARK))  # her own withdrawn request for a new time
     ]
 
 
@@ -321,15 +386,26 @@ def list_my_appointments(
 @router.get("/journey", response_model=list[schemas_v2.JourneyEventOut])
 def list_my_journey(
     episode: models.PregnancyEpisode = Depends(get_my_patient_episode),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # A journey entry exists only because a doctor (or the assistant, after the doctor approved it) verified a document, approved a note or
+    # released a document: see models/journey.py. Nothing here reads a draft.
     events = (
         db.query(models.JourneyEvent)
         .filter(models.JourneyEvent.episode_id == episode.id)
         .order_by(models.JourneyEvent.event_date.desc())
         .all()
     )
-    return [schemas_v2.JourneyEventOut.model_validate(e) for e in events]
+    language = server_text.language_of(db, current_user.id)
+    entries = []
+    for event in events:
+        entry = schemas_v2.JourneyEventOut.model_validate(event)
+        # Only what the shorthand stands for, from the reviewed glossary: never what a result means for her.
+        _, used = explain_terms(f"{event.title}\n{event.summary or ''}", language)
+        entry.words = [schemas_v2.WordMeaningOut(term=term, meaning=meaning) for term, meaning in used]
+        entries.append(entry)
+    return entries
 
 
 # ---------- Updates (notifications) ----------

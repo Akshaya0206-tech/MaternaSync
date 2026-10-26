@@ -109,6 +109,7 @@ vercel --prod
 - builds the Vite app and serves `dist`;
 - sends any other address (`/patient/profile`, ...) to `index.html`, so a refresh or a shared link works; `/api/...` is excluded on purpose, so a missing
   API shows an error instead of a page of HTML;
+- serves `sw.js` (the service worker that lets the app open without a signal) with `no-cache`, so a new version is picked up at once, and the web app manifest with its own type;
 - caches the built files for a year (their names change when they change) and adds basic safety headers. `Permissions-Policy` keeps the microphone (voice
   input) and location (the Emergency and Profile pages) available to the site itself only.
 

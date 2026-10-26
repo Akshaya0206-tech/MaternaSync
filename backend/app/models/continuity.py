@@ -26,6 +26,9 @@ class DailyLog(Base):
     correction_reason = Column(Text, default="")
     # Who sat with the patient and helped fill this in (for example "ASHA worker: Rekha"); empty when the patient did it alone.
     entered_with_help = Column(String, nullable=True)
+    # Made on the device when the check-in was filled in. If a check-in is sent twice (a lost connection hides the first reply),
+    # the second send finds this and returns the entry already saved instead of adding it again.
+    client_ref = Column(String, nullable=True)
     revision = Column(Integer, default=1)
     created_at = Column(DateTime, default=now)
     updated_at = Column(DateTime, default=now)

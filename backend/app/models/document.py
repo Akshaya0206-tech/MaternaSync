@@ -22,6 +22,7 @@ class MedicalDocument(Base):
     file_path = Column(String, nullable=False)
     document_date = Column(String, nullable=True)   # patient-provided, optional
     description = Column(String, nullable=True)      # patient-provided, optional
+    document_type = Column(String, nullable=True)    # what she says the file is (see app/document_types.py), optional
 
     status = Column(String, default="PROCESSING")  # PROCESSING | NEEDS_REVIEW | VERIFIED | REJECTED
     uploaded_at = Column(DateTime, default=now)

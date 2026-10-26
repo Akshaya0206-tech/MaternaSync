@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import Field, field_validator
 from sqlalchemy.orm import Session
 
-from .. import emergency, models
+from .. import clinic_emergency, emergency, models
 from ..continuity_schemas import Input
 from ..continuity_service import now
 from ..database import get_db
@@ -17,6 +17,7 @@ from ..deps import require_role
 router = APIRouter(prefix="/api/v2/patient/emergency", tags=["patient-emergency"])
 patient = require_role("patient")
 _PHONE = re.compile(r"^\+?[0-9][0-9 \-()]{3,22}[0-9]$")
+_MCP = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 /\-]{0,28}[A-Za-z0-9]$|^[A-Za-z0-9]$")
 
 
 class EmergencyIn(Input):
@@ -29,6 +30,7 @@ class EmergencyIn(Input):
     hospital_name: str | None = Field(None, max_length=200)
     hospital_phone: str | None = Field(None, max_length=30)
     hospital_address: str | None = Field(None, max_length=300)
+    mcp_number: str | None = Field(None, max_length=30)
     live_location: bool = False
 
     @field_validator("contact_phone", "hospital_phone")
@@ -43,6 +45,13 @@ class EmergencyIn(Input):
     def blank_is_nothing(cls, value):
         return value or None
 
+    @field_validator("mcp_number")
+    @classmethod
+    def mcp(cls, value):
+        if value and not _MCP.match(value):
+            raise ValueError("Use only letters, digits, spaces, / and - for the card number.")
+        return value or None
+
 
 def profile_out(profile: models.PatientEmergencyProfile | None) -> dict:
     p = profile
@@ -51,8 +60,21 @@ def profile_out(profile: models.PatientEmergencyProfile | None) -> dict:
         "hasHome": bool(p and p.home_lat is not None and p.home_lon is not None),
         "contactName": p.contact_name if p else None, "contactRelation": p.contact_relation if p else None, "contactPhone": p.contact_phone if p else None,
         "hospitalName": p.hospital_name if p else None, "hospitalPhone": p.hospital_phone if p else None, "hospitalAddress": p.hospital_address if p else None,
+        "mcpNumber": p.mcp_number if p else None,
         "liveLocation": bool(p and p.live_location),
     }
+
+
+def overview(db: Session, user: models.User, profile: models.PatientEmergencyProfile | None) -> dict:
+    """Everything the Emergency help page shows, including what the "Show this to the hospital" card needs: her own name and due date,
+    her doctor, and what her clinic has said about itself. It holds nothing about her health."""
+    out = profile_out(profile)
+    episode = (db.query(models.PregnancyEpisode).filter_by(patient_user_id=user.id)
+               .order_by(models.PregnancyEpisode.created_at.desc()).first())
+    clinic = clinic_emergency.clinic_out(db)
+    clinic["doctorName"] = clinic_emergency.doctor_name_for(db, episode)
+    return {"profile": out, "clinic": clinic, "me": {"name": user.full_name, "edd": episode.edd if episode else None},
+            **emergency.numbers_for(out["homeLat"], out["homeLon"])}
 
 
 def _mine(db: Session, user: models.User) -> models.PatientEmergencyProfile | None:
@@ -91,19 +113,18 @@ def write_profile(db: Session, user_id: str, data: dict) -> models.PatientEmerge
 
 @router.get("")
 def read(user=Depends(patient), db: Session = Depends(get_db)):
-    profile = _mine(db, user)
-    out = profile_out(profile)
-    return {"profile": out, **emergency.numbers_for(out["homeLat"], out["homeLon"])}
+    return overview(db, user, _mine(db, user))
 
 
 @router.put("")
 def save(payload: EmergencyIn, user=Depends(patient), db: Session = Depends(get_db)):
     data = payload.model_dump()
+    if "mcp_number" not in payload.model_fields_set:
+        data.pop("mcp_number")  # a form that does not send it (the Profile page's location form) must not wipe it
     located = resolve_home(data)
     profile = write_profile(db, user.id, data)
     db.commit()
-    out = profile_out(profile)
-    return {"profile": out, "located": located, **emergency.numbers_for(out["homeLat"], out["homeLon"])}
+    return {**overview(db, user, profile), "located": located}
 
 
 @router.get("/nearby")

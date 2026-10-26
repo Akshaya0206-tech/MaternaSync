@@ -97,7 +97,7 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    token = create_access_token(user.id)
+    token = create_access_token(user.id, user.token_version)
     return RegisterOut(
         access_token=token,
         user=schemas.UserOut.model_validate(user),
@@ -110,9 +110,9 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == payload.email.lower()).first()
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
-    refuse_sign_in(user)  # a care-team account while that login is switched off, or the assistant's service account
+    refuse_sign_in(user)  # a care-team account while that login is switched off, the assistant's service account, or an account its owner closed
 
-    token = create_access_token(user.id)
+    token = create_access_token(user.id, user.token_version)
     return schemas.TokenResponse(access_token=token, user=schemas.UserOut.model_validate(user))
 
 

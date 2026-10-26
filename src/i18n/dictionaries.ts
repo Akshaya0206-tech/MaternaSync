@@ -16,6 +16,9 @@ export const loadDoctorDictionary: Loader = async () => {
     import("./dicts/doctor-studio"),
     import("./dicts/doctor-library"),
     import("./dicts/doctor-about"),
+    import("./dicts/doctor-patientinfo"),
+    import("./dicts/doctor-questions"),
+    import("./dicts/doctor-emergency"),
   ]);
   return Object.assign({}, ...parts.map((part) => part.entries));
 };

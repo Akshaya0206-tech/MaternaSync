@@ -7,6 +7,7 @@ existing credentials keep working. Idempotent — safe to run every startup.
 """
 
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -147,9 +148,11 @@ def _build_episode(db: Session, ep_json: dict, patient_user: models.User, doctor
         wtype = w["type"]
         created_at = _parse_dt(w.get("dateCreated")) or _now()
         if wtype == "unanswered_question":
+            # The work item describes the message ("Patient sent portal message at 07:15 today: "..."); the question is what she wrote.
+            sent = re.match(r'^Patient sent portal message at [^"]*?:\s*"(.*)"\s*$', w["description"], re.S)
             db.add(models.PatientQuestion(
                 episode_id=episode.id, asked_by_user_id=patient_user.id,
-                question_text=w["description"], status="ASSIGNED", is_clinical=True,
+                question_text=sent.group(1) if sent else w["description"], status="ASSIGNED", is_clinical=True,
                 assigned_to_user_id=doctor_user.id, created_at=created_at,
             ))
         elif wtype == "pending_referral":

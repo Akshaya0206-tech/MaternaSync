@@ -222,3 +222,19 @@
   .pf-heartbeat .pf-heart { transform-box: fill-box; transform-origin: center; animation: pf-beat 2.4s ease-in-out 1.2s infinite; }
   .pf-avatar::after { content: ""; position: absolute; inset: -12px; border-radius: 50%; border: 2px solid rgba(22, 124, 114, 0.4); pointer-events: none; animation: pf-ring 3.4s ease-out infinite; }
 }
+
+/* account: Security, My data and Close my account */
+.pf-account input:not([type="checkbox"]) { width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px; background: var(--bg-tertiary); color: var(--text-primary); font: inherit; font-size: 0.875rem; min-width: 0; }
+.pf-account input[aria-invalid="true"] { border-color: var(--rose-urgent); }
+.pf-account-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; }
+.pf-account-split { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-color); }
+.pf-account-split h3 { margin: 0 0 4px; font-size: 1rem; }
+.pf-account-focus { margin: 6px 0 14px; font-size: 1rem; }
+.pf-account-focus:focus-visible { outline: 2px solid var(--teal-primary); outline-offset: 4px; }
+.pf-close-form { margin-top: 14px; max-width: 460px; }
+.pf-card .pf-danger { cursor: pointer; border: 1px solid var(--rose-urgent); border-radius: 999px; padding: 12px 24px; font: inherit; font-weight: 700; background: var(--rose-urgent); color: #fff; }
+.pf-card .pf-danger:hover { filter: brightness(0.92); }
+.pf-card .pf-danger:disabled { opacity: 0.55; cursor: wait; }
+.pf-card .pf-danger-outline { color: var(--rose-urgent); border-color: var(--rose-urgent); }
+.pf-card :focus-visible { outline: 2px solid var(--teal-primary); outline-offset: 3px; }
+@media (max-width: 560px) { .pf-close-form { max-width: none; } .pf-card .pf-danger { width: 100%; } }

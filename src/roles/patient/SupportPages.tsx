@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { CalendarPlus } from "lucide-react";
 import { api } from "../../api/client";
+import { downloadCalendarFile } from "../../calendar/calendarFile";
 import {
   ROOT,
   languages,
@@ -18,6 +21,10 @@ import {
   useAction,
   useWorkspace,
 } from "../../components/continuity/shared";
+import { AddToCalendar } from "./AddToCalendar";
+import { AccessSummary } from "./AccessSummary";
+import { ConsentPreview } from "./ConsentPreview";
+import { isAhead, reminderEvent } from "./calendarEvents";
 
 const PURPOSES: Record<string, string> = {
   reminders: tx("Care reminders"),
@@ -56,6 +63,11 @@ export function ConsentPage() {
   const [history, setHistory] = useState<
     { id: string; title: string; timestamp: string }[]
   >([]);
+  const revoke = (id: string) =>
+    action.run(async () => {
+      await api.post(`${ROOT}/consents/${id}/revoke`);
+      await w.reload();
+    }, t("Permission revoked. Future sharing is blocked."));
   return (
     <Page
       title={t("Sharing & consent")}
@@ -71,6 +83,7 @@ export function ConsentPage() {
       </div>
       {w.data && (
         <>
+          <AccessSummary consents={w.data.consents} busy={action.busy} onRevoke={(id) => void revoke(id)} />
           <Panel title={t("Give sharing permission")}>
             <form
               onSubmit={(e) => {
@@ -119,6 +132,7 @@ export function ConsentPage() {
                   />
                 </Field>
               </div>
+              <ConsentPreview purpose={purpose} />
               <label className="continuity-check">
                 <input
                   type="checkbox"
@@ -138,45 +152,7 @@ export function ConsentPage() {
               </button>
             </form>
           </Panel>
-          <Panel title={t("Your permissions")}>
-            {!w.data.consents.length && (
-              <Empty>{t("No external sharing permissions granted.")}</Empty>
-            )}
-            {w.data.consents.map((c) => (
-              <div key={c.id} className="continuity-item">
-                <h3>
-                  {c.recipient}{" "}
-                  <Badge>
-                    {c.revokedAt
-                      ? t("Revoked")
-                      : c.active
-                        ? t("Active")
-                        : t("Expired")}
-                  </Badge>
-                </h3>
-                <p>
-                  {t(PURPOSES[c.purpose] ?? c.purpose.replaceAll("_", " "))} ·{" "}
-                  {t("Expires {time}", { time: formatTime(c.expiresAt) })}
-                </p>
-                {c.active && (
-                  <button
-                    className="btn-secondary"
-                    disabled={action.busy}
-                    onClick={() =>
-                      action.run(
-                        async () => {
-                          await api.post(`${ROOT}/consents/${c.id}/revoke`);
-                          await w.reload();
-                        },
-                        t("Permission revoked. Future sharing is blocked."),
-                      )
-                    }
-                  >
-                    {t("Revoke / opt out")}
-                  </button>
-                )}
-              </div>
-            ))}
+          <Panel title={t("Permission history")}>
             <div className="continuity-actions">
               <button
                 className="btn-secondary"
@@ -210,9 +186,12 @@ export function ConsentPage() {
 export function SummaryList({
   data,
   appointmentId,
+  emptyText,
 }: {
   data: Pick<Workspace, "outputs" | "appointments">;
   appointmentId?: string;
+  /** What to say when there is nothing yet; a page that shows only some of the summaries can say which. */
+  emptyText?: string;
 }) {
   const { t } = useLanguage();
   const outputs = data.outputs.filter(
@@ -222,7 +201,7 @@ export function SummaryList({
     <>
       {!outputs.length && (
         <Empty>
-          {t("No approved summaries or documents have been released yet.")}
+          {emptyText ?? t("No approved summaries or documents have been released yet.")}
         </Empty>
       )}
       {outputs.map((o) => {
@@ -297,14 +276,16 @@ export function CarePlanPage() {
   const w = useWorkspace();
   const action = useAction();
   const [filter, setFilter] = useState("pending");
-  const [time, setTime] = useState("");
-  const [reason, setReason] = useState("Consultation"); // stored as typed; staff read it as-is
-  const [notes, setNotes] = useState("");
+  const reminders = w.data?.reminders ?? [];
+  const shown = reminders.filter((r) => filter === "all" || r.status === filter);
+  // Only a reminder that is still ahead can go in a calendar.
+  const ahead = reminders.filter((r) => r.status === "pending" && isAhead(r.scheduledAt));
+  const visitSummaries = w.data ? w.data.outputs.filter((o) => !!o.appointmentId).length : 0;
   return (
     <Page
       title={t("My care plan")}
       subtitle={t(
-        "Follow the reminders your doctor has approved, request a visit, and read your released summaries.",
+        "Follow the reminders your doctor has approved, and read the instructions and report explanations released to you.",
       )}
     >
       <Feedback error={w.error || action.error} message={action.message} />
@@ -323,127 +304,97 @@ export function CarePlanPage() {
               </select>
             }
           >
-            {!w.data.reminders.filter(
-              (r) => filter === "all" || r.status === filter,
-            ).length && (
+            {!shown.length && (
               <Empty>
                 {t(
                   "No reminders in this view. Your doctor adds medicine, vaccine and visit reminders here.",
                 )}
               </Empty>
             )}
-            {w.data.reminders
-              .filter((r) => filter === "all" || r.status === filter)
-              .map((r) => (
-                <article key={r.id} className="continuity-item">
-                  <h3>
-                    {r.title}{" "}
-                    <Badge>
-                      {t(REMINDER_STATUS[r.status] ?? r.status.replaceAll("_", " "))}
-                    </Badge>
-                  </h3>
-                  <p>
-                    {formatTime(r.scheduledAt)} ·{" "}
-                    {t(REMINDER_KIND[r.kind] ?? r.kind.replaceAll("_", " "))}
-                  </p>
-                  <div className="continuity-copy">{r.instructions}</div>
-                  <p className="continuity-muted">
-                    {t("Approved by {name}", { name: r.approvedByName })}
-                  </p>
-                  {r.status === "pending" && (
-                    <div className="continuity-actions">
-                      {(
-                        [
-                          ["done", t("Done")],
-                          ["skipped", t("Skipped")],
-                          ["needs_help", t("I need help")],
-                        ] as const
-                      ).map(([status, label]) => (
-                        <button
-                          key={status}
-                          className="btn-secondary"
-                          disabled={action.busy}
-                          onClick={() =>
-                            action.run(
-                              async () => {
-                                await api.post(
-                                  `${ROOT}/reminders/${r.id}/respond`,
-                                  { status },
-                                );
-                                await w.reload();
-                              },
-                              status === "needs_help"
-                                ? t("Your care team has been asked to follow up.")
-                                : t("Response saved."),
-                            )
-                          }
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </article>
-              ))}
-          </Panel>
-          <Panel title={t("Request an appointment")}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void action.run(async () => {
-                  await api.post(
-                    `${ROOT}/episodes/${w.episodeId}/appointments`,
-                    {
-                      scheduledAt: new Date(time).toISOString(),
-                      appointmentType: reason,
-                      notes,
-                    },
-                  );
-                  setNotes("");
-                  await w.reload();
-                }, t("Request sent. Your care team will confirm the time."));
-              }}
-            >
-              <div className="continuity-fields">
-                <Field label={t("Preferred date and time")}>
-                  <input
-                    required
-                    type="datetime-local"
-                    min={localDateTime()}
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                  />
-                </Field>
-                <Field label={t("Visit type")}>
-                  <input
-                    required
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                  />
-                </Field>
-              </div>
-              <Field label={t("Notes for your care team")}>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </Field>
-              <button className="btn-primary" disabled={action.busy}>
-                {t("Request visit")}
-              </button>
-            </form>
-            {w.data.appointments
-              .filter((a) => a.status === "requested")
-              .map((a) => (
-                <p key={a.id} className="continuity-muted">
-                  {t("Requested")}: {formatTime(a.scheduledAt)} ·{" "}
-                  {a.appointmentType} · {t("Waiting for confirmation")}
+            {ahead.length > 0 && (
+              <div className="care-plan-calendar">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => downloadCalendarFile(ahead.map((r) => reminderEvent(r, t)), "maternasync-reminders.ics")}
+                >
+                  <CalendarPlus size={15} aria-hidden="true" /> {t("Add all my upcoming reminders to my phone calendar")}
+                </button>
+                <p className="continuity-muted">
+                  {t("The phone calendar file sets an alert at the time of each reminder. Google Calendar uses your own Google Calendar alert settings. Your calendar will show the name of each reminder, so anyone who can see your calendar or your phone screen will see it.")}
                 </p>
-              ))}
+              </div>
+            )}
+            {shown.map((r) => (
+              <article key={r.id} className="continuity-item">
+                <h3>
+                  {r.title}{" "}
+                  <Badge>
+                    {t(REMINDER_STATUS[r.status] ?? r.status.replaceAll("_", " "))}
+                  </Badge>
+                </h3>
+                <p>
+                  {formatTime(r.scheduledAt)} ·{" "}
+                  {t(REMINDER_KIND[r.kind] ?? r.kind.replaceAll("_", " "))}
+                </p>
+                <div className="continuity-copy">{r.instructions}</div>
+                <p className="continuity-muted">
+                  {t("Approved by {name}", { name: r.approvedByName })}
+                </p>
+                {r.status === "pending" && (
+                  <div className="continuity-actions">
+                    {(
+                      [
+                        ["done", t("Done")],
+                        ["skipped", t("Skipped")],
+                        ["needs_help", t("I need help")],
+                      ] as const
+                    ).map(([status, label]) => (
+                      <button
+                        key={status}
+                        className="btn-secondary"
+                        disabled={action.busy}
+                        onClick={() =>
+                          action.run(
+                            async () => {
+                              await api.post(
+                                `${ROOT}/reminders/${r.id}/respond`,
+                                { status },
+                              );
+                              await w.reload();
+                            },
+                            status === "needs_help"
+                              ? t("Your care team has been asked to follow up.")
+                              : t("Response saved."),
+                          )
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {r.status === "pending" && isAhead(r.scheduledAt) && <AddToCalendar event={reminderEvent(r, t)} />}
+              </article>
+            ))}
+          </Panel>
+          <Panel title={t("Need a visit?")}>
+            <p>{t("Ask for a visit, see where your request stands, and add your visits to your calendar on the Appointments page.")}</p>
+            <div className="continuity-actions">
+              <Link className="btn-secondary" to="/patient/appointments">{t("Go to Appointments")}</Link>
+            </div>
           </Panel>
           <Panel title={t("Approved summaries & instructions")}>
-            <SummaryList data={w.data} />
+            <SummaryList
+              data={{ ...w.data, outputs: w.data.outputs.filter((o) => !o.appointmentId) }}
+              emptyText={t("No instructions or report explanations have been released yet.")}
+            />
+            {visitSummaries > 0 && (
+              <p className="continuity-muted">
+                {t("Summaries of your visits are on the Appointments page.")}{" "}
+                <Link to="/patient/appointments">{t("Go to Appointments")}</Link>
+              </p>
+            )}
           </Panel>
         </>
       )}

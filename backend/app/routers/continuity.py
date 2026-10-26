@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import caregiver_service, config, models, server_text
+from .. import caregiver_service, config, models, server_text, visit_changes
 from ..models.caregiver import PERMISSIONS
 from ..database import get_db
 from ..deps import require_role
@@ -104,6 +104,10 @@ def workspace(episode_id: str, user=Depends(authenticated), db: Session = Depend
 @router.post("/episodes/{episode_id}/logs")
 def add_log(episode_id: str, payload: S.LogIn, user=Depends(patient), db: Session = Depends(get_db)):
     ep = episode(db, user, episode_id)
+    if payload.client_ref:
+        already = db.query(models.DailyLog).filter_by(episode_id=ep.id, client_ref=payload.client_ref).first()
+        if already:
+            return row(already)  # the same check-in sent again after a dropped connection: keep one entry
     log = models.DailyLog(episode_id=ep.id, **payload.model_dump())
     db.add(log)
     db.flush()
@@ -118,7 +122,7 @@ def correct_log(log_id: str, payload: S.LogIn, user=Depends(patient), db: Sessio
     if not payload.correction_reason:
         raise HTTPException(400, "Please record why this entry is being corrected.")
     before = row(log)
-    for key, value in payload.model_dump().items():
+    for key, value in payload.model_dump(exclude={"client_ref"}).items():
         setattr(log, key, value)
     log.revision += 1
     log.updated_at = now()
@@ -616,6 +620,7 @@ def appointment_status(appointment_id: str, payload: S.AppointmentStatusIn, user
     if payload.status in ("completed", "no_show") and utc(appt.scheduled_at) > now():
         raise HTTPException(400, "A future appointment cannot be marked completed or no-show.")
     appt.status = payload.status
+    visit_changes.close_request(db, appt, f"The visit was set to {payload.status}.")  # a request to cancel or move it is answered by this
     ep = db.get(models.PregnancyEpisode, appt.episode_id)
     notify(db, ep.id, ep.patient_user_id, f"appointment_{payload.status}", kind=appt.appointment_type)
     audit(db, user, "appointment_status_changed", appt, after=row(appt))

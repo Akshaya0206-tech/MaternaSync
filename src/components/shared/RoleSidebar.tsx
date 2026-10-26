@@ -10,6 +10,8 @@ export interface RoleNavItem {
   icon: ReactNode;
   /** Small tag after the label, e.g. "Paused". */
   badge?: string;
+  /** A small dot after the label meaning "something new here". The text is its accessible name, for example "New updates". */
+  dot?: string;
   /** Other pages that belong to this item, which stays highlighted on them (e.g. a step-by-step version of the page). */
   alsoActiveOn?: string[];
 }
@@ -135,6 +137,9 @@ export function RoleSidebar({ brandSubtitle, navItems, userName, roleLabel, onLo
               <>
                 <span style={{ display: 'flex', flexShrink: 0 }}>{item.icon}</span>
                 <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.35 }}>{item.label}</span>
+                {item.dot && (
+                  <span role="img" aria-label={item.dot} style={{ flexShrink: 0, width: '9px', height: '9px', borderRadius: '50%', background: 'var(--terracotta)' }} />
+                )}
                 {item.badge && (
                   <span style={{ flexShrink: 0, padding: '1px 7px', borderRadius: '999px', border: '1px solid currentColor', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase', opacity: 0.85 }}>
                     {item.badge}

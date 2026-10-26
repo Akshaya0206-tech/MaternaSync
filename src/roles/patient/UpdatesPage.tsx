@@ -1,15 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bell, CheckCheck } from 'lucide-react';
 import { fetchMyUpdates, markMyUpdateRead } from '../../api/patientPortal';
 import type { PatientNotification } from '../../api/patientPortal';
+import { markUpdatesRead } from '../../api/updates';
 import { formatFriendlyDate } from './format';
+import { announceUnreadChange } from './useUnreadUpdates';
 import { tx, useLanguage } from '../../i18n';
+
+// The button on an update says which page it leads to.
+const OPEN_LABEL: Record<string, string> = {
+  '/patient/questions': tx('Open My Questions'),
+  '/patient/care-plan': tx('Open My Care Plan'),
+  '/patient/appointments': tx('Open Appointments'),
+  '/patient/records': tx('Open My Records'),
+  '/patient/journey': tx('Open My Journey'),
+  '/patient/profile': tx('Open Profile'),
+  '/patient/daily-log': tx('Open Daily Check-in'),
+  '/patient/consent': tx('Open Sharing & Consent'),
+};
 
 export function UpdatesPage() {
   const { t } = useLanguage();
   const [updates, setUpdates] = useState<PatientNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     fetchMyUpdates()
@@ -18,16 +34,39 @@ export function UpdatesPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const handleOpen = (update: PatientNotification) => {
+  const unread = updates.filter((update) => !update.isRead).length;
+
+  const markRead = (update: PatientNotification) => {
     if (update.isRead) return;
     markMyUpdateRead(update.id)
-      .then(() => setUpdates((prev) => prev.map((u) => (u.id === update.id ? { ...u, isRead: true } : u))))
+      .then(() => {
+        setUpdates((prev) => prev.map((u) => (u.id === update.id ? { ...u, isRead: true } : u)));
+        announceUnreadChange();
+      })
       .catch(() => { /* non-critical; leave as unread */ });
   };
 
+  const markAllRead = () => {
+    markUpdatesRead('all')
+      .then(() => {
+        setUpdates((prev) => prev.map((u) => ({ ...u, isRead: true })));
+        setNotice(t('All your updates are marked as read.'));
+        announceUnreadChange();
+      })
+      .catch(() => setNotice(t('Could not mark the updates as read. Please try again.')));
+  };
+
   return (
-    <main style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
-      <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('Updates')}</h1>
+    <main className="updates-page patient-home" style={{ padding: '24px', flex: 1, maxWidth: '760px', margin: '0 auto', width: '100%' }}>
+      <div className="updates-heading">
+        <h1 className="page-title" style={{ fontSize: '1.4rem', margin: 0 }}>{t('Updates')}</h1>
+        {!isLoading && !error && unread > 0 && (
+          <button type="button" className="btn-secondary" onClick={markAllRead}>
+            <CheckCheck size={15} aria-hidden="true" /> {t('Mark all read')}
+          </button>
+        )}
+      </div>
+      <p role="status" className="continuity-muted updates-notice">{notice}</p>
 
       {isLoading && (
         <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading your updates…')}</div>
@@ -44,31 +83,36 @@ export function UpdatesPage() {
       )}
 
       {!isLoading && !error && updates.length > 0 && (
-        <div className="glass-panel" style={{ padding: '4px 0' }}>
-          {updates.map((update, index) => (
-            <button
-              key={update.id}
-              onClick={() => handleOpen(update)}
-              style={{
-                display: 'flex', alignItems: 'flex-start', gap: '14px', padding: '16px 22px', width: '100%',
-                textAlign: 'left', background: 'none', border: 'none', cursor: update.isRead ? 'default' : 'pointer', font: 'inherit',
-                borderBottom: index === updates.length - 1 ? 'none' : '1px solid var(--border-color)',
-              }}
-            >
-              <span style={{ flexShrink: 0, marginTop: '2px', position: 'relative' }}>
-                <Bell size={18} style={{ color: update.isRead ? 'var(--text-muted)' : 'var(--teal-primary)' }} />
-                {!update.isRead && (
-                  <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '7px', height: '7px', borderRadius: '50%', background: 'var(--terracotta)' }} />
-                )}
+        <ul className="glass-panel updates-list">
+          {updates.map((update) => (
+            <li key={update.id} className={`update-item${update.isRead ? '' : ' update-unread'}`}>
+              <span className="update-icon" aria-hidden="true">
+                <Bell size={18} />
+                {!update.isRead && <span className="update-dot" />}
               </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: update.isRead ? 500 : 700, color: 'var(--text-primary)' }}>{update.title}</div>
-                {update.body && <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '3px' }}>{update.body}</div>}
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>{formatFriendlyDate(update.createdAt)}</div>
+              <div className="update-body">
+                <div className="update-title">
+                  {update.title}
+                  {!update.isRead && <span className="update-new">{t('New')}</span>}
+                </div>
+                {update.body && <div className="update-text">{update.body}</div>}
+                <div className="update-date">{formatFriendlyDate(update.createdAt)}</div>
+                {(update.link || !update.isRead) && (
+                  <div className="update-actions">
+                    {update.link && (
+                      <Link className="btn-secondary" to={update.link} onClick={() => markRead(update)}>
+                        {t(OPEN_LABEL[update.link] ?? tx('Open it'))}
+                      </Link>
+                    )}
+                    {!update.isRead && (
+                      <button type="button" className="btn-secondary" onClick={() => markRead(update)}>{t('Mark as read')}</button>
+                    )}
+                  </div>
+                )}
               </div>
-            </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </main>
   );

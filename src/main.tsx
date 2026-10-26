@@ -8,8 +8,10 @@ import './components/continuity/continuity.css'
 import { AuthProvider } from './auth/AuthContext'
 import { AppRoutes } from './routes/AppRoutes'
 import { applyTextSize } from './accessibility/textSize'
+import { registerServiceWorker } from './offline/registerServiceWorker'
 
 applyTextSize() // the text size chosen on this device applies from the first screen, signed in or not
+registerServiceWorker() // lets the app open without a signal
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

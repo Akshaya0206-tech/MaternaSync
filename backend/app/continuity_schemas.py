@@ -33,6 +33,7 @@ class LogIn(Input):
     skipped: bool = False
     correction_reason: str = Field("", max_length=1000)
     entered_with_help: str | None = Field(None, max_length=120)
+    client_ref: str | None = Field(None, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
 
     @field_validator("entered_with_help")
     @classmethod

@@ -16,10 +16,14 @@ class PatientQuestion(Base):
     status = Column(String, default="NEW")  # NEW | ASSIGNED | WAITING_FOR_RESPONSE | ANSWERED | CLOSED
     is_clinical = Column(Boolean, default=False)
     assigned_to_user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    # Set when she asks again about an answer she has already had ("I still have a question"): the earlier question it follows.
+    follow_up_of_id = Column(String, ForeignKey("patient_questions.id"), nullable=True)
 
     created_at = Column(DateTime, default=now)
 
     responses = relationship("QuestionResponse", back_populates="question", cascade="all, delete-orphan")
+    attachments = relationship("QuestionAttachment", back_populates="question", cascade="all, delete-orphan")
+    follow_up_of = relationship("PatientQuestion", remote_side=[id], foreign_keys=[follow_up_of_id])
 
 
 class QuestionResponse(Base):
@@ -45,3 +49,18 @@ class QuestionResponse(Base):
     created_at = Column(DateTime, default=now)
 
     question = relationship("PatientQuestion", back_populates="responses")
+
+
+class QuestionAttachment(Base):
+    """A photo or report she attached to a question. The file itself is an ordinary MedicalDocument, so it is reviewed like any record
+    she uploads; this row only says which question it came with."""
+
+    __tablename__ = "question_attachments"
+
+    id = Column(String, primary_key=True, default=new_id)
+    question_id = Column(String, ForeignKey("patient_questions.id"), nullable=False)
+    document_id = Column(String, ForeignKey("medical_documents.id"), nullable=False)
+    created_at = Column(DateTime, default=now)
+
+    question = relationship("PatientQuestion", back_populates="attachments")
+    document = relationship("MedicalDocument")

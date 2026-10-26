@@ -13,6 +13,8 @@ from sqlalchemy.engine import Engine
 ADDITIVE_COLUMNS = {
     "users": [
         ("title", "VARCHAR"),
+        ("token_version", "INTEGER"),
+        ("closed_at", "DATETIME"),
     ],
     "referrals": [
         ("reference_code", "VARCHAR"),
@@ -42,6 +44,7 @@ ADDITIVE_COLUMNS = {
     ],
     "medical_documents": [
         ("referral_id", "VARCHAR"),
+        ("document_type", "VARCHAR"),
     ],
     "journey_events": [
         ("actor_label", "VARCHAR"),
@@ -61,8 +64,23 @@ ADDITIVE_COLUMNS = {
         ("superseded_by_id", "VARCHAR"),
         ("updated_at", "DATETIME"),
     ],
+    "patient_emergency_profiles": [
+        ("mcp_number", "VARCHAR"),
+    ],
+    "patient_questions": [
+        ("follow_up_of_id", "VARCHAR"),
+    ],
+    "appointments": [
+        ("change_kind", "VARCHAR"),
+        ("change_note", "VARCHAR"),
+        ("change_preferred_at", "DATETIME"),
+        ("change_requested_at", "DATETIME"),
+        ("change_new_appointment_id", "VARCHAR"),
+        ("change_task_id", "VARCHAR"),
+    ],
     "daily_logs": [
         ("entered_with_help", "VARCHAR"),
+        ("client_ref", "VARCHAR"),
     ],
     "ai_actions": [
         ("executed_by_user_id", "VARCHAR"),

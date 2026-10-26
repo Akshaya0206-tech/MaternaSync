@@ -3,7 +3,7 @@ import { clearVisitHelp, setVisitHelp } from '../../api/caregiver';
 import type { CaregiverAppointment, VisitAnswer } from '../../api/caregiver';
 import { Feedback, useAction } from '../../components/continuity/shared';
 import { useLanguage } from '../../i18n';
-import { downloadCalendarFile, mapUrl } from './calendar';
+import { downloadCalendarFile, mapUrl } from '../../calendar/calendarFile';
 
 /** For one upcoming visit: where it is (with a map link), a calendar file for their phone, and "I'll take her" or "I can't come".
  *  Their answer is shown to her on her Appointments page and she is told in her Updates. It says who can come, nothing about the visit. */

@@ -34,6 +34,11 @@ class User(Base):
     role = Column(String, nullable=False, default="other")
     title = Column(String, nullable=True)  # e.g. "Care Coordinator" — display only, new system
     created_at = Column(DateTime, default=_now)
+    # A sign-in token carries the number it was made with ("ver"). Changing the password or "Sign out other devices" adds one, so every
+    # older token stops working at once. Rows made before this column existed hold NULL, which counts as 0, like a token without "ver".
+    token_version = Column(Integer, nullable=True, default=0)
+    # Set when a patient closes her own account (Profile -> Close my account). A closed account cannot sign in; her record stays with the clinic.
+    closed_at = Column(DateTime, nullable=True)
 
 
 class Patient(Base):

@@ -17,15 +17,20 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: str, token_version: int | None = 0) -> str:
+    """`token_version` is the user's session counter (User.token_version); it is checked on every request (deps.get_current_user)."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRES_MINUTES)
-    payload = {"sub": user_id, "exp": expire}
+    payload = {"sub": user_id, "exp": expire, "ver": int(token_version or 0)}
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_claims(token: str) -> dict | None:
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return payload.get("sub")
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except jwt.PyJWTError:
         return None
+
+
+def decode_access_token(token: str) -> str | None:
+    claims = decode_access_claims(token)
+    return claims.get("sub") if claims else None

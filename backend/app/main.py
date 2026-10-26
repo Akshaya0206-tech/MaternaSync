@@ -11,11 +11,13 @@ from .database import Base, SessionLocal, engine, get_db
 from .deps import require_role
 from .migrations import backfill_handover_versions, run_additive_migrations
 from .reminders import check_reminders
-from .routers import auth, care_team_portal, clinical_guidelines, doctor_portal, episodes, external_simulator, patient_portal, patients, records, workflow
+from .routers import auth, care_team_portal, clinical_guidelines, doctor_portal, episodes, external_simulator, patient_portal, patient_updates, patients, records, workflow
 from .seed_data import run_seed
-from .routers import assistant, caregiver, continuity, clinical_library, companion, emergency as emergency_router, references, whatsapp_webhook
+from .routers import account
+from .routers import assistant, caregiver, continuity, clinical_library, clinic_emergency, companion, emergency as emergency_router, question_extras, references, topic_reviews, whatsapp_webhook
 from .seed_continuity import ensure_demo_locations, remove_withdrawn_features, run_seed_continuity
 from .seed_assistant import ensure_assistant_user, ensure_demo_caregiver
+from .seed_documents import ensure_document_labels
 from .ai_coordinator import orchestrator
 from . import config
 from .config import DEMO_ENABLED
@@ -38,18 +40,23 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(account.router)
 app.include_router(patients.router)
 app.include_router(records.router)
 app.include_router(workflow.router)
 app.include_router(episodes.router)
 app.include_router(patient_portal.router)
+app.include_router(question_extras.router)
+app.include_router(patient_updates.router)
 app.include_router(care_team_portal.router)
 app.include_router(doctor_portal.router)
 app.include_router(external_simulator.router)
 app.include_router(continuity.router)
 app.include_router(clinical_library.router)
 app.include_router(references.router)
+app.include_router(topic_reviews.router)
 app.include_router(emergency_router.router)
+app.include_router(clinic_emergency.router)
 app.include_router(companion.router)
 app.include_router(whatsapp_webhook.router)
 app.include_router(clinical_guidelines.router)
@@ -83,6 +90,7 @@ def on_startup():
             run_seed_continuity(db)
             ensure_demo_locations(db)
             ensure_demo_caregiver(db)
+            ensure_document_labels(db)  # plain titles and a type for the demo records
         # Real reference documents belong to every deployment, not only the demo.
         sync_reference_library(db)
         remove_withdrawn_features(db)  # drug-safety lists and blood-pressure/weight rules are no longer used anywhere

@@ -74,6 +74,7 @@ export const entries: Record<string, Entry> = {
   "That invite code is not valid or has expired. Ask her to make a new one.": e("वह आमंत्रण कोड सही नहीं है या समाप्त हो चुका है। उनसे नया बनाने को कहें।", "அந்த அழைப்புக் குறியீடு செல்லாதது அல்லது காலாவதியானது. புதியதை உருவாக்கச் சொல்லுங்கள்.", "ఆ ఆహ్వాన కోడ్ చెల్లదు లేదా గడువు ముగిసింది. కొత్తది తయారు చేయమని ఆమెను అడగండి."),
   "You cannot be your own trusted person.": e("आप अपने ही भरोसेमंद व्यक्ति नहीं हो सकतीं।", "நீங்கள் உங்களுக்கே நம்பகமான நபராக இருக்க முடியாது.", "మీరు మీకే నమ్మకమైన వ్యక్తి కాలేరు."),
   "The care-team sign-in is switched off. The clinic's care assistant and your doctor now do that work. A trusted family member can use a caregiver login instead.": e("देखभाल-टीम का साइन इन बंद है। यह काम अब क्लिनिक का केयर असिस्टेंट और आपके डॉक्टर करते हैं। भरोसेमंद परिवार का सदस्य इसके बजाय देखभालकर्ता लॉगिन उपयोग कर सकता है।", "பராமரிப்புக் குழு உள்நுழைவு அணைக்கப்பட்டுள்ளது. அந்தப் பணியை இப்போது மருத்துவமனையின் பராமரிப்பு உதவியாளரும் உங்கள் மருத்துவரும் செய்கிறார்கள். நம்பகமான குடும்ப உறுப்பினர் அதற்குப் பதிலாக பராமரிப்பாளர் உள்நுழைவைப் பயன்படுத்தலாம்.", "సంరక్షణ బృందం సైన్-ఇన్ ఆఫ్ చేయబడింది. ఆ పనిని ఇప్పుడు క్లినిక్ కేర్ అసిస్టెంట్ మరియు మీ డాక్టర్ చేస్తారు. నమ్మకమైన కుటుంబ సభ్యులు బదులుగా సంరక్షకుడి లాగిన్‌ను ఉపయోగించవచ్చు."),
+  "This account was closed at your request. Please contact your doctor's clinic.": e("यह खाता आपके कहने पर बंद किया गया था। कृपया अपने डॉक्टर के क्लिनिक से संपर्क करें।", "இந்தக் கணக்கு உங்கள் கோரிக்கையின் பேரில் மூடப்பட்டது. உங்கள் மருத்துவரின் கிளினிக்கைத் தொடர்புகொள்ளுங்கள்.", "ఈ ఖాతా మీ అభ్యర్థన మేరకు మూసివేయబడింది. దయచేసి మీ డాక్టర్ క్లినిక్‌ను సంప్రదించండి."),
   "This account is a service account and cannot sign in.": e("यह एक सेवा खाता है और साइन इन नहीं कर सकता।", "இது ஒரு சேவைக் கணக்கு; உள்நுழைய முடியாது.", "ఇది సర్వీస్ ఖాతా, సైన్ ఇన్ చేయలేదు."),
 };
 
@@ -83,5 +84,5 @@ export const serverStrings: string[] = [
   "Please tell us where you live: your area or city, or use your current location.",
   "That invite code is not valid or has expired. Ask her to make a new one.", "You cannot be your own trusted person.",
   "The care-team sign-in is switched off. The clinic's care assistant and your doctor now do that work. A trusted family member can use a caregiver login instead.",
-  "This account is a service account and cannot sign in.", "Nurse", "Care Coordinator", "Other Care Team Member", "Caregiver", "Care Team",
+  "This account is a service account and cannot sign in.", "This account was closed at your request. Please contact your doctor's clinic.", "Nurse", "Care Coordinator", "Other Care Team Member", "Caregiver", "Care Team",
 ];

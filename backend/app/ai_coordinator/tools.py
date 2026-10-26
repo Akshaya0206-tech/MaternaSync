@@ -161,8 +161,8 @@ def _verify_document(db, args, actor, episode_id) -> Outcome:
         event_date=document.document_date or (ext.event_date if ext else None) or now().date().isoformat(),
         gestational_age_weeks=episode.gestational_age_weeks if episode else 0, gestational_age_days=episode.gestational_age_days if episode else 0,
         actor_label=actor.full_name)
-    note = server_text.notify_key(db, document.uploaded_by_user_id, "document_verified_patient", episode_id=episode_id, type_="document_verified",
-                                  related_entity_type="MedicalDocument", related_entity_id=document.id)
+    note = server_text.notify_key(db, document.uploaded_by_user_id, "document_reviewed_named", episode_id=episode_id, type_="document_verified",
+                                  params={"title": event.title}, related_entity_type="MedicalDocument", related_entity_id=document.id)
     db.add_all([review, event])
     closed = _complete_review_tasks(db, document.id)
     db.flush()

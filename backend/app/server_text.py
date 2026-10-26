@@ -79,6 +79,11 @@ CATALOG = {
         _m("Your care team reviewed your uploaded documents", "आपकी देखभाल टीम ने आपके अपलोड किए दस्तावेज़ों की समीक्षा की",
            "நீங்கள் பதிவேற்றிய ஆவணங்களை உங்கள் பராமரிப்புக் குழு பார்வையிட்டது", "మీరు అప్‌లోడ్ చేసిన పత్రాలను మీ సంరక్షణ బృందం సమీక్షించింది"),
         _m("Your journey has been updated.", "आपकी यात्रा अपडेट कर दी गई है।", "உங்கள் பயணம் புதுப்பிக்கப்பட்டது.", "మీ ప్రయాణం నవీకరించబడింది.")),
+    # Written from 2026-10-26 on, so the update says which document and where to read it. The two older messages above stay for the rows that already exist.
+    "document_reviewed_named": (
+        _m("Your document was reviewed: {title}", "आपका दस्तावेज़ जाँचा गया: {title}", "உங்கள் ஆவணம் பார்வையிடப்பட்டது: {title}", "మీ పత్రం సమీక్షించబడింది: {title}"),
+        _m("It has been checked and added to your journey.", "इसकी जाँच हो गई है और इसे आपकी यात्रा में जोड़ दिया गया है।",
+           "இது சரிபார்க்கப்பட்டு உங்கள் பயணத்தில் சேர்க்கப்பட்டுள்ளது.", "ఇది తనిఖీ చేయబడి మీ ప్రయాణంలో చేర్చబడింది.")),
     "document_rejected_patient": (
         _m("Your care team reviewed an uploaded document", "आपकी देखभाल टीम ने आपके अपलोड किए दस्तावेज़ की समीक्षा की",
            "நீங்கள் பதிவேற்றிய ஆவணத்தை உங்கள் பராமரிப்புக் குழு பார்வையிட்டது", "మీరు అప్‌లోడ్ చేసిన పత్రాన్ని మీ సంరక్షణ బృందం సమీక్షించింది"),
@@ -183,9 +188,19 @@ CATALOG = {
         _m("A trusted person's access has ended", "एक भरोसेमंद व्यक्ति की पहुँच समाप्त हो गई", "நம்பகமான ஒருவரின் அணுகல் முடிந்துவிட்டது", "ఒక నమ్మకమైన వ్యక్తి యాక్సెస్ ముగిసింది"),
         _m("{name} can no longer see your information. You can extend it from your Profile page.", "{name} अब आपकी जानकारी नहीं देख सकते। आप इसे अपने प्रोफ़ाइल पेज से बढ़ा सकती हैं।",
            "{name}-ஆல் இனி உங்கள் தகவலைப் பார்க்க முடியாது. உங்கள் சுயவிவரப் பக்கத்திலிருந்து நீட்டிக்கலாம்.", "{name} ఇకపై మీ సమాచారాన్ని చూడలేరు. మీ ప్రొఫైల్ పేజీ నుండి పొడిగించవచ్చు.")),
+    "visit_change_sent": (
+        _m("Your request about a visit was sent", "मुलाक़ात के बारे में आपका अनुरोध भेज दिया गया", "வருகை குறித்த உங்கள் கோரிக்கை அனுப்பப்பட்டது", "సందర్శన గురించి మీ అభ్యర్థన పంపబడింది"),
+        _m("Your doctor’s clinic will answer. Your visit has not changed yet.", "आपके डॉक्टर का क्लिनिक जवाब देगा। आपकी मुलाक़ात अभी बदली नहीं है।",
+           "உங்கள் மருத்துவரின் கிளினிக் பதிலளிக்கும். உங்கள் வருகை இன்னும் மாற்றப்படவில்லை.", "మీ డాక్టర్ క్లినిక్ సమాధానం ఇస్తుంది. మీ సందర్శన ఇంకా మారలేదు.")),
     # ---- to the doctor
     "appointment_requested": (
         _m("Appointment requested", "अपॉइंटमेंट का अनुरोध", "சந்திப்புக் கோரிக்கை", "అపాయింట్‌మెంట్ అభ్యర్థన"), _m("{kind}", "{kind}", "{kind}", "{kind}")),
+    "visit_change_requested": (
+        _m("A patient asked to change a visit", "एक रोगी ने मुलाक़ात बदलने को कहा", "ஒரு நோயாளி வருகையை மாற்றக் கேட்டார்", "ఒక రోగి సందర్శనను మార్చమని కోరారు"),
+        _m("{what} Nothing has been changed yet.", "{what} अभी कुछ बदला नहीं गया है।", "{what} இன்னும் எதுவும் மாற்றப்படவில்லை.", "{what} ఇంకా ఏమీ మార్చబడలేదు.")),
+    "visit_change_withdrawn": (
+        _m("A patient withdrew a request to change a visit", "रोगी ने मुलाक़ात बदलने का अनुरोध वापस ले लिया", "நோயாளி வருகை மாற்றக் கோரிக்கையைத் திரும்பப் பெற்றார்", "రోగి సందర్శన మార్పు అభ్యర్థనను వెనక్కి తీసుకున్నారు"),
+        _m("{what}", "{what}", "{what}", "{what}")),
     "help_requested": (
         _m("A patient asked for help with a reminder", "रोगी ने रिमाइंडर में मदद माँगी", "நோயாளி நினைவூட்டலில் உதவி கேட்டார்", "రోగి రిమైండర్‌లో సహాయం కోరారు"),
         _m("{title}", "{title}", "{title}", "{title}")),
@@ -229,6 +244,12 @@ CATALOG = {
         _m("A draft is ready for you", "आपके लिए एक मसौदा तैयार है", "உங்களுக்கான வரைவு தயாராக உள்ளது", "మీ కోసం ఒక ముసాయిదా సిద్ధంగా ఉంది"),
         _m("{patient}: {title}. It is waiting for your review.", "{patient}: {title}। यह आपकी समीक्षा की प्रतीक्षा में है।",
            "{patient}: {title}. இது உங்கள் பார்வைக்காகக் காத்திருக்கிறது.", "{patient}: {title}. ఇది మీ సమీక్ష కోసం వేచి ఉంది.")),
+    "account_closed": (
+        _m("A patient closed her account", "एक रोगी ने अपना खाता बंद कर दिया", "ஒரு நோயாளி தன் கணக்கை மூடினார்", "ఒక రోగి తన ఖాతాను మూసివేశారు"),
+        _m("{name} closed her account and asked for her data to be erased. Please follow your clinic's policy and the law. There is a task for it.",
+           "{name} ने अपना खाता बंद कर दिया और अपना डेटा मिटाने को कहा है। कृपया अपने क्लिनिक की नीति और कानून का पालन करें। इसके लिए एक कार्य बनाया गया है।",
+           "{name} தன் கணக்கை மூடி, தன் தரவை அழிக்கும்படி கேட்டுள்ளார். உங்கள் கிளினிக்கின் கொள்கையையும் சட்டத்தையும் பின்பற்றுங்கள். இதற்காக ஒரு பணி உருவாக்கப்பட்டுள்ளது.",
+           "{name} తన ఖాతాను మూసివేసి, తన డేటాను తొలగించమని కోరారు. దయచేసి మీ క్లినిక్ విధానాన్ని మరియు చట్టాన్ని అనుసరించండి. దీనికి ఒక పని సృష్టించబడింది.")),
     "handover_ready": (
         _m("A handover draft is ready", "हैंडओवर का मसौदा तैयार है", "ஒப்படைப்பு வரைவு தயாராக உள்ளது", "హ్యాండోవర్ ముసాయిదా సిద్ధంగా ఉంది"),
         _m("{patient}: please review it, edit it if needed and share it yourself.", "{patient}: कृपया इसकी समीक्षा करें, ज़रूरत हो तो बदलें और स्वयं साझा करें।",
@@ -339,5 +360,7 @@ def texts(db, reader_id: str, note: models.Notification) -> tuple[str, str]:
 
 def notification_out(db, reader, note: models.Notification):
     from .schemas_v2 import NotificationOut
+    from .update_links import link_for
     title, body = texts(db, reader.id, note)
-    return NotificationOut(id=note.id, type=note.type, title=title, body=body, is_read=bool(note.is_read), created_at=note.created_at)
+    return NotificationOut(id=note.id, type=note.type, title=title, body=body, is_read=bool(note.is_read), created_at=note.created_at,
+                           link=link_for(note) if reader.role == "patient" else None)

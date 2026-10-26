@@ -22,9 +22,9 @@ export function timeOfDayGreeting(): string {
 }
 
 const QUESTION_STATUS_LABELS: Record<string, string> = {
-  NEW: tx('New'),
-  ASSIGNED: tx('Assigned'),
-  WAITING_FOR_RESPONSE: tx('Waiting for Response'),
+  NEW: tx('Sent to your doctor'),
+  ASSIGNED: tx('Your doctor is reviewing it'),
+  WAITING_FOR_RESPONSE: tx('Your doctor is reviewing it'),
   ANSWERED: tx('Answered'),
   CLOSED: tx('Closed'),
 };

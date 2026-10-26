@@ -35,6 +35,13 @@ for (const topic of data.topics) {
   for (const source of topic.sources) if (!/^https:\/\/\S+$/.test(source.url) || !source.label || !source.publisher) fail(`${topic.id}: bad source ${JSON.stringify(source)}`);
   if (!topic.keywords.length) fail(`${topic.id}: no search keywords`);
 }
+// "Read next" links must lead to a topic that exists, and not to the topic itself.
+for (const topic of data.topics) {
+  for (const other of topic.seeAlso ?? []) {
+    if (!ids.has(other)) fail(`${topic.id}: seeAlso names an unknown topic ${other}`);
+    if (other === topic.id) fail(`${topic.id}: seeAlso names itself`);
+  }
+}
 if (data.topics[0]?.id !== "danger-signs") fail("the warning signs topic must come first");
 if (!data.topics.find((t) => t.id === "danger-signs")?.seekHelp.en.length) fail("danger-signs needs its list of warning signs");
 for (const helpline of data.helplines) {

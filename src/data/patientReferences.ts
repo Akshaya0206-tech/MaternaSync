@@ -3,7 +3,7 @@ import type { PatientReferences } from './patientReferencesTypes';
 // Pregnancy information for patients, written in our own words from official pages (MoHFW/NHM, ICMR-NIN, WHO, NHS).
 // Sources, checking notes and what still needs a native speaker's and a clinician's review: see patientReferences.notes.md.
 export const patientReferences: PatientReferences = {
- "generatedFrom": "Checked on 2026-10-24. Every statement was written in the author's own words from official pages that were opened that day: HTML pages with WebFetch, and PDFs downloaded and read as text. Source priority was MoHFW/NHM/MWCD/ICMR-NIN (India), then WHO, then NHS (UK) for general medical topics. All listed URLs returned HTTP 200 on 2026-10-24 and are the final URLs after redirects. Several Indian documents are older (MCP card 2018 version, GDM guideline December 2014, Td guidelines about 2019, Safe Motherhood booklet undated) and should be re-checked against current MoHFW releases. UK-only details (phone numbers, NHS service names) were not used; only the general medical advice was. Not yet reviewed by a clinician or by native speakers of Hindi, Tamil and Telugu.",
+ "generatedFrom": "Checked on 2026-10-24. Every statement was written in the author's own words from official pages that were opened that day: HTML pages with WebFetch, and PDFs downloaded and read as text. Source priority was MoHFW/NHM/MWCD/ICMR-NIN (India), then WHO, then NHS (UK) for general medical topics. All listed URLs returned HTTP 200 on 2026-10-24 and are the final URLs after redirects. Several Indian documents are older (MCP card 2018 version, GDM guideline December 2014, Td guidelines about 2019, Safe Motherhood booklet undated) and should be re-checked against current MoHFW releases. UK-only details (phone numbers, NHS service names) were not used; only the general medical advice was. Not yet reviewed by a clinician or by native speakers of Hindi, Tamil and Telugu. On 2026-10-26 four topics were added (what happens in labour and birth; breastfeeding and feeding your newborn; caring for your newborn baby; family planning after the birth). They were written in the author's own words from the official PDFs and pages named under each topic, which were opened and read that day (MoHFW Safe Motherhood booklet, MCP card, MAA training module and Postpartum IUCD manual; the WHO guide for essential practice and WHO intrapartum recommendations; WHO fact sheets; NHS pages). They have NOT been reviewed by a clinician or by native speakers.",
  "categories": [
   {
    "id": "safety",
@@ -1503,6 +1503,123 @@ export const patientReferences: PatientReferences = {
    ]
   },
   {
+   "id": "what-to-expect-in-labour",
+   "category": "baby",
+   "title": {
+    "en": "What happens in labour and birth",
+    "hi": "प्रसव के दौरान क्या होता है",
+    "ta": "பிரசவத்தின்போது என்ன நடக்கும்",
+    "te": "కాన్పు సమయంలో ఏం జరుగుతుంది"
+   },
+   "summary": {
+    "en": "Labour usually has three parts: the neck of the womb (cervix) opens, the baby is born, and then the placenta comes out. It can take many hours, especially with a first baby. You can ask your health worker what is happening at every step. This is general information, so please follow the advice of your own doctor.",
+    "hi": "प्रसव आमतौर पर तीन चरणों में होता है: गर्भाशय का मुँह (सर्विक्स) खुलता है, शिशु का जन्म होता है, और फिर प्लेसेंटा (नाल) बाहर आती है। इसमें कई घंटे लग सकते हैं, खासकर पहले शिशु में। आप हर चरण पर अपने स्वास्थ्यकर्मी से पूछ सकती हैं कि क्या हो रहा है। यह सामान्य जानकारी है, इसलिए कृपया अपने डॉक्टर की सलाह मानें।",
+    "ta": "பிரசவம் பொதுவாக மூன்று பகுதிகளாக நடக்கும்: கருப்பை வாய் (சர்விக்ஸ்) திறக்கிறது, குழந்தை பிறக்கிறது, பிறகு நஞ்சுக்கொடி வெளியேறுகிறது. இதற்குப் பல மணி நேரம் ஆகலாம், குறிப்பாக முதல் குழந்தையின்போது. ஒவ்வொரு கட்டத்திலும் என்ன நடக்கிறது என்று சுகாதாரப் பணியாளரிடம் கேட்கலாம். இது பொதுவான தகவல்; எனவே உங்கள் மருத்துவரின் ஆலோசனையைப் பின்பற்றுங்கள்.",
+    "te": "కాన్పు సాధారణంగా మూడు భాగాలుగా సాగుతుంది: గర్భాశయ ముఖద్వారం (సర్విక్స్) తెరుచుకుంటుంది, బిడ్డ పుడుతుంది, ఆ తర్వాత మావి (ప్లాసెంటా) బయటకు వస్తుంది. దీనికి చాలా గంటలు పట్టవచ్చు, ముఖ్యంగా మొదటి బిడ్డ విషయంలో. ప్రతి దశలో ఏం జరుగుతోందో ఆరోగ్య కార్యకర్తను అడగవచ్చు. ఇది సాధారణ సమాచారం, కాబట్టి దయచేసి మీ డాక్టర్ సలహాను పాటించండి."
+   },
+   "keyPoints": {
+    "en": [
+     "Early labour can be long. The womb tightens in waves that may be uneven at first, and this stage can last many hours. If you are still at home, rest when you can, eat and drink what you feel like, and keep gently moving. Your ANM, ASHA or doctor will tell you when to go to the health facility you planned; the page on getting ready for the birth lists the signs.",
+     "In active labour the waves become stronger and more regular, and the cervix opens faster. The health team will check from time to time how you and the baby are doing, and can explain what they find.",
+     "You do not have to stay in bed. Walking around in the first stage is encouraged, and you can choose the position that feels right, such as standing with support, kneeling, squatting or lying on your left side. Lying flat on your back is not advised for the birth.",
+     "Eat and drink as you wish, and pass urine often. Nourishing drinks help even late in labour.",
+     "You can have a companion of your choice with you through labour and birth, such as your husband, your mother or another trusted person. A companion can encourage you, help you breathe and relax, rub your back, wipe your face with a cool cloth and give you sips of water. They should call the health worker if you start to bear down, bleed, suddenly have much more pain, or if anything worries them. Ask your clinic beforehand whether a companion can stay with you.",
+     "There are choices for easing the pain: changing position, walking, breathing slowly and relaxing, massage, a warm shower or warm packs, and pain-relieving medicine from the health team if you ask for it and the facility offers it. Tell the team what you would like.",
+     "When the cervix is fully open, the pushing stage begins. You may feel a strong urge to push. Your midwife or doctor will guide you, and may ask you to pause for a moment so that the baby's head comes out gently.",
+     "After the birth, if you and the baby are well, you can usually hold your baby on your chest skin to skin straight away and start breastfeeding within the first hour. The womb then pushes out the placenta, and your health team will check you for bleeding and explain what they are doing.",
+     "You should be treated with respect and privacy, have things explained in words you understand, and be asked before examinations and treatments. You can ask questions at any time.",
+     "Every labour is different. How long it takes and how it feels varies, and plans can change if you or the baby need extra help. For the signs that mean you must go to hospital at once, see the page “Warning signs: when to get help right away”."
+    ],
+    "hi": [
+     "शुरुआती प्रसव लंबा हो सकता है। गर्भाशय लहरों की तरह सिकुड़ता है जो शुरू में अनियमित हो सकती हैं, और यह चरण कई घंटे चल सकता है। अगर आप अभी घर पर हैं तो जब हो सके आराम करें, जो मन करे खाएँ-पिएँ, और हल्का-हल्का चलती रहें। आपकी ANM, आशा या डॉक्टर बताएँगे कि आपको कब अपने चुने हुए स्वास्थ्य केंद्र जाना है; प्रसव की तैयारी वाले पन्ने पर संकेत दिए गए हैं।",
+     "सक्रिय प्रसव में ये लहरें ज़्यादा तेज़ और नियमित हो जाती हैं, और गर्भाशय का मुँह तेज़ी से खुलता है। स्वास्थ्य टीम समय-समय पर देखेगी कि आप और शिशु कैसे हैं, और जो पाएगी वह आपको समझा सकती है।",
+     "आपको बिस्तर पर ही रहना ज़रूरी नहीं है। पहले चरण में चलते-फिरते रहना अच्छा माना जाता है, और आप वह स्थिति चुन सकती हैं जो आपको ठीक लगे, जैसे सहारे के साथ खड़े होना, घुटनों के बल बैठना, उकड़ूँ बैठना या बाईं करवट लेटना। प्रसव के समय पीठ के बल सीधा लेटना ठीक नहीं माना जाता।",
+     "जैसा मन करे खाएँ और पिएँ, और बार-बार पेशाब करें। पौष्टिक पेय प्रसव के आख़िरी दौर में भी मदद करते हैं।",
+     "प्रसव और जन्म के दौरान आप अपनी पसंद का कोई साथी रख सकती हैं, जैसे पति, माँ या कोई और भरोसेमंद व्यक्ति। साथी आपका हौसला बढ़ा सकता है, साँस लेने और आराम करने में मदद कर सकता है, पीठ सहला सकता है, ठंडे कपड़े से चेहरा पोंछ सकता है और घूँट-घूँट पानी पिला सकता है। अगर आप ज़ोर लगाने लगें, खून बहे, अचानक बहुत ज़्यादा दर्द हो, या कोई भी बात चिंता की लगे तो साथी को स्वास्थ्यकर्मी को बुलाना चाहिए। पहले से अपने क्लिनिक से पूछ लें कि साथी आपके साथ रह सकता है या नहीं।",
+     "दर्द कम करने के कई तरीके हैं: स्थिति बदलना, चलना, धीरे-धीरे साँस लेना और ढीला छोड़ना, मालिश, गुनगुने पानी से नहाना या गरम सेक, और अगर आप माँगें और सुविधा में उपलब्ध हो तो स्वास्थ्य टीम से दर्द कम करने की दवा। टीम को बताएँ कि आप क्या चाहती हैं।",
+     "जब गर्भाशय का मुँह पूरा खुल जाता है तो ज़ोर लगाने का चरण शुरू होता है। आपको ज़ोर लगाने की तेज़ इच्छा हो सकती है। आपकी दाई या डॉक्टर आपको बताएँगे, और कभी-कभी थोड़ी देर रुकने को कहेंगे ताकि शिशु का सिर धीरे से बाहर आए।",
+     "जन्म के बाद, अगर आप और शिशु ठीक हैं, तो आमतौर पर शिशु को तुरंत अपनी छाती पर त्वचा से त्वचा लगाकर रख सकती हैं और पहले घंटे के अंदर स्तनपान शुरू कर सकती हैं। फिर गर्भाशय प्लेसेंटा को बाहर धकेलता है, और आपकी स्वास्थ्य टीम खून बहने की जाँच करेगी और बताएगी कि क्या कर रही है।",
+     "आपके साथ सम्मान और निजता से पेश आना चाहिए, बातें ऐसी भाषा में समझाई जानी चाहिए जो आप समझें, और जाँच या इलाज से पहले आपसे पूछा जाना चाहिए। आप कभी भी सवाल पूछ सकती हैं।",
+     "हर प्रसव अलग होता है। कितना समय लगेगा और कैसा महसूस होगा, यह अलग-अलग होता है, और अगर आपको या शिशु को अतिरिक्त मदद चाहिए तो योजना बदल सकती है। जिन संकेतों पर तुरंत अस्पताल जाना ज़रूरी है, उनके लिए “खतरे के संकेत: कब तुरंत मदद लें” वाला पन्ना देखें।"
+    ],
+    "ta": [
+     "ஆரம்பக் கட்டப் பிரசவம் நீண்டதாக இருக்கலாம். கருப்பை அலைபோலச் சுருங்கும்; ஆரம்பத்தில் இது ஒழுங்கற்றதாக இருக்கலாம், இந்தக் கட்டம் பல மணி நேரம் நீடிக்கலாம். இன்னும் வீட்டில் இருந்தால், முடிந்தபோது ஓய்வெடுங்கள், விருப்பமானதை உண்ணுங்கள், குடியுங்கள், மெதுவாக நடமாடுங்கள். நீங்கள் திட்டமிட்ட சுகாதார மையத்துக்கு எப்போது செல்ல வேண்டும் என்பதை உங்கள் ANM, ஆஷா அல்லது மருத்துவர் சொல்வார்கள்; பிரசவத்துக்குத் தயாராகுதல் பக்கத்தில் அறிகுறிகள் உள்ளன.",
+     "தீவிரப் பிரசவக் கட்டத்தில் இந்த அலைகள் வலுவாகவும் ஒழுங்காகவும் மாறும்; கருப்பை வாய் வேகமாகத் திறக்கும். நீங்களும் குழந்தையும் எப்படி இருக்கிறீர்கள் என்பதைச் சுகாதாரக் குழு அவ்வப்போது பார்க்கும்; கண்டதை உங்களுக்கு விளக்கவும் முடியும்.",
+     "நீங்கள் படுக்கையிலேயே இருக்க வேண்டியதில்லை. முதல் கட்டத்தில் நடமாடுவது ஊக்குவிக்கப்படுகிறது; ஆதரவுடன் நிற்பது, மண்டியிடுவது, குத்துக்காலிட்டு அமர்வது அல்லது இடது பக்கமாகப் படுப்பது போன்ற, உங்களுக்குச் சரியெனத் தோன்றும் நிலையைத் தேர்ந்தெடுக்கலாம். பிரசவத்தின்போது முதுகு மேல்நோக்கிச் சமமாகப் படுப்பது பரிந்துரைக்கப்படுவதில்லை.",
+     "விருப்பம்போல உண்ணுங்கள், குடியுங்கள்; அடிக்கடி சிறுநீர் கழியுங்கள். சத்தான பானங்கள் பிரசவத்தின் பிற்பகுதியிலும் உதவும்.",
+     "பிரசவம் முழுவதும் உங்களுக்கு விருப்பமான ஒருவரைத் துணையாக வைத்துக்கொள்ளலாம்; கணவர், தாய் அல்லது நம்பிக்கையான வேறொருவர். துணையாக இருப்பவர் உங்களை ஊக்குவிக்கலாம், மூச்சுவிடவும் தளரவும் உதவலாம், முதுகைத் தேய்த்துவிடலாம், குளிர்ந்த துணியால் முகத்தைத் துடைக்கலாம், சிறிது சிறிதாகத் தண்ணீர் கொடுக்கலாம். நீங்கள் முக்கத் தொடங்கினாலோ, இரத்தம் வந்தாலோ, திடீரென மிகவும் அதிக வலி ஏற்பட்டாலோ, எதுவும் கவலை அளித்தாலோ அவர் சுகாதாரப் பணியாளரை அழைக்க வேண்டும். துணை உங்களுடன் இருக்கலாமா என்பதை முன்கூட்டியே உங்கள் கிளினிக்கிடம் கேளுங்கள்.",
+     "வலியைக் குறைக்கப் பல வழிகள் உள்ளன: நிலையை மாற்றுதல், நடத்தல், மெதுவாக மூச்சுவிட்டுத் தளர்வாக இருத்தல், மசாஜ், வெதுவெதுப்பான நீரில் குளித்தல் அல்லது சூடான ஒத்தடம், நீங்கள் கேட்டு, அந்தச் சுகாதார மையத்தில் வசதி இருந்தால் சுகாதாரக் குழுவிடமிருந்து வலி குறைக்கும் மருந்து. நீங்கள் என்ன விரும்புகிறீர்கள் என்பதைக் குழுவிடம் சொல்லுங்கள்.",
+     "கருப்பை வாய் முழுவதுமாகத் திறந்ததும் முக்கும் கட்டம் தொடங்கும். முக்க வேண்டும் என்ற வலுவான உந்துதல் ஏற்படலாம். உங்கள் மருத்துவச்சி அல்லது மருத்துவர் வழிநடத்துவார்; குழந்தையின் தலை மெதுவாக வெளிவர, சற்று நேரம் நிறுத்தவும் சொல்லலாம்.",
+     "பிறந்த பின் நீங்களும் குழந்தையும் நலமாக இருந்தால், பொதுவாகக் குழந்தையை உடனே உங்கள் நெஞ்சில் தோலோடு தோல் படும்படி வைத்துக்கொள்ளலாம்; முதல் ஒரு மணி நேரத்துக்குள் தாய்ப்பால் கொடுக்கவும் தொடங்கலாம். பிறகு கருப்பை நஞ்சுக்கொடியை வெளித்தள்ளும்; உங்கள் சுகாதாரக் குழு இரத்தப்போக்கைச் சோதித்து, என்ன செய்கிறார்கள் என்பதை விளக்கும்.",
+     "உங்களிடம் மரியாதையுடனும் தனியுரிமையுடனும் நடந்துகொள்ள வேண்டும்; உங்களுக்குப் புரியும் மொழியில் விளக்க வேண்டும்; பரிசோதனை அல்லது சிகிச்சைக்கு முன் உங்களிடம் கேட்க வேண்டும். எப்போது வேண்டுமானாலும் கேள்வி கேட்கலாம்.",
+     "ஒவ்வொரு பிரசவமும் வேறுபட்டது. எவ்வளவு நேரம் ஆகும், எப்படி இருக்கும் என்பது மாறுபடும்; உங்களுக்கோ குழந்தைக்கோ கூடுதல் உதவி தேவைப்பட்டால் திட்டம் மாறலாம். உடனே மருத்துவமனைக்குச் செல்ல வேண்டிய அறிகுறிகளுக்கு “ஆபத்து அறிகுறிகள்: உடனே உதவி பெற வேண்டிய நேரம்” பக்கத்தைப் பாருங்கள்."
+    ],
+    "te": [
+     "కాన్పు తొలి దశ చాలా సమయం పట్టవచ్చు. గర్భాశయం అలల్లా బిగుసుకుంటుంది; మొదట ఇవి క్రమరహితంగా ఉండవచ్చు, ఈ దశ చాలా గంటలు సాగవచ్చు. ఇంకా ఇంట్లోనే ఉంటే, వీలైనప్పుడు విశ్రాంతి తీసుకోండి, మనసుకు నచ్చినవి తినండి, తాగండి, మెల్లగా నడుస్తూ ఉండండి. మీరు ముందే అనుకున్న ఆరోగ్య కేంద్రానికి ఎప్పుడు వెళ్ళాలో మీ ANM, ఆశా లేదా డాక్టర్ చెబుతారు; కాన్పుకు సిద్ధం కావడం పేజీలో సూచనలు ఉన్నాయి.",
+     "చురుకైన కాన్పు దశలో ఈ అలలు బలంగా, క్రమంగా మారతాయి, గర్భాశయ ముఖద్వారం వేగంగా తెరుచుకుంటుంది. మీరు, బిడ్డ ఎలా ఉన్నారో ఆరోగ్య బృందం అప్పుడప్పుడు పరిశీలిస్తుంది, వారు గమనించినదాన్ని మీకు వివరించగలరు.",
+     "మీరు మంచంపైనే ఉండాల్సిన అవసరం లేదు. మొదటి దశలో నడవడం మంచిదని చెబుతారు, సరిగ్గా అనిపించే స్థితిని మీరు ఎంచుకోవచ్చు, ఉదాహరణకు ఆసరాతో నిలబడటం, మోకాళ్ళపై ఉండటం, కూర్చోవడం లేదా ఎడమ వైపు పడుకోవడం. కాన్పు సమయంలో వెల్లకిలా పూర్తిగా పడుకోవడం మంచిది కాదని చెబుతారు.",
+     "మీకు కావలసినట్లు తినండి, తాగండి, తరచుగా మూత్రం పోయండి. పోషకమైన పానీయాలు కాన్పు చివరి దశలో కూడా సహాయపడతాయి.",
+     "కాన్పు సమయమంతా మీకు నచ్చిన తోడును ఉంచుకోవచ్చు, ఉదాహరణకు భర్త, అమ్మ లేదా నమ్మకమైన మరొకరు. తోడు ఉన్నవారు మిమ్మల్ని ప్రోత్సహించవచ్చు, శ్వాస తీసుకోవడానికి, సడలడానికి సహాయపడవచ్చు, వీపు రుద్దవచ్చు, చల్లని గుడ్డతో ముఖం తుడవవచ్చు, కొద్దికొద్దిగా నీళ్ళు ఇవ్వవచ్చు. మీరు ముక్కడం మొదలుపెడితే, రక్తస్రావం అయితే, ఒక్కసారిగా చాలా నొప్పి పెరిగితే లేదా ఏదైనా ఆందోళన కలిగిస్తే వారు ఆరోగ్య కార్యకర్తను పిలవాలి. తోడు మీతో ఉండవచ్చా అని ముందే మీ క్లినిక్‌ను అడగండి.",
+     "నొప్పి తగ్గించడానికి ఎంపికలు ఉన్నాయి: స్థితి మార్చడం, నడవడం, నెమ్మదిగా శ్వాస తీసుకుని సడలడం, మసాజ్, వెచ్చని స్నానం లేదా వేడి కాపడం, మీరు అడిగితే, ఆ కేంద్రంలో వీలుంటే ఆరోగ్య బృందం ఇచ్చే నొప్పి తగ్గించే మందు. మీరు ఏం కోరుకుంటున్నారో బృందానికి చెప్పండి.",
+     "గర్భాశయ ముఖద్వారం పూర్తిగా తెరుచుకున్నాక ముక్కే దశ మొదలవుతుంది. ముక్కాలనే బలమైన కోరిక కలగవచ్చు. మీ మంత్రసాని లేదా డాక్టర్ మార్గం చూపుతారు; బిడ్డ తల మెల్లగా బయటకు రావడానికి ఒక్క క్షణం ఆగమని కూడా చెప్పవచ్చు.",
+     "పుట్టిన తర్వాత మీరు, బిడ్డ క్షేమంగా ఉంటే, సాధారణంగా బిడ్డను వెంటనే మీ ఛాతీపై చర్మానికి చర్మం తగిలేలా పెట్టుకోవచ్చు, మొదటి గంటలోపే తల్లిపాలు ఇవ్వడం మొదలుపెట్టవచ్చు. ఆ తర్వాత గర్భాశయం మావిని బయటకు నెడుతుంది; మీ ఆరోగ్య బృందం రక్తస్రావాన్ని పరిశీలించి, ఏం చేస్తున్నారో వివరిస్తుంది.",
+     "మీతో గౌరవంగా, గోప్యత పాటిస్తూ వ్యవహరించాలి; మీకు అర్థమయ్యే మాటల్లో వివరించాలి; పరీక్షలు, చికిత్సలకు ముందు మిమ్మల్ని అడగాలి. మీరు ఎప్పుడైనా ప్రశ్నలు అడగవచ్చు.",
+     "ప్రతి కాన్పూ భిన్నంగా ఉంటుంది. ఎంత సమయం పడుతుంది, ఎలా అనిపిస్తుంది అనేది మారుతుంది; మీకు లేదా బిడ్డకు అదనపు సహాయం అవసరమైతే ప్రణాళిక మారవచ్చు. వెంటనే ఆసుపత్రికి వెళ్ళాల్సిన సూచనల కోసం “ప్రమాద సూచనలు: వెంటనే సహాయం పొందాల్సిన సమయం” పేజీ చూడండి."
+    ]
+   },
+   "seekHelp": {
+    "en": [],
+    "hi": [],
+    "ta": [],
+    "te": []
+   },
+   "keywords": [
+    "labour",
+    "labor",
+    "stages of labour",
+    "delivery",
+    "birth",
+    "contractions",
+    "labour pain",
+    "pushing",
+    "cervix",
+    "placenta",
+    "birth companion",
+    "companion",
+    "position",
+    "pain relief",
+    "normal delivery",
+    "what to expect",
+    "prasav",
+    "dard",
+    "pravasam",
+    "kanpu",
+    "sathi"
+   ],
+   "sources": [
+    {
+     "label": "The stages of labour and birth - NHS",
+     "publisher": "NHS (UK)",
+     "url": "https://www.nhs.uk/pregnancy/labour-and-birth/what-happens/the-stages-of-labour-and-birth/"
+    },
+    {
+     "label": "Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice (3rd edition) (PDF)",
+     "publisher": "World Health Organization (WHO)",
+     "url": "https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content"
+    },
+    {
+     "label": "WHO recommendations: intrapartum care for a positive childbirth experience",
+     "publisher": "World Health Organization (WHO)",
+     "url": "https://www.who.int/publications/i/item/9789241550215"
+    }
+   ],
+   "seeAlso": [
+    "danger-signs",
+    "labour-and-birth-plan",
+    "breastfeeding"
+   ]
+  },
+  {
    "id": "after-birth",
    "category": "baby",
    "title": {
@@ -1644,6 +1761,464 @@ export const patientReferences: PatientReferences = {
      "publisher": "World Health Organization (WHO)",
      "url": "https://www.who.int/news-room/fact-sheets/detail/infant-and-young-child-feeding"
     }
+   ]
+  },
+  {
+   "id": "breastfeeding",
+   "category": "baby",
+   "title": {
+    "en": "Breastfeeding and feeding your newborn",
+    "hi": "स्तनपान और नवजात शिशु को दूध पिलाना",
+    "ta": "தாய்ப்பால் கொடுத்தல், பிறந்த குழந்தைக்கு உணவளித்தல்",
+    "te": "తల్లిపాలు ఇవ్వడం, నవజాత శిశువుకు ఆహారం"
+   },
+   "summary": {
+    "en": "Breast milk is all a baby needs for the first six months. Starting soon after birth, feeding whenever the baby wants, and asking for help early if feeding is difficult works best for most mothers and babies. This is general information, so please follow the advice of your own doctor.",
+    "hi": "पहले छह महीने शिशु को सिर्फ़ माँ का दूध चाहिए। जन्म के तुरंत बाद शुरू करना, शिशु जब माँगे तब पिलाना, और दूध पिलाने में दिक़्क़त हो तो जल्दी मदद माँगना, ज़्यादातर माँ और शिशु के लिए सबसे अच्छा रहता है। यह सामान्य जानकारी है, इसलिए कृपया अपने डॉक्टर की सलाह मानें।",
+    "ta": "முதல் ஆறு மாதங்களுக்குக் குழந்தைக்குத் தாய்ப்பால் மட்டுமே போதும். பிறந்த உடனே தொடங்குவது, குழந்தை கேட்கும்போதெல்லாம் கொடுப்பது, கொடுப்பதில் சிரமம் இருந்தால் விரைவிலேயே உதவி கேட்பது ஆகியவை பெரும்பாலான தாய்மார்களுக்கும் குழந்தைகளுக்கும் சிறப்பாக உதவும். இது பொதுவான தகவல்; எனவே உங்கள் மருத்துவரின் ஆலோசனையைப் பின்பற்றுங்கள்.",
+    "te": "మొదటి ఆరు నెలలు బిడ్డకు తల్లిపాలు మాత్రమే చాలు. పుట్టిన వెంటనే మొదలుపెట్టడం, బిడ్డ అడిగినప్పుడల్లా ఇవ్వడం, పాలు ఇవ్వడం కష్టంగా ఉంటే త్వరగా సహాయం అడగడం చాలామంది తల్లులకు, బిడ్డలకు బాగా పనిచేస్తుంది. ఇది సాధారణ సమాచారం, కాబట్టి దయచేసి మీ డాక్టర్ సలహాను పాటించండి."
+   },
+   "keyPoints": {
+    "en": [
+     "Start soon after birth. Put your baby to the breast within the first hour, with the baby resting on your chest skin to skin. When ready, the baby will look around, open the mouth and search for the breast.",
+     "The thick yellow first milk (colostrum) is the baby's first protection against infections, so do not throw it away. Give nothing before the first breastfeed, such as honey, gripe water, water or other drinks.",
+     "For the first six months give only breast milk: no water, honey, gripe water or other food or drink. Breast milk has all the water and food a baby needs. If the baby is ill, keep breastfeeding.",
+     "Feed whenever the baby wants, day and night. A newborn usually feeds eight or more times in 24 hours, and feeding often helps your milk to flow, so do not skip night feeds. Let the baby finish the first breast and let go on their own, then offer the other side.",
+     "Hold your baby close, with the head and body in a straight line, facing your breast and the nose opposite your nipple, and support the whole body, not just the neck and shoulders. Touch the baby's lips with your nipple, wait until the mouth is wide open, and bring the baby quickly to the breast.",
+     "Signs of a good latch: the mouth is wide open, more of the dark skin around the nipple (areola) shows above the mouth than below, the lower lip is turned outwards, the chin touches the breast, and the sucks are slow and deep. If feeding hurts, the attachment may not be right: ask your ANM, ASHA or doctor to watch a feed and help.",
+     "A baby who is feeding well swallows (you can hear it), seems calm and content after most feeds, has wet and dirty nappies or cloths, and gains weight steadily after the first few days. If you are not sure the baby is getting enough, ask for help early.",
+     "Do not use bottles, teats or pacifiers (dummies). They can make it harder for the baby to attach to the breast.",
+     "Look after yourself: eat extra healthy food, drink plenty of clean water and rest. Do not smoke, chew tobacco or drink alcohol, and ask your doctor before taking any medicine while you breastfeed.",
+     "A baby born small or early, and twins, may feed slowly or sleepily at first and often need extra help. Your health team will show you how, including how to express your milk and give it by cup or spoon. Keeping the baby skin to skin makes breastfeeding easier.",
+     "If you are unwell or cannot breastfeed, tell your health team early. They can show you how to express your milk and talk with you about other safe ways to feed your baby.",
+     "From six months, start soft family foods in small amounts and keep breastfeeding, up to two years or longer. The Safe Motherhood booklet and the MCP card show what to give and how often. Wash your hands with soap and water before feeding. Your ANM, ASHA, Anganwadi worker or doctor can help with breastfeeding at any time; the national MAA (Mothers’ Absolute Affection) programme trains health workers to support breastfeeding mothers."
+    ],
+    "hi": [
+     "जन्म के तुरंत बाद शुरू करें। शिशु को पहले घंटे के अंदर स्तन से लगाएँ, शिशु आपकी छाती पर त्वचा से त्वचा लगाकर लेटा रहे। तैयार होने पर शिशु इधर-उधर देखेगा, मुँह खोलेगा और स्तन को ढूँढेगा।",
+     "गाढ़ा पीला पहला दूध (खीस/कोलोस्ट्रम) शिशु को संक्रमणों से बचाने वाली पहली सुरक्षा है, इसलिए इसे फेंकें नहीं। पहली बार स्तनपान से पहले कुछ भी न दें, जैसे शहद, घुट्टी (ग्राइप वॉटर), पानी या कोई और पेय।",
+     "पहले छह महीने सिर्फ़ माँ का दूध दें: पानी, शहद, घुट्टी या कोई और खाना-पीना नहीं। माँ के दूध में शिशु के लिए ज़रूरी सारा पानी और पोषण होता है। शिशु बीमार हो तब भी स्तनपान जारी रखें।",
+     "शिशु जब भी माँगे, दिन-रात पिलाएँ। नवजात आमतौर पर 24 घंटे में आठ या ज़्यादा बार दूध पीता है, और बार-बार पिलाने से दूध बनने-बहने में मदद मिलती है, इसलिए रात के दूध न छोड़ें। शिशु को पहला स्तन पूरा पीने दें और खुद छोड़ने दें, फिर दूसरा स्तन दें।",
+     "शिशु को अपने पास सटाकर रखें: सिर और शरीर एक सीध में हों, शिशु का मुँह आपके स्तन की ओर हो और नाक निप्पल के सामने हो, और पूरा शरीर सहारे में हो, सिर्फ़ गर्दन और कंधे नहीं। निप्पल से शिशु के होंठ छुएँ, मुँह पूरा खुलने तक रुकें, और फिर शिशु को जल्दी से स्तन पर लगा दें।",
+     "सही पकड़ के संकेत: मुँह पूरा खुला हो, निप्पल के चारों ओर का गहरा हिस्सा (एरिओला) मुँह के नीचे से ज़्यादा ऊपर दिखे, निचला होंठ बाहर की ओर मुड़ा हो, ठोड़ी स्तन को छूती हो, और चूसना धीमा और गहरा हो। अगर पिलाते समय दर्द होता है तो पकड़ ठीक नहीं हो सकती: अपनी ANM, आशा या डॉक्टर से कहें कि एक बार दूध पिलाते हुए देखकर मदद करें।",
+     "जो शिशु ठीक से दूध पी रहा हो वह निगलता है (आप सुन सकती हैं), ज़्यादातर बार दूध पीने के बाद शांत और संतुष्ट दिखता है, उसके कपड़े या नैपी गीले और गंदे होते हैं, और शुरुआती कुछ दिनों के बाद उसका वज़न लगातार बढ़ता है। अगर आपको पक्का नहीं है कि शिशु को पर्याप्त दूध मिल रहा है, तो जल्दी मदद माँगें।",
+     "बोतल, निप्पल या पैसिफ़ायर (चुसनी) का इस्तेमाल न करें। इनसे शिशु को स्तन से ठीक से लगना मुश्किल हो सकता है।",
+     "अपना भी ध्यान रखें: ज़्यादा पौष्टिक खाना खाएँ, खूब साफ़ पानी पिएँ और आराम करें। धूम्रपान, तंबाकू चबाना या शराब न लें, और स्तनपान के दौरान कोई भी दवा लेने से पहले डॉक्टर से पूछें।",
+     "कम वज़न या समय से पहले जन्मे शिशु और जुड़वाँ शिशु शुरू में धीरे या ऊँघते हुए दूध पी सकते हैं और अक्सर उन्हें अतिरिक्त मदद चाहिए होती है। आपकी स्वास्थ्य टीम सिखाएगी, जैसे अपना दूध निकालना और कटोरी-चम्मच से पिलाना। शिशु को त्वचा से त्वचा लगाकर रखने से स्तनपान आसान होता है।",
+     "अगर आप बीमार हैं या स्तनपान नहीं करा पा रहीं, तो अपनी स्वास्थ्य टीम को जल्दी बताएँ। वे आपको अपना दूध निकालना सिखा सकते हैं और शिशु को दूध पिलाने के दूसरे सुरक्षित तरीकों पर आपसे बात कर सकते हैं।",
+     "छह महीने के बाद थोड़ी-थोड़ी मात्रा में नरम घर का खाना शुरू करें और स्तनपान दो साल या उससे ज़्यादा तक जारी रखें। सुरक्षित मातृत्व पुस्तिका और MCP कार्ड में बताया गया है कि क्या और कितनी बार देना है। खिलाने से पहले साबुन-पानी से हाथ धोएँ। स्तनपान में मदद के लिए आप कभी भी अपनी ANM, आशा, आँगनवाड़ी कार्यकर्ता या डॉक्टर से मिल सकती हैं; राष्ट्रीय MAA (माताओं का पूर्ण स्नेह) कार्यक्रम स्वास्थ्यकर्मियों को स्तनपान कराने वाली माताओं की मदद का प्रशिक्षण देता है।"
+    ],
+    "ta": [
+     "பிறந்தவுடன் தொடங்குங்கள். முதல் ஒரு மணி நேரத்துக்குள் குழந்தையை மார்பில் வையுங்கள்; குழந்தை உங்கள் நெஞ்சில் தோலோடு தோல் படும்படி இருக்கட்டும். தயாரானதும் குழந்தை சுற்றிப் பார்க்கும், வாயைத் திறக்கும், மார்பைத் தேடும்.",
+     "அடர்த்தியான மஞ்சள் நிற முதல் பால் (சீம்பால்) தொற்றுகளிலிருந்து குழந்தைக்கு முதல் பாதுகாப்பு; அதனால் அதைக் கொட்டிவிடாதீர்கள். முதல் தாய்ப்பாலுக்கு முன் தேன், கிரைப் வாட்டர், தண்ணீர் அல்லது வேறு எந்தப் பானமும் கொடுக்காதீர்கள்.",
+     "முதல் ஆறு மாதங்கள் தாய்ப்பால் மட்டுமே கொடுங்கள்: தண்ணீர், தேன், கிரைப் வாட்டர் அல்லது வேறு எந்த உணவும் பானமும் வேண்டாம். குழந்தைக்குத் தேவையான தண்ணீரும் உணவும் தாய்ப்பாலிலேயே உள்ளன. குழந்தைக்கு உடல்நலமில்லாதபோதும் தாய்ப்பாலைத் தொடருங்கள்.",
+     "குழந்தை கேட்கும்போதெல்லாம், பகலிலும் இரவிலும் கொடுங்கள். பிறந்த குழந்தை பொதுவாக 24 மணி நேரத்தில் எட்டு அல்லது அதற்கு மேற்பட்ட முறை பால் குடிக்கும்; அடிக்கடி கொடுப்பது பால் சுரக்க உதவும், எனவே இரவு நேரப் பாலூட்டலைத் தவிர்க்காதீர்கள். குழந்தை முதல் மார்பை முடித்துத் தானாக விடட்டும்; பிறகு மறுபக்கம் கொடுங்கள்.",
+     "குழந்தையை உங்களுக்கு நெருக்கமாகப் பிடியுங்கள்: தலையும் உடலும் ஒரே நேர்க்கோட்டில் இருக்க வேண்டும்; குழந்தையின் முகம் உங்கள் மார்பை நோக்கியும், மூக்கு காம்புக்கு எதிரிலும் இருக்க வேண்டும்; கழுத்தையும் தோள்களையும் மட்டுமல்ல, முழு உடலையும் தாங்கிப் பிடியுங்கள். காம்பால் குழந்தையின் உதடுகளைத் தொடுங்கள், வாய் அகலமாகத் திறக்கும்வரை காத்திருங்கள், பிறகு குழந்தையை விரைவாக மார்புக்குக் கொண்டுவாருங்கள்.",
+     "சரியான பிடிப்பின் அறிகுறிகள்: வாய் அகலமாகத் திறந்திருக்கும்; காம்பைச் சுற்றியுள்ள கருமையான பகுதி (அரியோலா) வாயின் கீழ்ப்புறத்தை விட மேல்புறத்தில் அதிகமாகத் தெரியும்; கீழ் உதடு வெளிப்புறமாகத் திரும்பியிருக்கும்; தாடை மார்பைத் தொடும்; உறிஞ்சுதல் மெதுவாகவும் ஆழமாகவும் இருக்கும். பாலூட்டும்போது வலித்தால் பிடிப்பு சரியாக இல்லாமல் இருக்கலாம்: உங்கள் ANM, ஆஷா அல்லது மருத்துவரிடம் ஒருமுறை பாலூட்டுவதைப் பார்த்து உதவச் சொல்லுங்கள்.",
+     "நன்றாகப் பால் குடிக்கும் குழந்தை விழுங்கும் (நீங்கள் கேட்கலாம்); பெரும்பாலான பாலூட்டல்களுக்குப் பின் அமைதியாகவும் திருப்தியாகவும் இருக்கும்; ஈரமான, அழுக்கான துணி அல்லது நாப்கின்கள் இருக்கும்; முதல் சில நாட்களுக்குப் பின் எடை சீராக அதிகரிக்கும். குழந்தைக்குப் போதுமான பால் கிடைக்கிறதா என்று உறுதியாகத் தெரியவில்லை என்றால் விரைவில் உதவி கேளுங்கள்.",
+     "புட்டி, செயற்கை முலைக்காம்பு, பேசிஃபையர் (சூப்பான்) பயன்படுத்தாதீர்கள். குழந்தை மார்பில் சரியாகப் பொருந்துவது இவற்றால் கடினமாகலாம்.",
+     "உங்களையும் கவனித்துக்கொள்ளுங்கள்: கூடுதல் சத்தான உணவு உண்ணுங்கள், நிறையச் சுத்தமான தண்ணீர் குடியுங்கள், ஓய்வெடுங்கள். புகைபிடிக்காதீர்கள், புகையிலை மெல்லாதீர்கள், மது அருந்தாதீர்கள்; தாய்ப்பால் கொடுக்கும் காலத்தில் எந்த மருந்தையும் எடுப்பதற்கு முன் மருத்துவரிடம் கேளுங்கள்.",
+     "எடை குறைவாக அல்லது குறைமாதத்தில் பிறந்த குழந்தைகளும் இரட்டைக் குழந்தைகளும் ஆரம்பத்தில் மெதுவாகவோ தூக்கக் கலக்கத்துடனோ பால் குடிக்கலாம்; அவர்களுக்குப் பெரும்பாலும் கூடுதல் உதவி தேவைப்படும். பாலைப் பிழிந்தெடுத்துக் கிண்ணத்தாலோ கரண்டியாலோ கொடுப்பது உட்பட, எப்படி என்பதை உங்கள் சுகாதாரக் குழு காட்டும். குழந்தையைத் தோலோடு தோல் படும்படி வைத்திருப்பது பாலூட்டலை எளிதாக்கும்.",
+     "உங்களுக்கு உடல்நலமில்லை என்றாலோ தாய்ப்பால் கொடுக்க முடியவில்லை என்றாலோ உங்கள் சுகாதாரக் குழுவிடம் விரைவில் சொல்லுங்கள். பாலைப் பிழிந்தெடுப்பது எப்படி என்று அவர்கள் காட்டலாம்; குழந்தைக்கு உணவளிக்கும் பிற பாதுகாப்பான வழிகளையும் உங்களுடன் பேசலாம்.",
+     "ஆறு மாதத்திலிருந்து சிறிய அளவில் மென்மையான வீட்டு உணவைத் தொடங்குங்கள்; தாய்ப்பாலை இரண்டு வயது அல்லது அதற்கு மேலும் தொடருங்கள். என்ன கொடுக்க வேண்டும், எத்தனை முறை என்பதைப் பாதுகாப்பான தாய்மைக் கையேடும் MCP அட்டையும் காட்டுகின்றன. உணவளிக்கும் முன் சோப்பு போட்டுக் கைகளைக் கழுவுங்கள். தாய்ப்பால் தொடர்பாக எப்போது வேண்டுமானாலும் உங்கள் ANM, ஆஷா, அங்கன்வாடிப் பணியாளர் அல்லது மருத்துவரிடம் உதவி பெறலாம்; தாய்ப்பால் கொடுக்கும் தாய்மார்களுக்கு உதவ சுகாதாரப் பணியாளர்களுக்குத் தேசிய MAA (தாய்மார்களின் முழு அன்பு) திட்டம் பயிற்சி அளிக்கிறது."
+    ],
+    "te": [
+     "పుట్టిన వెంటనే మొదలుపెట్టండి. మొదటి గంటలోపే బిడ్డను రొమ్ముకు అందించండి; బిడ్డ మీ ఛాతీపై చర్మానికి చర్మం తగిలేలా ఉండాలి. సిద్ధంగా ఉన్నప్పుడు బిడ్డ చుట్టూ చూస్తుంది, నోరు తెరుస్తుంది, రొమ్మును వెతుకుతుంది.",
+     "చిక్కని పసుపు రంగు మొదటి పాలు (ముర్రుపాలు) ఇన్ఫెక్షన్ల నుండి బిడ్డకు మొదటి రక్షణ, కాబట్టి వాటిని పారబోయకండి. మొదటి తల్లిపాలకు ముందు తేనె, గ్రైప్ వాటర్, నీళ్ళు లేదా మరే ఇతర పానీయం ఇవ్వకండి.",
+     "మొదటి ఆరు నెలలు తల్లిపాలు మాత్రమే ఇవ్వండి: నీళ్ళు, తేనె, గ్రైప్ వాటర్ లేదా మరే ఇతర ఆహారం, పానీయం వద్దు. బిడ్డకు కావలసిన నీళ్ళు, ఆహారం అన్నీ తల్లిపాలలోనే ఉన్నాయి. బిడ్డకు ఆరోగ్యం బాగోలేకపోయినా తల్లిపాలు కొనసాగించండి.",
+     "బిడ్డ అడిగినప్పుడల్లా, పగలూ రాత్రీ ఇవ్వండి. నవజాత శిశువు సాధారణంగా 24 గంటల్లో ఎనిమిది లేదా అంతకంటే ఎక్కువసార్లు తాగుతుంది; తరచుగా ఇస్తే పాలు బాగా వస్తాయి, కాబట్టి రాత్రి పూట ఇవ్వడం మానకండి. బిడ్డ మొదటి రొమ్ము పూర్తి చేసి తానే వదిలేయనివ్వండి, ఆ తర్వాత రెండో వైపు ఇవ్వండి.",
+     "బిడ్డను మీకు దగ్గరగా పట్టుకోండి: తల, శరీరం ఒకే సరళరేఖలో ఉండాలి; బిడ్డ ముఖం మీ రొమ్ము వైపు, ముక్కు చనుమొనకు ఎదురుగా ఉండాలి; మెడ, భుజాలు మాత్రమే కాక శరీరమంతా ఆసరా ఇవ్వండి. చనుమొనతో బిడ్డ పెదవులను తాకండి, నోరు పూర్తిగా తెరిచే వరకు ఆగండి, ఆ తర్వాత బిడ్డను త్వరగా రొమ్ముకు అందించండి.",
+     "సరైన పట్టు సూచనలు: నోరు పూర్తిగా తెరిచి ఉంటుంది; చనుమొన చుట్టూ ఉన్న ముదురు రంగు భాగం (ఏరియోలా) నోటికి కింద కంటే పైన ఎక్కువగా కనిపిస్తుంది; కింది పెదవి బయటకు తిరిగి ఉంటుంది; గడ్డం రొమ్మును తాకుతుంది; పీల్చడం నెమ్మదిగా, లోతుగా ఉంటుంది. పాలు ఇస్తున్నప్పుడు నొప్పిగా ఉంటే పట్టు సరిగా లేకపోవచ్చు: మీ ANM, ఆశా లేదా డాక్టర్‌ను ఒకసారి పాలు ఇవ్వడం చూసి సహాయం చేయమని అడగండి.",
+     "బాగా పాలు తాగే బిడ్డ మింగుతుంది (మీరు వినవచ్చు), చాలా సార్లు పాలు తాగాక ప్రశాంతంగా, తృప్తిగా కనిపిస్తుంది, తడి, మురికి గుడ్డలు లేదా న్యాపీలు ఉంటాయి, మొదటి కొన్ని రోజుల తర్వాత బరువు క్రమంగా పెరుగుతుంది. బిడ్డకు సరిపడా పాలు అందుతున్నాయో లేదో మీకు ఖచ్చితంగా తెలియకపోతే త్వరగా సహాయం అడగండి.",
+     "సీసాలు, కృత్రిమ చనుమొనలు, పాసిఫైయర్లు (చప్పరింపు బొమ్మలు) వాడకండి. వీటివల్ల బిడ్డ రొమ్ముకు సరిగ్గా అతుక్కోవడం కష్టమవుతుంది.",
+     "మీ గురించి కూడా చూసుకోండి: అదనపు పోషకాహారం తినండి, పుష్కలంగా శుభ్రమైన నీళ్ళు తాగండి, విశ్రాంతి తీసుకోండి. పొగ తాగకండి, పొగాకు నమలకండి, మద్యం తాగకండి; తల్లిపాలు ఇచ్చే సమయంలో ఏ మందు తీసుకునే ముందైనా డాక్టర్‌ను అడగండి.",
+     "తక్కువ బరువుతో లేదా నెలలు నిండకముందే పుట్టిన బిడ్డలు, కవలలు మొదట్లో నెమ్మదిగా లేదా నిద్రమత్తుగా పాలు తాగవచ్చు, వారికి తరచుగా అదనపు సహాయం అవసరమవుతుంది. పాలను పిండి గిన్నెతో లేదా చెంచాతో ఇవ్వడం సహా ఎలాగో మీ ఆరోగ్య బృందం చూపుతుంది. బిడ్డను చర్మానికి చర్మం తగిలేలా ఉంచితే తల్లిపాలు ఇవ్వడం సులభమవుతుంది.",
+     "మీకు ఆరోగ్యం బాగోలేకపోయినా లేదా తల్లిపాలు ఇవ్వలేకపోయినా మీ ఆరోగ్య బృందానికి త్వరగా చెప్పండి. పాలను ఎలా పిండాలో వారు చూపగలరు, బిడ్డకు ఆహారం ఇవ్వడానికి ఇతర సురక్షిత మార్గాల గురించి కూడా మీతో మాట్లాడగలరు.",
+     "ఆరు నెలల నుండి కొద్ది కొద్దిగా మెత్తని ఇంటి ఆహారం మొదలుపెట్టండి, తల్లిపాలను రెండు సంవత్సరాల వరకు లేదా ఆపైన కొనసాగించండి. ఏమి ఇవ్వాలో, ఎన్నిసార్లు ఇవ్వాలో సురక్షిత మాతృత్వ పుస్తకం, MCP కార్డు చూపుతాయి. తినిపించే ముందు సబ్బుతో నీళ్ళతో చేతులు కడుక్కోండి. తల్లిపాల విషయంలో ఎప్పుడైనా మీ ANM, ఆశా, అంగన్‌వాడీ కార్యకర్త లేదా డాక్టర్ సహాయం చేయగలరు; తల్లిపాలు ఇచ్చే తల్లులకు సహాయం చేయడానికి జాతీయ MAA (తల్లుల సంపూర్ణ ప్రేమ) కార్యక్రమం ఆరోగ్య కార్యకర్తలకు శిక్షణ ఇస్తుంది."
+    ]
+   },
+   "seekHelp": {
+    "en": [
+     "Your baby cannot suck or feed, or is not feeding",
+     "Your baby is very sleepy, dull or hard to wake for feeds",
+     "A breast that is red, hot, swollen and painful, with or without fever",
+     "Cracked or bleeding nipples, or feeding that stays very painful even with help"
+    ],
+    "hi": [
+     "शिशु चूस नहीं पा रहा या दूध नहीं पी पा रहा, या बिल्कुल नहीं पी रहा",
+     "शिशु बहुत ऊँघता, सुस्त है या दूध पिलाने के लिए जगाना मुश्किल है",
+     "स्तन लाल, गरम, सूजा हुआ और दर्द भरा है, बुखार हो या न हो",
+     "निप्पल फटे हैं या उनसे खून आ रहा है, या मदद के बाद भी दूध पिलाना बहुत दर्दनाक रहता है"
+    ],
+    "ta": [
+     "குழந்தையால் உறிஞ்ச முடியவில்லை அல்லது பால் குடிக்கவில்லை, அல்லது குடிக்கவே இல்லை",
+     "குழந்தை மிகவும் தூக்கக் கலக்கத்துடன், சோர்வாக இருக்கிறது அல்லது பாலூட்ட எழுப்புவது கடினமாக இருக்கிறது",
+     "மார்பகம் சிவந்து, சூடாக, வீங்கி, வலிக்கிறது; காய்ச்சல் இருக்கலாம் அல்லது இல்லாமலும் இருக்கலாம்",
+     "காம்புகள் வெடித்திருக்கின்றன அல்லது இரத்தம் வருகிறது, அல்லது உதவி கிடைத்த பின்பும் பாலூட்டுவது மிகவும் வலிக்கிறது"
+    ],
+    "te": [
+     "బిడ్డ పీల్చలేకపోతోంది లేదా పాలు తాగలేకపోతోంది, లేదా అసలు తాగడం లేదు",
+     "బిడ్డ చాలా నిద్రమత్తుగా, నిస్త్రాణంగా ఉంది లేదా పాలు ఇవ్వడానికి నిద్ర లేపడం కష్టంగా ఉంది",
+     "రొమ్ము ఎర్రగా, వేడిగా, వాచి, నొప్పిగా ఉంది; జ్వరం ఉండవచ్చు, లేకపోవచ్చు",
+     "చనుమొనలు చీలిపోయాయి లేదా రక్తం వస్తోంది, లేదా సహాయం చేసిన తర్వాత కూడా పాలు ఇవ్వడం చాలా నొప్పిగా ఉంది"
+    ]
+   },
+   "keywords": [
+    "breastfeeding",
+    "breast feeding",
+    "breast milk",
+    "feeding",
+    "newborn feeding",
+    "colostrum",
+    "first milk",
+    "latch",
+    "attachment",
+    "positioning",
+    "exclusive breastfeeding",
+    "bottle",
+    "formula",
+    "pacifier",
+    "engorgement",
+    "sore nipples",
+    "mastitis",
+    "expressing milk",
+    "weaning",
+    "complementary food",
+    "baby food",
+    "doodh",
+    "stanpan",
+    "khees",
+    "thaippal",
+    "sheem paal",
+    "thallipalu",
+    "murrupalu"
+   ],
+   "sources": [
+    {
+     "label": "Infant and young child feeding (fact sheet)",
+     "publisher": "World Health Organization (WHO)",
+     "url": "https://www.who.int/news-room/fact-sheets/detail/infant-and-young-child-feeding"
+    },
+    {
+     "label": "Booklet for expecting mothers (My Safe Motherhood Booklet)",
+     "publisher": "Maternal Health Division, Ministry of Health and Family Welfare, Government of India (hosted by NHM)",
+     "url": "https://nhm.gov.in/images/pdf/programmes/maternal-health/guidelines/my_safe_motherhood_booklet_english.pdf"
+    },
+    {
+     "label": "Mother and Child Protection Card (MCP Card), 2018 version",
+     "publisher": "Ministry of Health and Family Welfare and Ministry of Women and Child Development, Government of India (hosted by NHM)",
+     "url": "https://nhm.gov.in/New-Update-2022-24/CH-Programmes/HBNC-&-HBYC-Resource-%20Material/Revised-India-MCP-Card-English-(28-05-2018).pdf"
+    },
+    {
+     "label": "Training Module for ANMs: Infant and Young Child Feeding (MAA programme) (PDF)",
+     "publisher": "Ministry of Health and Family Welfare, Government of India (hosted by NHM)",
+     "url": "https://nhm.gov.in/New_Updates_2018/NHM_Components/RMNCHA/CH/Schemes/Maa/Training_Module_English_Lowres.pdf"
+    },
+    {
+     "label": "Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice (3rd edition) (PDF)",
+     "publisher": "World Health Organization (WHO)",
+     "url": "https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content"
+    },
+    {
+     "label": "Breastfeeding: is my baby getting enough milk? - NHS",
+     "publisher": "NHS (UK)",
+     "url": "https://www.nhs.uk/baby/breastfeeding-and-bottle-feeding/breastfeeding-problems/enough-milk/"
+    }
+   ],
+   "seeAlso": [
+    "newborn-care",
+    "after-birth",
+    "family-planning-after-birth"
+   ]
+  },
+  {
+   "id": "newborn-care",
+   "category": "baby",
+   "title": {
+    "en": "Caring for your newborn baby",
+    "hi": "नवजात शिशु की देखभाल",
+    "ta": "பிறந்த குழந்தையைப் பராமரித்தல்",
+    "te": "నవజాత శిశువు సంరక్షణ"
+   },
+   "summary": {
+    "en": "A newborn baby needs warmth, only breast milk, a clean and dry cord stump, and regular check-ups. Knowing a baby's danger signs helps you get help quickly. This is general information, so please follow the advice of your own doctor.",
+    "hi": "नवजात शिशु को गरमाहट, सिर्फ़ माँ का दूध, साफ़ और सूखी नाभि की डंडी और नियमित जाँच चाहिए। शिशु के खतरे के संकेत जानने से आप जल्दी मदद ले सकती हैं। यह सामान्य जानकारी है, इसलिए कृपया अपने डॉक्टर की सलाह मानें।",
+    "ta": "பிறந்த குழந்தைக்குக் கதகதப்பு, தாய்ப்பால் மட்டும், சுத்தமான உலர்ந்த தொப்புள் கொடிக் காம்பு, வழக்கமான பரிசோதனைகள் தேவை. குழந்தையின் ஆபத்து அறிகுறிகளை அறிந்திருப்பது உடனே உதவி பெற உதவும். இது பொதுவான தகவல்; எனவே உங்கள் மருத்துவரின் ஆலோசனையைப் பின்பற்றுங்கள்.",
+    "te": "నవజాత శిశువుకు వెచ్చదనం, తల్లిపాలు మాత్రమే, శుభ్రమైన పొడి బొడ్డు తాడు మొదలు, క్రమం తప్పని పరీక్షలు అవసరం. బిడ్డ ప్రమాద సూచనలు తెలుసుకుంటే త్వరగా సహాయం పొందవచ్చు. ఇది సాధారణ సమాచారం, కాబట్టి దయచేసి మీ డాక్టర్ సలహాను పాటించండి."
+   },
+   "keyPoints": {
+    "en": [
+     "Keep your baby warm. Dry and wrap the baby straight after birth, and cover the head and feet. Keep the baby close to you, and skin to skin on your chest whenever you can. A baby needs about one more layer of clothing than an adult. Touch the baby's feet now and then: if they feel cold, hold the baby skin to skin and add a blanket. Do not leave a newborn without clothes, do not wrap the baby too tightly, and keep the baby out of direct sun.",
+     "Do not give the baby a bath for the first 48 hours, as the MCP card and the Safe Motherhood booklet advise. After that, bathe only when needed, in a warm room with no draught and warm water, and dry and dress the baby straight away. On other days wash the face, neck, underarms and bottom, and wash the bottom whenever it is soiled.",
+     "Keep the cord stump clean and dry and put nothing on it. Fold the nappy or cloth below the stump, wash your hands before and after you touch it, and do not bandage it. If it gets dirty, wash it with clean water and soap and dry it well.",
+     "Feed only breast milk, as often as the baby wants, day and night, starting within an hour of birth. Burp the baby after every feed. See the page on breastfeeding.",
+     "Wash your hands before and after you care for the baby. Keep the baby away from smoke, from people who are smoking and from people who are sick. Use a mosquito net day and night where mosquitoes are a risk.",
+     "For sleep, the NHS advises laying a baby on the back on a firm, flat surface, with no pillows, thick covers or soft toys around the baby, and never sleeping with the baby on a sofa or armchair. Keeping the baby in the same room as you at night makes night feeds easier.",
+     "A newborn should pass stool at least once in the first 24 hours and urine at least once in the first 48 hours. Tell your health worker if this does not happen.",
+     "A health worker should see you and your baby on the day of the birth, on day 3, on day 7 and at 6 weeks. The baby should have the first vaccines at birth (BCG, polio and, where recommended, hepatitis B); after that follow the immunisation schedule on the MCP card.",
+     "A baby born small (under 2.5 kg) or early needs special care: skin to skin contact with you for as long as possible (kangaroo mother care), extra warmth and extra help with feeding. Ask your health worker to show you.",
+     "Many newborns turn a little yellow in the first days. It often clears by itself in about two weeks, but it should be checked by a health worker, and at once if it appears in the first day or the baby is sleepy or not feeding."
+    ],
+    "hi": [
+     "शिशु को गरम रखें। जन्म के तुरंत बाद शिशु को पोंछकर कपड़े में लपेटें, और सिर और पैर ढके रखें। शिशु को अपने पास रखें, और जब भी हो सके अपनी छाती पर त्वचा से त्वचा लगाकर रखें। शिशु को बड़ों से लगभग एक परत ज़्यादा कपड़े चाहिए। बीच-बीच में शिशु के पैर छूकर देखें: ठंडे लगें तो शिशु को त्वचा से त्वचा लगाकर रखें और एक कंबल और ओढ़ा दें। नवजात को बिना कपड़ों के न छोड़ें, बहुत कसकर न लपेटें, और सीधी धूप से बचाएँ।",
+     "MCP कार्ड और सुरक्षित मातृत्व पुस्तिका की सलाह के अनुसार पहले 48 घंटे शिशु को न नहलाएँ। उसके बाद ज़रूरत पड़ने पर ही नहलाएँ, बिना हवा के झोंके वाले गरम कमरे में और गुनगुने पानी से, और तुरंत पोंछकर कपड़े पहना दें। बाकी दिनों में चेहरा, गर्दन, बगल और नितंब धोएँ, और नितंब गंदे होते ही धो दें।",
+     "नाभि की डंडी को साफ़ और सूखा रखें और उस पर कुछ न लगाएँ। नैपी या कपड़े को डंडी के नीचे मोड़ें, डंडी छूने से पहले और बाद में हाथ धोएँ, और उस पर पट्टी न बाँधें। गंदी हो जाए तो साफ़ पानी और साबुन से धोकर अच्छी तरह सुखा दें।",
+     "सिर्फ़ माँ का दूध दें, शिशु जब भी माँगे, दिन-रात, और जन्म के एक घंटे के अंदर शुरू करके। हर बार दूध पिलाने के बाद डकार दिलाएँ। स्तनपान वाला पन्ना देखें।",
+     "शिशु की देखभाल से पहले और बाद में हाथ धोएँ। शिशु को धुएँ, धूम्रपान करने वालों और बीमार लोगों से दूर रखें। जहाँ मच्छरों का खतरा हो वहाँ दिन-रात मच्छरदानी का इस्तेमाल करें।",
+     "सोने के लिए NHS की सलाह है कि शिशु को पीठ के बल, सख़्त और समतल सतह पर सुलाएँ, शिशु के आसपास तकिये, मोटे ओढ़ने या मुलायम खिलौने न रखें, और शिशु को लेकर कभी सोफ़े या आरामकुर्सी पर न सोएँ। रात में शिशु को अपने ही कमरे में रखने से रात का दूध पिलाना आसान होता है।",
+     "नवजात को पहले 24 घंटे में कम से कम एक बार मल और पहले 48 घंटे में कम से कम एक बार पेशाब होना चाहिए। अगर ऐसा न हो तो अपने स्वास्थ्यकर्मी को बताएँ।",
+     "स्वास्थ्यकर्मी को आपको और शिशु को जन्म के दिन, तीसरे दिन, सातवें दिन और 6 हफ़्ते पर देखना चाहिए। शिशु को पहले टीके जन्म पर लगने चाहिए (BCG, पोलियो और जहाँ सुझाया गया हो वहाँ हेपेटाइटिस बी); उसके बाद MCP कार्ड पर दिया टीकाकरण कार्यक्रम अपनाएँ।",
+     "कम वज़न (2.5 किलो से कम) या समय से पहले जन्मे शिशु को विशेष देखभाल चाहिए: जितनी देर हो सके आपके साथ त्वचा से त्वचा का संपर्क (कंगारू मदर केयर), अतिरिक्त गरमाहट और दूध पिलाने में अतिरिक्त मदद। अपने स्वास्थ्यकर्मी से सिखाने को कहें।",
+     "बहुत से नवजात पहले कुछ दिनों में थोड़े पीले पड़ जाते हैं। यह अक्सर लगभग दो हफ़्ते में अपने आप ठीक हो जाता है, पर स्वास्थ्यकर्मी से जाँच करानी चाहिए, और अगर यह पहले ही दिन दिखे या शिशु सुस्त हो या दूध न पी रहा हो तो तुरंत।"
+    ],
+    "ta": [
+     "குழந்தையைக் கதகதப்பாக வையுங்கள். பிறந்தவுடனே குழந்தையைத் துடைத்துத் துணியில் சுற்றுங்கள்; தலையையும் பாதங்களையும் மூடுங்கள். குழந்தையை உங்களருகில் வையுங்கள்; முடிந்தபோதெல்லாம் உங்கள் நெஞ்சில் தோலோடு தோல் படும்படி வையுங்கள். குழந்தைக்குப் பெரியவர்களை விட ஒரு அடுக்கு அதிக ஆடை தேவை. அவ்வப்போது குழந்தையின் பாதங்களைத் தொட்டுப் பாருங்கள்: குளிர்ந்திருந்தால் தோலோடு தோல் படும்படி வைத்து, ஒரு போர்வை கூடுதலாகப் போர்த்துங்கள். பிறந்த குழந்தையை ஆடையின்றி விடாதீர்கள், மிகவும் இறுக்கமாகச் சுற்றாதீர்கள், நேரடி வெயிலில் வைக்காதீர்கள்.",
+     "MCP அட்டையும் பாதுகாப்பான தாய்மைக் கையேடும் கூறுவதுபோல, முதல் 48 மணி நேரம் குழந்தையைக் குளிப்பாட்ட வேண்டாம். அதன் பிறகும் தேவைப்படும்போது மட்டும், காற்று வீசாத வெதுவெதுப்பான அறையில், வெதுவெதுப்பான நீரில் குளிப்பாட்டி, உடனே துடைத்து ஆடை அணிவியுங்கள். மற்ற நாட்களில் முகம், கழுத்து, அக்குள், பிட்டம் ஆகியவற்றைக் கழுவுங்கள்; பிட்டம் அழுக்கானால் உடனே கழுவுங்கள்.",
+     "தொப்புள் கொடிக் காம்பைச் சுத்தமாகவும் உலர்வாகவும் வையுங்கள்; அதன் மேல் எதையும் தடவாதீர்கள். நாப்கின் அல்லது துணியைக் காம்புக்குக் கீழே மடியுங்கள்; அதைத் தொடும் முன்னும் பின்னும் கைகளைக் கழுவுங்கள்; கட்டுப் போடாதீர்கள். அழுக்கானால் சுத்தமான நீரும் சோப்பும் கொண்டு கழுவி, நன்றாக உலர்த்துங்கள்.",
+     "தாய்ப்பால் மட்டுமே கொடுங்கள்; குழந்தை கேட்கும்போதெல்லாம், பகலிலும் இரவிலும், பிறந்த ஒரு மணி நேரத்துக்குள் தொடங்கி. ஒவ்வொரு முறை பால் கொடுத்த பின்பும் குழந்தைக்கு ஏப்பம் வரவையுங்கள். தாய்ப்பால் பக்கத்தைப் பாருங்கள்.",
+     "குழந்தையைப் பராமரிக்கும் முன்னும் பின்னும் கைகளைக் கழுவுங்கள். குழந்தையைப் புகையிலிருந்தும், புகைபிடிப்பவர்களிடமிருந்தும், உடல்நலமில்லாதவர்களிடமிருந்தும் தள்ளி வையுங்கள். கொசு அபாயம் உள்ள இடங்களில் பகலிலும் இரவிலும் கொசுவலையைப் பயன்படுத்துங்கள்.",
+     "தூக்கத்துக்கு, குழந்தையை முதுகுப்புறமாக, உறுதியான சமமான மேற்பரப்பில் படுக்க வைக்க NHS பரிந்துரைக்கிறது; குழந்தையைச் சுற்றித் தலையணைகள், தடிமனான போர்வைகள், மென்மையான பொம்மைகள் வேண்டாம்; குழந்தையுடன் சோபாவிலோ சாய்வு நாற்காலியிலோ ஒருபோதும் தூங்காதீர்கள். இரவில் குழந்தையை உங்கள் அறையிலேயே வைத்தால் இரவு நேரப் பாலூட்டல் எளிதாகும்.",
+     "பிறந்த குழந்தை முதல் 24 மணி நேரத்தில் குறைந்தது ஒருமுறை மலமும், முதல் 48 மணி நேரத்தில் குறைந்தது ஒருமுறை சிறுநீரும் கழிக்க வேண்டும். இது நடக்கவில்லை என்றால் உங்கள் சுகாதாரப் பணியாளரிடம் சொல்லுங்கள்.",
+     "பிறந்த நாளிலும், 3-ஆம் நாளிலும், 7-ஆம் நாளிலும், 6 வாரத்திலும் சுகாதாரப் பணியாளர் உங்களையும் குழந்தையையும் பார்க்க வேண்டும். குழந்தைக்குப் பிறப்பிலேயே முதல் தடுப்பூசிகள் போடப்பட வேண்டும் (BCG, போலியோ, பரிந்துரைக்கப்பட்ட இடங்களில் ஹெபடைடிஸ் பி); அதன் பிறகு MCP அட்டையில் உள்ள தடுப்பூசி அட்டவணையைப் பின்பற்றுங்கள்.",
+     "எடை குறைவாக (2.5 கிலோவுக்குக் குறைவாக) அல்லது குறைமாதத்தில் பிறந்த குழந்தைக்குச் சிறப்புப் பராமரிப்பு தேவை: முடிந்தவரை நீண்ட நேரம் உங்களுடன் தோலோடு தோல் தொடர்பு (கங்காரு தாய் பராமரிப்பு), கூடுதல் கதகதப்பு, பால் கொடுப்பதில் கூடுதல் உதவி. உங்கள் சுகாதாரப் பணியாளரைக் கற்றுத்தரச் சொல்லுங்கள்.",
+     "பல பிறந்த குழந்தைகள் முதல் சில நாட்களில் சற்று மஞ்சளாகத் தெரிவார்கள். இது பெரும்பாலும் சுமார் இரண்டு வாரங்களில் தானாகவே சரியாகிவிடும்; ஆனாலும் சுகாதாரப் பணியாளர் பார்க்க வேண்டும்; முதல் நாளிலேயே தெரிந்தால், அல்லது குழந்தை தூக்கக் கலக்கத்துடன் இருந்தால், அல்லது பால் குடிக்கவில்லை என்றால் உடனே."
+    ],
+    "te": [
+     "బిడ్డను వెచ్చగా ఉంచండి. పుట్టిన వెంటనే బిడ్డను తుడిచి గుడ్డలో చుట్టండి, తల, పాదాలను కప్పండి. బిడ్డను మీ దగ్గరే ఉంచండి, వీలైనప్పుడల్లా మీ ఛాతీపై చర్మానికి చర్మం తగిలేలా ఉంచండి. బిడ్డకు పెద్దవారి కంటే ఒక పొర ఎక్కువ దుస్తులు కావాలి. అప్పుడప్పుడు బిడ్డ పాదాలను తాకి చూడండి: చల్లగా ఉంటే చర్మానికి చర్మం తగిలేలా పట్టుకుని, ఒక దుప్పటి అదనంగా కప్పండి. నవజాత శిశువును బట్టలు లేకుండా వదలకండి, మరీ గట్టిగా చుట్టకండి, నేరుగా ఎండలో ఉంచకండి.",
+     "MCP కార్డు, సురక్షిత మాతృత్వ పుస్తకం చెప్పినట్లు మొదటి 48 గంటలు బిడ్డకు స్నానం చేయించకండి. ఆ తర్వాత కూడా అవసరమైనప్పుడే, గాలి తగలని వెచ్చని గదిలో, గోరువెచ్చని నీటితో స్నానం చేయించి, వెంటనే తుడిచి బట్టలు తొడగండి. మిగతా రోజుల్లో ముఖం, మెడ, చంకలు, పిరుదులు కడగండి; పిరుదులు మురికైతే వెంటనే కడగండి.",
+     "బొడ్డు తాడు మొదలును శుభ్రంగా, పొడిగా ఉంచండి, దానిపై ఏమీ రాయకండి. న్యాపీ లేదా గుడ్డను మొదలు కింద మడవండి, దాన్ని తాకే ముందు, తాకిన తర్వాత చేతులు కడుక్కోండి, దానికి కట్టు కట్టకండి. మురికైతే శుభ్రమైన నీళ్ళు, సబ్బుతో కడిగి బాగా ఆరబెట్టండి.",
+     "తల్లిపాలు మాత్రమే ఇవ్వండి, బిడ్డ అడిగినప్పుడల్లా, పగలూ రాత్రీ, పుట్టిన గంటలోపే మొదలుపెట్టి. ప్రతిసారి పాలు ఇచ్చాక బిడ్డకు తేన్పు వచ్చేలా చేయండి. తల్లిపాల పేజీ చూడండి.",
+     "బిడ్డను చూసుకునే ముందు, తర్వాత చేతులు కడుక్కోండి. బిడ్డను పొగకు, పొగ తాగేవారికి, అనారోగ్యంగా ఉన్నవారికి దూరంగా ఉంచండి. దోమల ప్రమాదం ఉన్న చోట పగలూ రాత్రీ దోమతెర వాడండి.",
+     "నిద్రకు, బిడ్డను వెల్లకిలా, గట్టిగా సమతలంగా ఉన్న చోట పడుకోబెట్టాలని NHS సూచిస్తుంది; బిడ్డ చుట్టూ దిండ్లు, మందపాటి కప్పులు, మెత్తని బొమ్మలు ఉంచకూడదు; బిడ్డతో కలిసి సోఫాలో లేదా చేతికుర్చీలో ఎప్పుడూ నిద్రపోకూడదు. రాత్రిపూట బిడ్డను మీ గదిలోనే ఉంచితే రాత్రి పాలు ఇవ్వడం సులభమవుతుంది.",
+     "నవజాత శిశువు మొదటి 24 గంటల్లో కనీసం ఒక్కసారి మలవిసర్జన, మొదటి 48 గంటల్లో కనీసం ఒక్కసారి మూత్రవిసర్జన చేయాలి. ఇది జరగకపోతే మీ ఆరోగ్య కార్యకర్తకు చెప్పండి.",
+     "ఆరోగ్య కార్యకర్త మిమ్మల్ని, బిడ్డను పుట్టిన రోజున, 3వ రోజున, 7వ రోజున, 6 వారాలకు చూడాలి. బిడ్డకు మొదటి టీకాలు పుట్టినప్పుడే ఇవ్వాలి (BCG, పోలియో, సూచించిన చోట హెపటైటిస్ బి); ఆ తర్వాత MCP కార్డులోని టీకాల షెడ్యూల్ పాటించండి.",
+     "తక్కువ బరువుతో (2.5 కిలోల కంటే తక్కువ) లేదా నెలలు నిండకముందే పుట్టిన బిడ్డకు ప్రత్యేక సంరక్షణ అవసరం: వీలైనంత ఎక్కువసేపు మీతో చర్మానికి చర్మం సంపర్కం (కంగారూ మదర్ కేర్), అదనపు వెచ్చదనం, పాలు ఇవ్వడంలో అదనపు సహాయం. మీ ఆరోగ్య కార్యకర్తను నేర్పమని అడగండి.",
+     "చాలామంది నవజాత శిశువులు మొదటి కొన్ని రోజుల్లో కొద్దిగా పసుపు రంగులోకి మారతారు. ఇది తరచుగా రెండు వారాల్లో దానంతట అదే తగ్గిపోతుంది, కానీ ఆరోగ్య కార్యకర్త పరీక్షించాలి, మొదటి రోజులోనే కనిపిస్తే లేదా బిడ్డ నిద్రమత్తుగా ఉంటే లేదా పాలు తాగకపోతే వెంటనే."
+    ]
+   },
+   "seekHelp": {
+    "en": [
+     "Cannot suck or feed, or is not feeding",
+     "Fast or difficult breathing, or the chest pulling in with each breath",
+     "A fit (convulsion)",
+     "Feels very hot or very cold to touch",
+     "Very sleepy or dull, moves only when touched, or does not move",
+     "Yellow skin or eyes",
+     "A red cord stump, or pus or bleeding from it; red or sticky eyes; many pimples or a large boil",
+     "Loose motions (diarrhoea), or no urine or stool passed"
+    ],
+    "hi": [
+     "चूस नहीं पा रहा या दूध नहीं पी रहा",
+     "तेज़ या मुश्किल साँस, या हर साँस के साथ छाती का अंदर धँसना",
+     "दौरा (झटके)",
+     "छूने पर बहुत गरम या बहुत ठंडा लगना",
+     "बहुत सुस्त या बेदम, छूने पर ही हिलना, या बिल्कुल न हिलना",
+     "त्वचा या आँखों का पीला पड़ना",
+     "नाभि की डंडी लाल होना, या उससे मवाद या खून आना; आँखें लाल या चिपचिपी होना; बहुत सारे दाने या बड़ा फोड़ा",
+     "पतले दस्त, या पेशाब या मल न आना"
+    ],
+    "ta": [
+     "உறிஞ்ச முடியவில்லை அல்லது பால் குடிக்கவில்லை",
+     "வேகமான அல்லது சிரமமான மூச்சு, அல்லது ஒவ்வொரு மூச்சிலும் நெஞ்சு உள்ளே இழுபடுதல்",
+     "வலிப்பு",
+     "தொட்டால் மிகவும் சூடாக அல்லது மிகவும் குளிர்ந்து இருத்தல்",
+     "மிகவும் தூக்கக் கலக்கம் அல்லது சோர்வு, தொட்டால் மட்டுமே அசைதல், அல்லது அசையாமல் இருத்தல்",
+     "தோல் அல்லது கண்கள் மஞ்சளாதல்",
+     "தொப்புள் கொடிக் காம்பு சிவந்திருத்தல், அல்லது அதிலிருந்து சீழ் அல்லது இரத்தம் வருதல்; கண்கள் சிவந்து அல்லது பிசுபிசுப்பாக இருத்தல்; நிறைய சிறு கொப்புளங்கள் அல்லது பெரிய கட்டி",
+     "நீர்த்த மலம் (வயிற்றுப்போக்கு), அல்லது சிறுநீர் அல்லது மலம் கழியாமல் இருத்தல்"
+    ],
+    "te": [
+     "పీల్చలేకపోవడం లేదా పాలు తాగలేకపోవడం, లేదా తాగకపోవడం",
+     "వేగంగా లేదా కష్టంగా శ్వాస తీసుకోవడం, లేదా ప్రతి శ్వాసకూ ఛాతీ లోపలికి పీల్చుకుపోవడం",
+     "మూర్ఛ",
+     "తాకితే చాలా వేడిగా లేదా చాలా చల్లగా ఉండటం",
+     "చాలా నిద్రమత్తుగా, నిస్త్రాణంగా ఉండటం, తాకితేనే కదలడం, లేదా అసలు కదలకపోవడం",
+     "చర్మం లేదా కళ్ళు పసుపు రంగులోకి మారడం",
+     "బొడ్డు తాడు మొదలు ఎర్రగా ఉండటం, లేదా దాని నుండి చీము లేదా రక్తం రావడం; కళ్ళు ఎర్రగా లేదా జిగురుగా ఉండటం; చాలా పొక్కులు లేదా పెద్ద కురుపు",
+     "నీళ్ళ విరేచనాలు, లేదా మూత్రం లేదా మలం రాకపోవడం"
+    ]
+   },
+   "keywords": [
+    "newborn",
+    "new born",
+    "baby care",
+    "newborn care",
+    "cord",
+    "cord stump",
+    "umbilical",
+    "bath",
+    "bathing",
+    "warm",
+    "kangaroo",
+    "skin to skin",
+    "jaundice",
+    "yellow baby",
+    "baby sleep",
+    "sleeping",
+    "low birth weight",
+    "small baby",
+    "danger signs baby",
+    "vaccines baby",
+    "nabhi",
+    "navjat",
+    "shishu",
+    "pidhiyam",
+    "kuzhanthai",
+    "pasi",
+    "pasivadu",
+    "bidda",
+    "navajata"
+   ],
+   "sources": [
+    {
+     "label": "Mother and Child Protection Card (MCP Card), 2018 version",
+     "publisher": "Ministry of Health and Family Welfare and Ministry of Women and Child Development, Government of India (hosted by NHM)",
+     "url": "https://nhm.gov.in/New-Update-2022-24/CH-Programmes/HBNC-&-HBYC-Resource-%20Material/Revised-India-MCP-Card-English-(28-05-2018).pdf"
+    },
+    {
+     "label": "Booklet for expecting mothers (My Safe Motherhood Booklet)",
+     "publisher": "Maternal Health Division, Ministry of Health and Family Welfare, Government of India (hosted by NHM)",
+     "url": "https://nhm.gov.in/images/pdf/programmes/maternal-health/guidelines/my_safe_motherhood_booklet_english.pdf"
+    },
+    {
+     "label": "Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice (3rd edition) (PDF)",
+     "publisher": "World Health Organization (WHO)",
+     "url": "https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content"
+    },
+    {
+     "label": "Sudden infant death syndrome (SIDS) - NHS",
+     "publisher": "NHS (UK)",
+     "url": "https://www.nhs.uk/conditions/sudden-infant-death-syndrome-sids/"
+    },
+    {
+     "label": "Jaundice in babies - NHS",
+     "publisher": "NHS (UK)",
+     "url": "https://www.nhs.uk/conditions/jaundice-in-babies/"
+    }
+   ],
+   "seeAlso": [
+    "breastfeeding",
+    "after-birth"
+   ]
+  },
+  {
+   "id": "family-planning-after-birth",
+   "category": "baby",
+   "title": {
+    "en": "Family planning after the birth",
+    "hi": "प्रसव के बाद परिवार नियोजन",
+    "ta": "பிரசவத்துக்குப் பிறகு குடும்பக் கட்டுப்பாடு",
+    "te": "కాన్పు తర్వాత కుటుంబ నియంత్రణ"
+   },
+   "summary": {
+    "en": "You can become pregnant again soon after a birth, even before your periods return. A gap between pregnancies is good for your health and your baby's, and there are several safe choices. A health worker can help you choose. This is general information, so please follow the advice of your own doctor.",
+    "hi": "प्रसव के कुछ ही समय बाद, माहवारी लौटने से पहले भी, आप फिर गर्भवती हो सकती हैं। दो गर्भावस्थाओं के बीच अंतर रखना आपकी और शिशु की सेहत के लिए अच्छा है, और कई सुरक्षित विकल्प मौजूद हैं। चुनने में स्वास्थ्यकर्मी आपकी मदद कर सकते हैं। यह सामान्य जानकारी है, इसलिए कृपया अपने डॉक्टर की सलाह मानें।",
+    "ta": "பிரசவத்துக்குப் பிறகு விரைவிலேயே, மாதவிடாய் திரும்புவதற்கு முன்பேகூட, நீங்கள் மீண்டும் கர்ப்பமாகலாம். இரண்டு கர்ப்பங்களுக்கு இடையே இடைவெளி விடுவது உங்களுக்கும் குழந்தைக்கும் நல்லது; பாதுகாப்பான பல தேர்வுகள் உள்ளன. தேர்ந்தெடுக்கச் சுகாதாரப் பணியாளர் உதவலாம். இது பொதுவான தகவல்; எனவே உங்கள் மருத்துவரின் ஆலோசனையைப் பின்பற்றுங்கள்.",
+    "te": "కాన్పు తర్వాత కొద్ది కాలానికే, నెలసరి తిరిగి రాకముందే కూడా, మీరు మళ్ళీ గర్భం దాల్చవచ్చు. రెండు గర్భాల మధ్య విరామం మీకు, బిడ్డకు మంచిది, సురక్షితమైన ఎంపికలు చాలా ఉన్నాయి. ఎంచుకోవడానికి ఆరోగ్య కార్యకర్త సహాయం చేయగలరు. ఇది సాధారణ సమాచారం, కాబట్టి దయచేసి మీ డాక్టర్ సలహాను పాటించండి."
+   },
+   "keyPoints": {
+    "en": [
+     "You can become pregnant again within weeks of the birth, even before your periods come back, unless you are breastfeeding fully in the way described below. So think about a method early: during pregnancy, or before you leave the health facility.",
+     "A gap before the next pregnancy is good for you and your baby. WHO advises waiting at least two years. The Safe Motherhood booklet suggests a gap of two to five years, and the MCP card suggests three years.",
+     "Methods that space pregnancies include the copper IUCD (a one-time method that works for years, 5 or 10 depending on the type, and can be put in soon after delivery), an injection every three months, pills, and condoms. Condoms also protect against infections.",
+     "Breastfeeding protects you from pregnancy only if all three of these are true: your baby is under six months old; you give only breast milk, at least eight feeds in 24 hours including at least one at night, with no daytime gap of more than four hours or night gap of more than six hours, and no other food or drink; and your periods have not returned. If any of these changes, start another method. This is called the lactational amenorrhoea method (LAM).",
+     "Some methods can be started straight away and others need a wait, and this depends on whether you are breastfeeding. Your health worker will tell you which ones suit you.",
+     "If your family is complete, there are permanent methods: female sterilisation (tubectomy), which can be done soon after delivery or after six weeks, and male sterilisation (vasectomy), a smaller procedure that does not cause weakness.",
+     "The choice is yours, and your husband or partner can be part of the talk. A method such as an IUCD or sterilisation is done only after you have been counselled and have agreed. Ask your ANM or doctor at any visit; it is best to talk during pregnancy or soon after the birth, and not in the middle of active labour."
+    ],
+    "hi": [
+     "प्रसव के कुछ ही हफ़्तों में, माहवारी लौटने से पहले भी, आप फिर गर्भवती हो सकती हैं, जब तक कि आप नीचे बताए तरीके से पूरी तरह स्तनपान नहीं करा रहीं। इसलिए कोई तरीका जल्दी सोच लें: गर्भावस्था में, या स्वास्थ्य केंद्र से छुट्टी मिलने से पहले।",
+     "अगली गर्भावस्था से पहले अंतर रखना आपके और शिशु के लिए अच्छा है। WHO कम से कम दो साल रुकने की सलाह देता है। सुरक्षित मातृत्व पुस्तिका दो से पाँच साल का अंतर सुझाती है, और MCP कार्ड तीन साल का।",
+     "गर्भधारण में अंतर रखने के तरीकों में शामिल हैं: कॉपर IUCD (एक बार लगने वाला तरीका जो प्रकार के अनुसार 5 या 10 साल चलता है, और प्रसव के तुरंत बाद लगाया जा सकता है), हर तीन महीने पर इंजेक्शन, गोलियाँ और कंडोम। कंडोम संक्रमणों से भी बचाता है।",
+     "स्तनपान आपको गर्भधारण से तभी बचाता है जब ये तीनों बातें सही हों: शिशु छह महीने से छोटा हो; आप सिर्फ़ माँ का दूध दें, 24 घंटे में कम से कम आठ बार जिसमें कम से कम एक बार रात में हो, दिन में चार घंटे से ज़्यादा और रात में छह घंटे से ज़्यादा का अंतर न हो, और कोई और खाना-पीना न हो; और आपकी माहवारी लौटी न हो। इनमें से कुछ भी बदले तो कोई और तरीका शुरू करें। इसे लैक्टेशनल एमेनोरिया मेथड (LAM) कहते हैं।",
+     "कुछ तरीके तुरंत शुरू किए जा सकते हैं और कुछ के लिए रुकना पड़ता है, और यह इस पर निर्भर करता है कि आप स्तनपान करा रही हैं या नहीं। आपके लिए कौन-से ठीक हैं, यह आपका स्वास्थ्यकर्मी बताएगा।",
+     "अगर आपका परिवार पूरा हो गया है तो स्थायी तरीके हैं: महिला नसबंदी (ट्यूबेक्टॉमी), जो प्रसव के तुरंत बाद या छह हफ़्ते बाद की जा सकती है, और पुरुष नसबंदी (वैसेक्टॉमी), जो छोटी प्रक्रिया है और जिससे कमज़ोरी नहीं होती।",
+     "चुनाव आपका है, और आपके पति या साथी बातचीत में शामिल हो सकते हैं। IUCD या नसबंदी जैसा कोई भी तरीका तभी किया जाता है जब आपको सलाह दी जा चुकी हो और आप सहमत हों। किसी भी जाँच के समय अपनी ANM या डॉक्टर से पूछें; गर्भावस्था में या प्रसव के बाद जल्दी बात करना सबसे अच्छा है, तेज़ प्रसव पीड़ा के बीच नहीं।"
+    ],
+    "ta": [
+     "பிரசவத்துக்குப் பின் சில வாரங்களுக்குள், மாதவிடாய் திரும்புவதற்கு முன்பேகூட, மீண்டும் கர்ப்பமாகலாம்; கீழே சொல்லப்பட்ட முறையில் முழுமையாகத் தாய்ப்பால் கொடுக்கிறீர்கள் என்றால் மட்டும் அப்படி ஆகாது. எனவே ஒரு முறையை முன்கூட்டியே யோசியுங்கள்: கர்ப்ப காலத்திலோ, சுகாதார மையத்திலிருந்து வெளியேறும் முன்போ.",
+     "அடுத்த கர்ப்பத்துக்கு முன் இடைவெளி விடுவது உங்களுக்கும் குழந்தைக்கும் நல்லது. குறைந்தது இரண்டு ஆண்டுகள் காத்திருக்க WHO பரிந்துரைக்கிறது. பாதுகாப்பான தாய்மைக் கையேடு இரண்டு முதல் ஐந்து ஆண்டுகள் இடைவெளியையும், MCP அட்டை மூன்று ஆண்டுகளையும் பரிந்துரைக்கின்றன.",
+     "கர்ப்பங்களுக்கிடையே இடைவெளி விடும் முறைகளில் உள்ளவை: காப்பர் IUCD (ஒருமுறை பொருத்தப்படும் முறை; வகையைப் பொறுத்து 5 அல்லது 10 ஆண்டுகள் பயன்தரும்; பிரசவத்துக்குப் பின் விரைவிலேயே பொருத்தலாம்), மூன்று மாதத்துக்கு ஒருமுறை ஊசி, மாத்திரைகள், ஆணுறைகள். ஆணுறைகள் தொற்றுகளிலிருந்தும் பாதுகாக்கும்.",
+     "இந்த மூன்றும் உண்மையாக இருந்தால் மட்டுமே தாய்ப்பால் கொடுப்பது உங்களைக் கர்ப்பத்திலிருந்து பாதுகாக்கும்: குழந்தைக்கு ஆறு மாதத்துக்கும் குறைவு; நீங்கள் தாய்ப்பால் மட்டுமே கொடுக்கிறீர்கள் (24 மணி நேரத்தில் குறைந்தது எட்டு முறை, அதில் குறைந்தது ஒருமுறை இரவில்; பகலில் நான்கு மணி நேரத்துக்கு மேலும் இரவில் ஆறு மணி நேரத்துக்கு மேலும் இடைவெளி இல்லை; வேறு உணவோ பானமோ இல்லை); உங்கள் மாதவிடாய் திரும்பவில்லை. இவற்றில் எது மாறினாலும் வேறொரு முறையைத் தொடங்குங்கள். இது லாக்டேஷனல் அமெனோரியா முறை (LAM) எனப்படும்.",
+     "சில முறைகளை உடனே தொடங்கலாம்; சிலவற்றுக்குக் காத்திருக்க வேண்டும்; இது நீங்கள் தாய்ப்பால் கொடுக்கிறீர்களா என்பதைப் பொறுத்தது. உங்களுக்கு எவை பொருந்தும் என்பதைச் சுகாதாரப் பணியாளர் சொல்வார்.",
+     "உங்கள் குடும்பம் நிறைவடைந்திருந்தால் நிரந்தர முறைகள் உள்ளன: பெண் கருத்தடை அறுவை சிகிச்சை (டியூபெக்டமி) — பிரசவத்துக்குப் பின் விரைவிலோ ஆறு வாரங்களுக்குப் பின்போ செய்யலாம்; ஆண் கருத்தடை அறுவை சிகிச்சை (வாசெக்டமி) — சிறிய அறுவை சிகிச்சை, இது பலவீனத்தை ஏற்படுத்தாது.",
+     "தேர்வு உங்களுடையது; உங்கள் கணவர் அல்லது துணையும் பேச்சில் பங்கேற்கலாம். IUCD அல்லது கருத்தடை அறுவை சிகிச்சை போன்ற எந்த முறையும் நீங்கள் ஆலோசனை பெற்று, சம்மதித்த பிறகே செய்யப்படும். எந்தப் பரிசோதனையின்போதும் உங்கள் ANM அல்லது மருத்துவரிடம் கேளுங்கள்; கர்ப்ப காலத்திலோ பிரசவத்துக்குப் பின் விரைவிலோ பேசுவது சிறந்தது, தீவிரப் பிரசவத்தின் நடுவில் அல்ல."
+    ],
+    "te": [
+     "కాన్పు తర్వాత కొన్ని వారాల్లోనే, నెలసరి తిరిగి రాకముందే కూడా, మీరు మళ్ళీ గర్భం దాల్చవచ్చు; కింద చెప్పిన విధంగా పూర్తిగా తల్లిపాలు ఇస్తున్నప్పుడు మాత్రం కాదు. కాబట్టి ఒక పద్ధతి గురించి ముందే ఆలోచించండి: గర్భంలో ఉన్నప్పుడు, లేదా ఆరోగ్య కేంద్రం నుండి వెళ్ళే ముందు.",
+     "తదుపరి గర్భానికి ముందు విరామం మీకు, బిడ్డకు మంచిది. కనీసం రెండు సంవత్సరాలు ఆగాలని WHO సూచిస్తుంది. సురక్షిత మాతృత్వ పుస్తకం రెండు నుండి ఐదు సంవత్సరాల విరామాన్ని, MCP కార్డు మూడు సంవత్సరాలను సూచిస్తాయి.",
+     "గర్భాల మధ్య విరామం ఉంచే పద్ధతుల్లో ఇవి ఉన్నాయి: కాపర్ IUCD (ఒక్కసారి వేసే పద్ధతి; రకాన్ని బట్టి 5 లేదా 10 సంవత్సరాలు పనిచేస్తుంది, కాన్పు తర్వాత త్వరగా వేయవచ్చు), మూడు నెలలకు ఒక ఇంజెక్షన్, మాత్రలు, కండోమ్‌లు. కండోమ్‌లు ఇన్ఫెక్షన్ల నుండి కూడా కాపాడతాయి.",
+     "ఈ మూడూ నిజమైతేనే తల్లిపాలు మిమ్మల్ని గర్భం నుండి కాపాడతాయి: బిడ్డ వయసు ఆరు నెలల కంటే తక్కువ; మీరు తల్లిపాలు మాత్రమే ఇస్తున్నారు (24 గంటల్లో కనీసం ఎనిమిదిసార్లు, అందులో కనీసం ఒకసారి రాత్రి; పగటిపూట నాలుగు గంటల కంటే, రాత్రి ఆరు గంటల కంటే ఎక్కువ విరామం లేదు; మరే ఇతర ఆహారం, పానీయం లేదు); మీ నెలసరి తిరిగి రాలేదు. వీటిలో ఏది మారినా మరో పద్ధతి మొదలుపెట్టండి. దీన్ని లాక్టేషనల్ అమెనోరియా మెథడ్ (LAM) అంటారు.",
+     "కొన్ని పద్ధతులను వెంటనే మొదలుపెట్టవచ్చు, కొన్నింటికి ఆగాలి; ఇది మీరు తల్లిపాలు ఇస్తున్నారా లేదా అనే దానిపై ఆధారపడి ఉంటుంది. మీకు ఏవి సరిపోతాయో మీ ఆరోగ్య కార్యకర్త చెబుతారు.",
+     "మీ కుటుంబం పూర్తయి ఉంటే శాశ్వత పద్ధతులు ఉన్నాయి: మహిళల స్టెరిలైజేషన్ (ట్యూబెక్టమీ) — కాన్పు తర్వాత త్వరగా లేదా ఆరు వారాల తర్వాత చేయవచ్చు; పురుషుల స్టెరిలైజేషన్ (వేసెక్టమీ) — చిన్న ప్రక్రియ, దీనివల్ల బలహీనత రాదు.",
+     "ఎంపిక మీదే; మీ భర్త లేదా భాగస్వామి కూడా మాటల్లో పాల్గొనవచ్చు. IUCD లేదా స్టెరిలైజేషన్ వంటి ఏ పద్ధతైనా మీకు సలహా ఇచ్చి, మీరు అంగీకరించిన తర్వాతే చేస్తారు. ఏ పరీక్షకు వెళ్ళినప్పుడైనా మీ ANM లేదా డాక్టర్‌ను అడగండి; గర్భంలో ఉన్నప్పుడు లేదా కాన్పు తర్వాత త్వరగా మాట్లాడటం ఉత్తమం, తీవ్రమైన నొప్పుల మధ్యలో కాదు."
+    ]
+   },
+   "seekHelp": {
+    "en": [],
+    "hi": [],
+    "ta": [],
+    "te": []
+   },
+   "keywords": [
+    "family planning",
+    "contraception",
+    "birth control",
+    "spacing",
+    "gap between pregnancies",
+    "IUCD",
+    "copper T",
+    "injection",
+    "Antara",
+    "pills",
+    "condom",
+    "LAM",
+    "lactational amenorrhoea",
+    "sterilisation",
+    "sterilization",
+    "tubectomy",
+    "vasectomy",
+    "pregnant again",
+    "postpartum family planning",
+    "parivar niyojan",
+    "nasbandi",
+    "kudumba kattuppadu",
+    "kutumba niyantrana"
+   ],
+   "sources": [
+    {
+     "label": "Booklet for expecting mothers (My Safe Motherhood Booklet)",
+     "publisher": "Maternal Health Division, Ministry of Health and Family Welfare, Government of India (hosted by NHM)",
+     "url": "https://nhm.gov.in/images/pdf/programmes/maternal-health/guidelines/my_safe_motherhood_booklet_english.pdf"
+    },
+    {
+     "label": "Mother and Child Protection Card (MCP Card), 2018 version",
+     "publisher": "Ministry of Health and Family Welfare and Ministry of Women and Child Development, Government of India (hosted by NHM)",
+     "url": "https://nhm.gov.in/New-Update-2022-24/CH-Programmes/HBNC-&-HBYC-Resource-%20Material/Revised-India-MCP-Card-English-(28-05-2018).pdf"
+    },
+    {
+     "label": "Postpartum IUCD Reference Manual (PDF)",
+     "publisher": "Family Planning Division, Ministry of Health and Family Welfare, Government of India (hosted by NHM)",
+     "url": "https://nhm.gov.in/images/pdf/programmes/family-planing/guidelines/PPIUCD%20Reference%20Manual.pdf"
+    },
+    {
+     "label": "Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice (3rd edition) (PDF)",
+     "publisher": "World Health Organization (WHO)",
+     "url": "https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content"
+    },
+    {
+     "label": "Family planning/contraception methods (fact sheet)",
+     "publisher": "World Health Organization (WHO)",
+     "url": "https://www.who.int/news-room/fact-sheets/detail/family-planning-contraception"
+    },
+    {
+     "label": "Sex and contraception after birth - NHS",
+     "publisher": "NHS (UK)",
+     "url": "https://www.nhs.uk/baby/support-and-services/sex-and-contraception-after-birth/"
+    }
+   ],
+   "seeAlso": [
+    "after-birth",
+    "breastfeeding"
    ]
   },
   {

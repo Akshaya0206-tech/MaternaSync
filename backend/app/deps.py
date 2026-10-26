@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from . import config, models
 from .database import get_db
-from .security import decode_access_token
+from .security import decode_access_claims
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -21,22 +21,33 @@ def get_current_user(
     if credentials is None:
         raise unauthorized
 
-    user_id = decode_access_token(credentials.credentials)
+    claims = decode_access_claims(credentials.credentials)
+    user_id = claims.get("sub") if claims else None
     if user_id is None:
         raise unauthorized
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise unauthorized
+    # A token made before the account's session counter was last raised (password changed, "Sign out other devices", account closed)
+    # no longer works. A token made before the counter existed has no "ver" and counts as 0, as does a user row holding NULL, so the
+    # upgrade itself signs nobody out.
+    if int(claims.get("ver", 0)) != int(user.token_version or 0):
+        raise unauthorized
     refuse_sign_in(user)
 
     return user
 
 
+ACCOUNT_CLOSED_MESSAGE = "This account was closed at your request. Please contact your doctor's clinic."
+
+
 def refuse_sign_in(user: models.User) -> None:
     """The care assistant's service account can never sign in, and while the care-team login is switched off nobody can
     use a care-team account. Checked on every request, so a token issued earlier stops working too. The care-team code
-    itself is untouched: set MATERNASYNC_CARE_TEAM_ENABLED=true and it works again."""
+    itself is untouched: set MATERNASYNC_CARE_TEAM_ENABLED=true and it works again. An account its owner closed cannot sign in either."""
+    if user.closed_at is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ACCOUNT_CLOSED_MESSAGE)
     if user.role == "ai_coordinator":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account is a service account and cannot sign in.")
     if user.role == "care_team" and not config.CARE_TEAM_ENABLED:

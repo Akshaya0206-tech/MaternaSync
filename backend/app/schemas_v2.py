@@ -88,6 +88,7 @@ class PatientDocumentOut(CamelModel):
     document_date: str | None
     description: str | None
     uploaded_at: datetime
+    document_type: str | None = None  # what she said the file is when she uploaded it
 
 
 class DocumentUploadOut(CamelModel):
@@ -104,19 +105,36 @@ class QuestionResponseOut(CamelModel):
     created_at: datetime
 
 
+class AttachmentOut(CamelModel):
+    id: str  # the document's id
+    filename: str
+
+
 class PatientQuestionOut(CamelModel):
     id: str
     question_text: str
     status: str
     created_at: datetime
     responses: list[QuestionResponseOut]
+    attachments: list[AttachmentOut] = []
+    follow_up_of_id: str | None = None
+    follow_up_of_text: str | None = None
 
 
 class QuestionCreateIn(CamelModel):
     question_text: str
+    follow_up_of: str | None = None
 
 
 # ---------- Patient Portal: appointments ----------
+
+class ChangeRequestOut(CamelModel):
+    """What she asked of the clinic about a confirmed visit. It is only a request: the visit stays as it is until a doctor acts."""
+    kind: str  # cancel | reschedule
+    note: str | None = None
+    preferred_at: datetime | None = None
+    requested_at: datetime
+
 
 class AppointmentOut(CamelModel):
     id: str
@@ -125,9 +143,15 @@ class AppointmentOut(CamelModel):
     location: str | None
     status: str
     doctor_name: str | None = None
+    change_request: ChangeRequestOut | None = None
 
 
 # ---------- Patient Portal: journey ----------
+
+class WordMeaningOut(CamelModel):
+    term: str
+    meaning: str
+
 
 class JourneyEventOut(CamelModel):
     id: str
@@ -137,6 +161,8 @@ class JourneyEventOut(CamelModel):
     event_date: str
     gestational_age_weeks: int
     gestational_age_days: int
+    # What the shorthand in the title and summary stands for, in her language. Definitions only.
+    words: list[WordMeaningOut] = []
 
 
 # ---------- Patient Portal: updates (notifications) ----------
@@ -148,6 +174,8 @@ class NotificationOut(CamelModel):
     body: str
     is_read: bool
     created_at: datetime
+    # The page this update is about, for the patient's "Open ..." button (update_links.py).
+    link: str | None = None
 
 
 # ---------- Patient Portal: profile ----------
@@ -178,6 +206,12 @@ class PatientDashboardOut(CamelModel):
     open_questions_count: int
     recent_care_title: str | None
     recent_care_date: str | None
+    # A visit she asked for that her doctor has not confirmed yet.
+    visit_request: AppointmentOut | None = None
+    check_in_today: str = "none"  # none | recorded | skipped
+    reminders_due_count: int = 0
+    reminders_due: list[str] = []
+    answered_recently_count: int = 0
 
 
 # ================== Care Team Portal ==================
@@ -256,6 +290,7 @@ class CareTeamDocumentOut(CamelModel):
     status_label: str
     extraction: ExtractionOut | None
     reviews: list[DocumentReviewOut]
+    document_type: str | None = None
 
 
 class DocumentEditIn(CamelModel):
@@ -294,6 +329,8 @@ class CareTeamQuestionOut(CamelModel):
     assigned_to_name: str | None
     created_at: datetime
     responses: list[QuestionResponseOut]
+    attachments: list[AttachmentOut] = []
+    follow_up_of_text: str | None = None
 
 
 class QuestionRespondIn(CamelModel):

@@ -17,6 +17,8 @@ export interface EmergencyProfile {
   hospitalName: string | null;
   hospitalPhone: string | null;
   hospitalAddress: string | null;
+  /** The number on her Mother and Child Protection card, typed by her. */
+  mcpNumber: string | null;
   liveLocation: boolean;
 }
 
@@ -30,7 +32,26 @@ export interface EmergencyInput {
   hospitalName: string | null;
   hospitalPhone: string | null;
   hospitalAddress: string | null;
+  /** Leave out to keep what is saved (the Profile page's location form does not know about it). */
+  mcpNumber?: string | null;
   liveLocation: boolean;
+}
+
+/** A hospital the patient's clinic recommends. */
+export interface ClinicHospital {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  note: string | null;
+}
+
+/** What the clinic tells its patients about itself, and her own doctor. */
+export interface ClinicInfo {
+  name: string | null;
+  phone: string | null;
+  doctorName: string | null;
+  hospitals: ClinicHospital[];
 }
 
 export interface EmergencyOverview {
@@ -39,6 +60,10 @@ export interface EmergencyOverview {
   numbers: EmergencyNumber[];
   note: string;
   located?: boolean | null;
+  /** The clinic's details and hospitals; an older server does not send them. */
+  clinic?: ClinicInfo;
+  /** Her own name and estimated due date, for the card she can show at a hospital. */
+  me?: { name: string; edd: string | null };
 }
 
 export interface Hospital {

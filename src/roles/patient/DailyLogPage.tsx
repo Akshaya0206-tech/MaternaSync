@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import { ROOT, formatTime, localDateTime } from "../../api/continuity";
 import type { DailyLog } from "../../api/continuity";
+import { isUnreachable, sendOrKeepCheckIn } from "../../offline/pendingCheckIns";
+import { useOnline } from "../../offline/useOnline";
 import { tx, useLanguage } from "../../i18n";
 import {
   Badge,
@@ -12,10 +14,12 @@ import {
   Page,
   Panel,
   useAction,
-  useWorkspace,
 } from "../../components/continuity/shared";
 import { SymptomPicker } from "./SymptomPicker";
 import { splitSaved } from "./symptoms";
+import { checkNumbers } from "./checkInRules";
+import { EntriesPrint } from "./EntriesPrint";
+import { useCheckInSource } from "./useCheckInSource";
 
 const MOODS: Record<string, string> = {
   not_recorded: tx("Not recorded"),
@@ -37,6 +41,9 @@ const HISTORY_ACTIONS: Record<string, string> = {
   patient_log_corrected: tx("Entry corrected"),
 };
 
+// The newest entries show first; older ones open with a button.
+const ENTRIES_SHOWN = 7;
+
 const empty = () => ({
   recordedAt: localDateTime(),
   systolic: "",
@@ -54,17 +61,22 @@ const empty = () => ({
 
 export function DailyLogPage() {
   const { t, language } = useLanguage();
-  const workspace = useWorkspace();
+  const { workspace, userId, episodeId, offlineForm, canFill } = useCheckInSource();
   const action = useAction();
+  const online = useOnline();
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
   const [otherOpen, setOtherOpen] = useState(false);
+  const [submitted, setSubmitted] = useState(false); // numbers that cannot be right are pointed out once she has tried to save
+  const [checkError, setCheckError] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const [start, setStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [count, setCount] = useState(0);
   const [history, setHistory] = useState<
     { timestamp: string; action: string; newState: DailyLog | null }[]
   >([]);
+  const formElement = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (!start) return;
     const interval = window.setInterval(
@@ -75,8 +87,27 @@ export function DailyLogPage() {
   }, [start]);
   const set = (key: keyof typeof form, value: string) =>
     setForm((old) => ({ ...old, [key]: value }));
-  const save = (skipped = false) =>
-    action.run(
+
+  const errors = checkNumbers(form, t);
+  const recordedError = !form.recordedAt
+    ? t("Choose the date and time.")
+    : new Date(form.recordedAt).getTime() > Date.now() + 60_000
+      ? t("This date and time has not happened yet.")
+      : undefined;
+  const reasonError = editing && !form.correctionReason.trim() ? t("Please say why you are correcting this entry.") : undefined;
+  const hasProblem = Boolean(Object.keys(errors).length || recordedError || reasonError);
+  const shown = (message?: string) => (submitted ? message : undefined);
+
+  const save = (skipped = false) => {
+    if (!skipped && hasProblem) {
+      setSubmitted(true);
+      setCheckError(t("Please check the boxes marked below."));
+      // The marks appear on the next draw; then the first marked box takes focus.
+      window.setTimeout(() => formElement.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(), 0);
+      return Promise.resolve();
+    }
+    setCheckError("");
+    return action.run(
       async () => {
         const { other, ...rest } = form;
         const payload = {
@@ -99,23 +130,38 @@ export function DailyLogPage() {
             ? { symptoms: "", mood: "not_recorded", adherence: "not_recorded" }
             : {}),
         };
-        if (editing) await api.patch(`${ROOT}/logs/${editing}`, payload);
-        else
-          await api.post(
-            `${ROOT}/episodes/${workspace.episodeId}/logs`,
-            payload,
-          );
+        let kept = false;
+        if (editing) {
+          try {
+            await api.patch(`${ROOT}/logs/${editing}`, payload);
+          } catch (error) {
+            if (isUnreachable(error)) throw new Error(tx("No signal right now. Please try this correction again when you are back online."));
+            throw error;
+          }
+        } else {
+          // Without a signal the check-in is kept on this phone and sent later; it is never lost and never saved twice.
+          kept = (await sendOrKeepCheckIn(userId, episodeId, payload)) === "queued";
+        }
         setEditing(null);
         setForm(empty());
         setOtherOpen(false);
-        await workspace.reload();
+        setSubmitted(false);
+        if (kept) return t("No signal right now. Your check-in is kept on this phone and will be sent when you are back online.");
+        try {
+          await workspace.reload();
+        } catch {
+          // The check-in is saved; the list under it shows it the next time it loads.
+        }
       },
       skipped
         ? t("Check-in skipped. No clinical conclusion has been recorded.")
         : t("Your check-in was saved for your doctor."),
     );
+  };
   function edit(log: DailyLog) {
     setEditing(log.id);
+    setSubmitted(false);
+    setCheckError("");
     // Entries that match a button go back to the buttons; everything else was typed under "Other".
     const { tapped, typed } = splitSaved(log.symptoms, language, t);
     setOtherOpen(Boolean(typed));
@@ -135,6 +181,8 @@ export function DailyLogPage() {
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+  const logs = workspace.data?.logs ?? [];
+  const visibleLogs = showAll ? logs : logs.slice(0, ENTRIES_SHOWN);
   return (
     <Page
       title={t("Daily check-in")}
@@ -143,12 +191,17 @@ export function DailyLogPage() {
       )}
     >
       <Feedback
-        error={workspace.error || action.error}
+        error={(offlineForm ? "" : workspace.error) || action.error || checkError}
         message={action.message}
       />
       {workspace.loading && <p role="status">{t("Loading your check-ins…")}</p>}
-      {workspace.data && (
+      {canFill && (
         <>
+          {(!online || offlineForm) && (
+            <div className="continuity-note" role="status">
+              {t("You can fill in your check-in without a signal. It is kept on this phone and sent when you are back online.")}
+            </div>
+          )}
           <div className="continuity-note">
             {t(
               "Your entries are reported by you and are not monitored continuously. If you are worried about your health or your baby’s movements, contact your doctor.",
@@ -167,44 +220,42 @@ export function DailyLogPage() {
             aside={<Badge>{t("Optional · about 2 minutes")}</Badge>}
           >
             <form
+              ref={formElement}
+              noValidate
               onSubmit={(e) => {
                 e.preventDefault();
                 void save();
               }}
             >
               <div className="continuity-fields">
-                <Field label={t("Recorded at")}>
+                <Field label={t("Recorded at")} error={shown(recordedError)}>
                   <input
                     type="datetime-local"
-                    required
                     max={localDateTime()}
                     value={form.recordedAt}
                     onChange={(e) => set("recordedAt", e.target.value)}
                   />
                 </Field>
-                <Field label={t("Systolic BP (mmHg)")}>
+                <Field label={t("Systolic BP (mmHg)")} error={shown(errors.systolic)}>
                   <input
                     type="number"
-                    min="30"
-                    max="300"
+                    inputMode="numeric"
                     value={form.systolic}
                     onChange={(e) => set("systolic", e.target.value)}
                   />
                 </Field>
-                <Field label={t("Diastolic BP (mmHg)")}>
+                <Field label={t("Diastolic BP (mmHg)")} error={shown(errors.diastolic)}>
                   <input
                     type="number"
-                    min="20"
-                    max="200"
+                    inputMode="numeric"
                     value={form.diastolic}
                     onChange={(e) => set("diastolic", e.target.value)}
                   />
                 </Field>
-                <Field label={t("Weight (kg)")}>
+                <Field label={t("Weight (kg)")} error={shown(errors.weightKg)}>
                   <input
                     type="number"
-                    min="20"
-                    max="400"
+                    inputMode="decimal"
                     step="0.1"
                     value={form.weightKg}
                     onChange={(e) => set("weightKg", e.target.value)}
@@ -244,29 +295,26 @@ export function DailyLogPage() {
                 onOtherOpen={setOtherOpen}
               />
               <div className="continuity-fields">
-                <Field label={t("Movements recorded (optional)")}>
+                <Field label={t("Movements recorded (optional)")} error={shown(errors.movementCount)}>
                   <input
                     type="number"
-                    min="0"
-                    max="1000"
+                    inputMode="numeric"
                     value={form.movementCount}
                     onChange={(e) => set("movementCount", e.target.value)}
                   />
                 </Field>
-                <Field label={t("Observation duration (minutes)")}>
+                <Field label={t("Observation duration (minutes)")} error={shown(errors.movementMinutes)}>
                   <input
                     type="number"
-                    min="1"
-                    max="1440"
+                    inputMode="numeric"
                     value={form.movementMinutes}
                     onChange={(e) => set("movementMinutes", e.target.value)}
                   />
                 </Field>
               </div>
               {editing && (
-                <Field label={t("Reason for correction")}>
+                <Field label={t("Reason for correction")} error={shown(reasonError)}>
                   <input
-                    required
                     value={form.correctionReason}
                     onChange={(e) => set("correctionReason", e.target.value)}
                   />
@@ -294,6 +342,8 @@ export function DailyLogPage() {
                       setEditing(null);
                       setForm(empty());
                       setOtherOpen(false);
+                      setSubmitted(false);
+                      setCheckError("");
                     }}
                   >
                     {t("Cancel correction")}
@@ -360,12 +410,15 @@ export function DailyLogPage() {
             </div>
           </Panel>
           <Panel title={t("Your entries")}>
-            {!workspace.data.logs.length && (
+            {offlineForm && (
+              <p className="continuity-muted">{t("Your earlier entries show here when you are back online.")}</p>
+            )}
+            {workspace.data && !logs.length && (
               <Empty>
                 {t("No check-ins yet. It’s okay to leave measurements blank.")}
               </Empty>
             )}
-            {workspace.data.logs.map((log) => (
+            {visibleLogs.map((log) => (
               <article
                 key={log.id}
                 className="continuity-item"
@@ -426,6 +479,14 @@ export function DailyLogPage() {
                 </div>
               </article>
             ))}
+            {logs.length > ENTRIES_SHOWN && (
+              <div className="continuity-actions">
+                <button type="button" className="btn-secondary" aria-expanded={showAll} onClick={() => setShowAll((open) => !open)}>
+                  {showAll ? t("Show fewer entries") : t("Show older entries ({count} more)", { count: logs.length - ENTRIES_SHOWN })}
+                </button>
+              </div>
+            )}
+            {workspace.data && logs.length > 0 && <EntriesPrint logs={logs} patientName={workspace.data.patientName} />}
           </Panel>
           {history.length > 0 && (
             <Panel title={t("Entry history")}>

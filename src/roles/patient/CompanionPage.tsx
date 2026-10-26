@@ -4,16 +4,17 @@ import { Mic, Send, Volume2 } from "lucide-react";
 import { api } from "../../api/client";
 import { askMyQuestion } from "../../api/patientPortal";
 import { ROOT } from "../../api/continuity";
-import type { CompanionReply, Language } from "../../api/continuity";
+import type { CompanionReply } from "../../api/continuity";
 import { LOCALES, useLanguage } from "../../i18n";
 import {
   Empty,
   Feedback,
-  Field,
   Page,
   Panel,
   useAction,
 } from "../../components/continuity/shared";
+import { canSpeak, speak, stopSpeaking } from "./speech";
+import { matchReferenceTopics, topicTitle } from "./referenceMatch";
 
 interface Message {
   id: number;
@@ -23,6 +24,8 @@ interface Message {
   /** The patient's own words, kept so they can be sent to the doctor on request. */
   question?: string;
   sent?: boolean;
+  /** Topics on the References page that are about the same thing as the question, when there is no reviewed note to show. */
+  references?: string[];
 }
 
 interface Recognizer {
@@ -44,21 +47,15 @@ const SpeechRecognitionApi = (
   (window as unknown as { webkitSpeechRecognition?: RecognizerConstructor })
     .webkitSpeechRecognition;
 
-const LANGUAGE_NAMES: Record<Language, string> = {
-  en: "English",
-  hi: "हिन्दी · Hindi",
-  ta: "தமிழ் · Tamil",
-  te: "తెలుగు · Telugu",
-};
-
 export function CompanionPage() {
-  const { t, language, setLanguage } = useLanguage();
+  const { t, language } = useLanguage();
   const action = useAction();
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [notice, setNotice] = useState("");
+  const [reading, setReading] = useState<number | null>(null); // the reply being read aloud
   const recognizer = useRef<Recognizer | null>(null);
   const log = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
@@ -66,18 +63,22 @@ export function CompanionPage() {
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight });
   }, [messages]);
-  useEffect(() => () => recognizer.current?.stop(), []);
+  useEffect(() => () => {
+    recognizer.current?.stop();
+    stopSpeaking(); // leaving the page stops the voice
+  }, []);
 
-  const suggestions = [
-    t("Open my daily check-in"),
-    t("What should I eat in pregnancy?"),
-    t("Tell me about exercise in pregnancy"),
-    t("Where can I upload my report?"),
-    t("When is my next appointment?"),
-    t("Tell me about breastfeeding"),
+  // Each suggestion that is a question about a subject also names the References topics on that subject.
+  const suggestions: { label: string; topics?: string[] }[] = [
+    { label: t("Open my daily check-in") },
+    { label: t("What should I eat in pregnancy?"), topics: ["eating-well", "iron-folic-calcium"] },
+    { label: t("Tell me about exercise in pregnancy"), topics: ["staying-active"] },
+    { label: t("Where can I upload my report?") },
+    { label: t("When is my next appointment?") },
+    { label: t("Tell me about breastfeeding"), topics: ["breastfeeding"] },
   ];
 
-  async function ask(text: string) {
+  async function ask(text: string, topics?: string[]) {
     const question = text.trim();
     if (!question || busy) return;
     setDraft("");
@@ -90,9 +91,11 @@ export function CompanionPage() {
         question,
         language,
       });
+      // Only when the companion has nothing reviewed to show and is not handling a warning sign, a medical question or a way round the app.
+      const references = reply.intent === "no_match" ? (topics ?? matchReferenceTopics(question, language)) : [];
       setMessages((old) => [
         ...old,
-        { id: nextId.current++, role: "bot", text: reply.message, reply, question },
+        { id: nextId.current++, role: "bot", text: reply.message, reply, question, references },
       ]);
     } catch (error) {
       setMessages((old) => [
@@ -131,25 +134,30 @@ export function CompanionPage() {
     recognition.start();
   }
 
-  function speak(text: string) {
-    if (!("speechSynthesis" in window)) return;
-    const locale = LOCALES[language];
-    const hasVoice = window.speechSynthesis
-      .getVoices()
-      .some((voice) => voice.lang.toLowerCase().startsWith(locale.slice(0, 2)));
-    if (!hasVoice) {
-      setNotice(t("Your device has no voice installed for this language."));
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = locale;
-    window.speechSynthesis.speak(utterance);
+  function referenceIntro() {
+    return t("The References page has general information on this from official sources. It is not advice about you.");
   }
 
   function readable(message: Message) {
     const cards = message.reply?.education.map((m) => `${m.title}. ${m.content}`) ?? [];
-    return [message.text, ...cards].join("\n");
+    const references = message.references?.length ? [referenceIntro(), ...message.references.map((id) => topicTitle(id, language))] : [];
+    return [message.text, ...cards, ...references].join("\n");
+  }
+
+  // The reply is read in the language of the screen with a voice installed on this device; a second press stops it.
+  function readAloud(message: Message) {
+    if (reading === message.id) {
+      stopSpeaking();
+      setReading(null);
+      return;
+    }
+    setNotice("");
+    const result = speak(readable(message), language, () => setReading(null));
+    if (result === "speaking") setReading(message.id);
+    else {
+      setReading(null);
+      setNotice(t("Your device has no voice installed for this language."));
+    }
   }
 
   async function sendToCareTeam(message: Message) {
@@ -169,20 +177,6 @@ export function CompanionPage() {
         {t(
           "Medical questions go to your doctor for review. This companion does not diagnose or recommend treatment.",
         )}
-      </div>
-      <div className="continuity-fields">
-        <Field label={t("Language")}>
-          <select
-            value={language}
-            onChange={(e) => void setLanguage(e.target.value as Language)}
-          >
-            {Object.entries(LANGUAGE_NAMES).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Field>
       </div>
       <div className="continuity-actions">
         <Link className="btn-primary" to="/patient/questions">{t("Ask my doctor")}</Link>
@@ -221,6 +215,18 @@ export function CompanionPage() {
                     )}
                   </article>
                 ))}
+                {message.references && message.references.length > 0 && (
+                  <div className="companion-references">
+                    <p>{referenceIntro()}</p>
+                    <div className="continuity-actions">
+                      {message.references.map((id) => (
+                        <Link key={id} className="btn-secondary" to={`/patient/references?topic=${id}`}>
+                          {t("Open References: {title}", { title: topicTitle(id, language) })}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {message.reply && (
                   <div className="continuity-actions">
                     {message.reply.actions.map((item, index) =>
@@ -245,14 +251,14 @@ export function CompanionPage() {
                     )}
                   </div>
                 )}
-                {message.role === "bot" && "speechSynthesis" in window && (
+                {message.role === "bot" && canSpeak() && (
                   <button
                     className="btn-secondary"
                     style={{ marginTop: 8 }}
-                    onClick={() => speak(readable(message))}
-                    aria-label={t("Read aloud")}
+                    onClick={() => readAloud(message)}
+                    aria-pressed={reading === message.id}
                   >
-                    <Volume2 size={14} /> {t("Read aloud")}
+                    <Volume2 size={14} aria-hidden="true" /> {reading === message.id ? t("Stop reading") : t("Read aloud")}
                   </button>
                 )}
               </div>
@@ -262,8 +268,8 @@ export function CompanionPage() {
           {!messages.length && (
             <div className="companion-chips" aria-label={t("Suggested questions")}>
               {suggestions.map((suggestion) => (
-                <button key={suggestion} onClick={() => void ask(suggestion)}>
-                  {suggestion}
+                <button key={suggestion.label} onClick={() => void ask(suggestion.label, suggestion.topics)}>
+                  {suggestion.label}
                 </button>
               ))}
             </div>

@@ -8,6 +8,7 @@ import { tx, useLanguage } from '../../i18n';
 import { useTour } from '../../tour/tourContext';
 import { LocationCard } from './LocationCard';
 import { TrustedPeopleCard } from './TrustedPeopleCard';
+import { CloseAccountCard, MyDataCard, SecurityCard } from './AccountCards';
 import { CardHeading, FieldTile, HeartbeatLine, SavedBadge } from './ProfileArt';
 import { cardProps, initialsOf } from './profileCard';
 import './profile.css';
@@ -64,7 +65,7 @@ export function ProfilePage() {
         <span className="pf-header-icon" aria-hidden="true"><UserRound size={30} /></span>
         <div>
           <h1 className="page-title">{t('Profile')}</h1>
-          <p>{t('Manage your personal and medical details')}</p>
+          <p>{t('Manage your personal details')}</p>
         </div>
       </header>
 
@@ -128,9 +129,15 @@ export function ProfilePage() {
         </section>
       )}
 
+      {!isLoading && profile && <SecurityCard index={5} />}
+
+      {!isLoading && profile && <MyDataCard index={6} />}
+
+      {!isLoading && profile && <CloseAccountCard index={7} />}
+
       {/* Always offered, so a demonstration account (which never gets the new-account welcome) can show the tour. */}
       {!isLoading && profile && (
-        <section aria-labelledby="profile-tour-title" {...cardProps('navy', 5)}>
+        <section aria-labelledby="profile-tour-title" {...cardProps('navy', 8)}>
           <CardHeading
             id="profile-tour-title"
             icon={<Compass size={23} />}

@@ -123,6 +123,7 @@ def _document_out(db: Session, doc: models.MedicalDocument) -> schemas_v2.CareTe
         uploaded_by_name=uploader.full_name if uploader else "Unknown",
         uploaded_by_role=doc.uploaded_by_role, uploaded_at=doc.uploaded_at,
         status=doc.status, status_label=schemas_v2.DOCUMENT_STATUS_LABELS.get(doc.status, doc.status),
+        document_type=doc.document_type,
         extraction=_extraction_out(doc.extraction),
         reviews=[
             schemas_v2.DocumentReviewOut(
@@ -234,7 +235,8 @@ def verify_document(
         actor_label=current_user.full_name,
     ))
 
-    server_text.notify_key(db, document.uploaded_by_user_id, "document_verified_patient", episode_id=document.episode_id, type_="document_verified",
+    server_text.notify_key(db, document.uploaded_by_user_id, "document_reviewed_named", episode_id=document.episode_id, type_="document_verified",
+                           params={"title": (ext.record_type if ext and ext.record_type else document.filename)},
                            related_entity_type="MedicalDocument", related_entity_id=document.id)
 
     doctor = _primary_doctor(db, document.episode_id)

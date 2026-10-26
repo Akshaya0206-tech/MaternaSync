@@ -5,12 +5,15 @@ import { RoleSidebar } from '../../components/shared/RoleSidebar';
 import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher';
 import { useAuth } from '../../auth/AuthContext';
 import { getContext } from '../../api/continuity';
+import { usePendingCheckIns } from '../../offline/pendingCheckIns';
 import { LanguageProvider, useLanguage } from '../../i18n';
 import { TourProvider } from '../../tour/TourProvider';
 import { TextSizeControl } from '../../accessibility/TextSizeControl';
 import { LocationProvider } from './location';
 import { usePatientLocation } from './locationContext';
 import { patientTourLabels, patientTourSteps } from './tour';
+import { PendingCheckInsNotice } from './PendingCheckInsNotice';
+import { useUnreadUpdates } from './useUnreadUpdates';
 
 // Pages that show a pregnancy record. A new account has none until the care team links one.
 const NEEDS_RECORD = new Set([
@@ -41,6 +44,25 @@ function PatientLayout() {
   const { pathname } = useRoute();
   const where = usePatientLocation();
   const [hasRecord, setHasRecord] = useState<boolean | null>(null);
+  const waiting = usePendingCheckIns(user?.id ?? '');
+  const unread = useUnreadUpdates(user?.id ?? '', hasRecord === true, pathname);
+
+  // Download the check-in pages while there is a signal, so they open without one (the service worker keeps them).
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    let active = true;
+    void navigator.serviceWorker.ready.then(() => {
+      if (!active) return;
+      window.setTimeout(() => { void import('./DailyLogPage'); void import('./GuidedCheckInPage'); void import('./EmergencyPage'); }, 2000);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const signOut = () => {
+    // A check-in kept on the phone is sent the next time she signs in, so she is asked before leaving it behind.
+    if (waiting.length && !window.confirm(t('A check-in is kept on this phone and has not been sent. Sign out anyway? It will be sent the next time you sign in.'))) return;
+    logout();
+  };
 
   useEffect(() => {
     let active = true;
@@ -53,14 +75,14 @@ function PatientLayout() {
   const navItems = [
     { label: t('My Care'), to: '/patient/dashboard', icon: <HeartPulse size={18} /> },
     { label: t('Daily Check-in'), to: '/patient/daily-log', icon: <HeartPulse size={18} />, alsoActiveOn: ['/patient/guided-check-in'] },
-    { label: t('My Care Plan'), to: '/patient/care-plan', icon: <Calendar size={18} /> },
+    { label: t('My Care Plan'), to: '/patient/care-plan', icon: <Calendar size={18} />, dot: unread.carePlan > 0 ? t('New reminders or documents') : undefined },
     { label: t('Care Companion'), to: '/patient/companion', icon: <MessageCircle size={18} /> },
     { label: t('Sharing & Consent'), to: '/patient/consent', icon: <UserCircle size={18} /> },
     { label: t('My Records'), to: '/patient/records', icon: <FolderHeart size={18} /> },
-    { label: t('My Questions'), to: '/patient/questions', icon: <MessageCircle size={18} /> },
+    { label: t('My Questions'), to: '/patient/questions', icon: <MessageCircle size={18} />, dot: unread.questions > 0 ? t('New answers') : undefined },
     { label: t('Appointments'), to: '/patient/appointments', icon: <Calendar size={18} /> },
     { label: t('References'), to: '/patient/references', icon: <BookOpen size={18} /> },
-    { label: t('Updates'), to: '/patient/updates', icon: <Bell size={18} /> },
+    { label: t('Updates'), to: '/patient/updates', icon: <Bell size={18} />, dot: unread.total > 0 ? t('New updates') : undefined },
     { label: t('Profile'), to: '/patient/profile', icon: <UserCircle size={18} /> },
   ];
   const blocked = hasRecord === false && NEEDS_RECORD.has(pathname);
@@ -75,7 +97,7 @@ function PatientLayout() {
           navItems={navItems}
           userName={user?.fullName ?? ''}
           roleLabel={t('Patient')}
-          onLogout={logout}
+          onLogout={signOut}
           logoutLabel={t('Logout')}
           skipLabel={t('Skip to main content')}
           footerExtra={
@@ -91,6 +113,7 @@ function PatientLayout() {
           }
         />
         <div className="app-main-column" id="main-content" tabIndex={-1}>
+          <PendingCheckInsNotice userId={user?.id ?? ''} />
           {where.away && pathname !== '/patient/emergency' && (
             <div className="continuity-note away-banner" role="status">
               {t('You seem to be away from your saved location.')}{' '}

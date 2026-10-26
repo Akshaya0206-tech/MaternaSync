@@ -17,6 +17,8 @@ export interface ReferenceTopic {
   seekHelp: SayList;
   keywords: string[];
   sources: ReferenceSource[];
+  /** Other topics worth reading next (their ids). */
+  seeAlso?: string[];
 }
 
 export interface Helpline {

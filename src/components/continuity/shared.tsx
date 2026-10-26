@@ -20,15 +20,16 @@ export function useAction() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const inFlight = useRef(false);
-  async function run(action: () => Promise<void>, success = tx("Saved.")) {
+  // An action may return its own message (for example, "saved on this phone") to show in place of the usual one.
+  async function run(action: () => Promise<void | string>, success = tx("Saved.")) {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      await action();
-      setMessage(success);
+      const own = await action();
+      setMessage(typeof own === "string" && own ? own : success);
     } catch (err) {
       setError(
         err instanceof Error
@@ -186,17 +187,26 @@ export function Empty({ children }: { children: ReactNode }) {
 export function Field({
   label,
   children,
+  error,
 }: {
   label: string;
   children: ReactNode;
+  /** Shown under the box, and tied to it for a screen reader. */
+  error?: string;
 }) {
   const id = useId();
+  const errorId = `${id}-error`;
   return (
     <div className="continuity-field">
       <label htmlFor={id}>{label}</label>
-      {isValidElement<{ id?: string }>(children)
-        ? cloneElement(children, { id })
+      {isValidElement<{ id?: string; "aria-invalid"?: boolean; "aria-describedby"?: string }>(children)
+        ? cloneElement(children, error ? { id, "aria-invalid": true, "aria-describedby": errorId } : { id })
         : children}
+      {error && (
+        <p id={errorId} className="continuity-field-error">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

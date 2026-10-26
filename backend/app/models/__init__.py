@@ -15,7 +15,7 @@ from .assignment import PatientDoctorAssignment, PatientCareTeamAssignment
 from .document import MedicalDocument, DocumentExtraction, DocumentReview
 from .journey import JourneyEvent
 from .consultation import Consultation, ConsultationDraft, ApprovedConsultation
-from .question import PatientQuestion, QuestionResponse
+from .question import PatientQuestion, QuestionResponse, QuestionAttachment
 from .task import Task, TaskAssignment
 from .referral import Referral, ReferralEvent
 from .appointment import Appointment
@@ -29,9 +29,10 @@ from .continuity import (DailyLog, PatientPreference, SharingConsent, CareRemind
                          PathwayEnrollment, MonitoringPlan, Outreach, RecordedOutcome)
 from .guideline import GuidelineSource, GuidelineChunk, GuidelineReview
 from .reference import ReferenceItem, ReferenceChunk, ReferenceNote
-from .emergency import PatientEmergencyProfile
+from .emergency import PatientEmergencyProfile, ClinicContact, ClinicHospital
 from .caregiver import CaregiverLink, CaregiverVisitHelp, CaregiverWhatsApp, VisitPrepItem, CheckInHelper
 from .ai import AIRun, AIAction, ExceptionItem, AssistantSetting
+from .topic_review import PatientTopicReview
 
 __all__ = [
     # legacy
@@ -69,9 +70,11 @@ __all__ = [
     # personal reference library
     "ReferenceItem", "ReferenceChunk", "ReferenceNote",
     # patient emergency details
-    "PatientEmergencyProfile",
+    "PatientEmergencyProfile", "ClinicContact", "ClinicHospital",
     # trusted family members
     "CaregiverLink", "CaregiverVisitHelp", "CaregiverWhatsApp", "VisitPrepItem", "CheckInHelper",
     # the care assistant
     "AIRun", "AIAction", "ExceptionItem", "AssistantSetting",
+    # which patient reference topics the clinic has reviewed
+    "PatientTopicReview",
 ]

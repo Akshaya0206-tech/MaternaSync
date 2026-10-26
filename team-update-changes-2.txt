@@ -365,6 +365,149 @@ AI CARE ASSISTANT AND BACKEND
   The References tour step and the README mention the new tab.
 
 =====================================================================================
+10. PATIENT HOME, CHECK-IN, VISITS AND CALENDAR (patient login; done after section 9)
+=====================================================================================
+  My Care tab
+    [FIXED]   "Next Appointment" showed a booked time that had already passed (17 Oct while it was
+              26 Oct). It now shows only a visit that is still ahead. If she has asked for a visit the
+              clinic has not confirmed, the row says "You asked for a visit on ... Waiting for
+              confirmation." (backend/app/routers/patient_portal.py)
+    [NEW]     "Today" card: whether today's check-in is saved or skipped, how many reminders are
+              waiting for her answer (and the first three names), how many of her questions her
+              doctor answered in the last 7 days. Each line has a button to the page. Counts of her
+              own entries and her doctor's replies only; no value is read or judged. "Today" starts
+              where her own clock says (the page sends its time zone offset).
+    [NEW]     Three buttons: Daily check-in, Ask my doctor, Upload a report (opens the upload window).
+    [NEW]     "Estimated due date" shows "N days to go" (nothing once the date has passed).
+    [FIXED]   On a phone the menu button no longer covers the greeting.
+  Daily Check-in tab
+    [NEW]     Typing-mistake check (card "How are you today?"): a number that cannot be right (blood
+              pressure 1180, weight 6.6 kg), the two blood pressure numbers the wrong way round, or
+              one of a pair left empty is marked under the box in her language, with focus moved to
+              the first one. It says nothing about what a number means. The same check is on the
+              step-by-step check-in. "Skip this question" drops a number that cannot be right.
+    [NEW]     Card "Your entries": the newest 7 show first, then "Show older entries (N more)".
+    [NEW]     Card "Your entries": "Print my entries" (last 2 weeks / 30 days / all). A plain list of
+              what she entered, with "I entered these myself. A doctor has not checked them.", for
+              printing or saving as a PDF to take to a visit.
+    [NEW]     Without a signal: the check-in is kept on the phone (only for that signed-in person) and
+              sent when the phone is back online, when the app is opened or comes back to the front,
+              or with "Send now". A notice at the top of every patient page says how many are waiting.
+              A check-in sent twice (the first reply was lost) is saved once: it carries a reference
+              made on the phone (new column daily_logs.client_ref; added by the start-up migration).
+              One the server refuses says why and can be removed. Signing out with one waiting asks first.
+    [NEW]     The app opens with no signal (service worker, built site only) and the Daily Check-in
+              and Step-by-step pages work. The service worker keeps only the app's own files, never
+              anything from the API. The app can be added to the home screen (manifest and icons).
+    [NEW]     Step-by-step check-in: what has been answered is kept on the phone; coming back shows
+              "Carry on where you stopped?" (Carry on / Start again). Kept for 24 hours.
+  Appointments tab and My Care Plan tab (they overlapped: both had "Request an appointment" and the same
+  empty "Approved summaries" card). Now split clearly:
+    Appointments: Upcoming visits; Request an appointment (moved here); Your visit requests; Past
+                  visits; Before your first visit; Approved visit summaries (the ones tied to a visit).
+    My Care Plan: the reminders; a short "Need a visit?" card pointing to Appointments; Approved
+                  summaries & instructions (the ones not tied to a visit), with a pointer when a visit
+                  summary exists. Each card has its own empty-state wording.
+    [NEW]     Visit request status, in her words: "Waiting for confirmation" -> "Confirmed" (moves to
+              Upcoming visits) or "Not going ahead" (says other times offered by the clinic are under
+              Updates, with "Open Updates" and "Ask for another time"). A visit whose time has passed
+              says "The time has passed". My Care shows a pending request too.
+    [NEW]     Add to calendar, on each confirmed visit (Appointments -> Upcoming visits) and each
+              reminder still ahead (My Care Plan), plus "Add all my upcoming reminders to my phone
+              calendar":
+                Google Calendar ........ opens Google Calendar with the entry filled in; she taps Save.
+                Phone calendar with alerts .. a file (.ics) made in the browser; alerts a day and two
+                              hours before a visit, and at the time of a reminder.
+              Only the visit's own details go in (title, time, clinic address); no health information.
+              A reminder's name shows in the calendar, and a note says so.
+              LIMITS, said plainly: a web page cannot add to Google Calendar silently (that needs
+              Google sign-in set up in a Google Cloud project), Google's link cannot carry an alert
+              (Google Calendar uses her own alert settings), and a web page cannot set a clock-app alarm.
+  Other
+    [CHANGED] The patient tour text for My Care, My Care Plan and Appointments.
+    [CHANGED] The older "care team" wording on the request form is now "your doctor".
+    [CHANGED] vercel.json serves sw.js with no-cache and the manifest with its own type.
+    [CHANGED] The caregiver's "Add to my calendar" (Appointments) now uses the shared calendar code
+              (src/calendar/calendarFile.ts); its file is unchanged.
+    [CHANGED] Hindi, Tamil and Telugu wording for 86 new texts (needs a native speaker's review).
+
+=====================================================================================
+11. THE REST OF THE PATIENT TABS (patient login; done after section 10)
+=====================================================================================
+  Emergency help tab
+    [NEW]     Card "Call now": "Call my emergency contact" (large tap-to-call, names who it calls) and
+              "Show this to the hospital": a large-print, printable card with her name, due date, doctor,
+              the clinic's name and phone, MCP card number and emergency contact. Nothing else, no health values.
+    [NEW]     Card "Hospitals your clinic recommends" (above "Hospitals near you"; shown once a doctor
+              has added hospitals). Doctor: Clinical Settings -> "Clinic details for your patients' Emergency
+              help" (clinic name and phone, up to 20 hospitals with address, phone and a note; every change logged).
+    [NEW]     "Hospitals near you" now says "May not offer maternity care. Call first."
+    [NEW]     Card "My emergency details": optional MCP card number.
+    [NEW]     The numbers show with no signal: the last copy kept on the phone, then a built-in list for India
+              (112, 108, 102, 181). Signing out removes the kept copy. The page still alerts nobody.
+  My Records tab
+    [FIXED]   Records no longer show bare references (MSG-9921) as titles: her description, else the kind and date,
+              else the file name; a kind chip on each (Lab report, Scan or ultrasound, Prescription, Discharge
+              summary, Vaccination card, Visit note, Other). Demo records get plain titles at start-up.
+    [NEW]     Search box and kind chips; legend card "What do these labels mean?"; a "View" button next to the eye.
+    [NEW]     Upload Medical Record: she chooses the kind; "Take photos" combines several camera photos into one
+              PDF in the browser.
+  My Questions tab
+    [CHANGED] Status words: "Sent to your doctor", "Your doctor is reviewing it", "Answered", "Closed" (also on the
+              caregiver's Questions page).
+    [NEW]     "Attach a photo or report" (up to 3 files); the doctor opens them on Patient Questions.
+    [NEW]     "I still have a question" on an answered question sends a linked follow-up; the doctor sees the
+              earlier question beside it.
+    [NEW]     "Your doctor's clinic usually replies: ..." when set by the doctor (Care Assistant -> Usual reply time).
+    [NEW]     /patient/questions?draft=<text> pre-fills the box (My Journey uses it).
+  Appointments tab
+    [NEW]     On a confirmed visit: "Ask to change the time" and "Ask to cancel". They are requests; the visit stays
+              Confirmed. The doctor gets a task (Connected Care -> Tasks, visits & outcomes) and a notification;
+              cancelling the visit there closes the task; she can withdraw. "Directions to the clinic" link.
+    [NEW]     "Before your first visit": points can be ticked (kept on her phone); the card hides once a visit is
+              completed.
+  Profile tab
+    [CHANGED] Subtitle now says "Manage your personal details".
+    [NEW]     Card "Security": change password; "Sign out other devices" (per-user token_version in each token;
+              older tokens count as version 0 so the upgrade signs nobody out; 5 wrong tries in 15 minutes pause
+              further tries, kept in memory).
+    [NEW]     Card "My data": "Download all my data" (zip: my-data.json and her uploaded files; only her own data
+              and only what she was allowed to see).
+    [NEW]     Card "Close my account": password and confirmation; signs her out everywhere, ends trusted people's
+              access and WhatsApp permissions, refuses further sign-in, gives her doctor a task. The record is NOT
+              deleted automatically. Demo accounts cannot be closed or have the password changed.
+  Updates tab
+    [NEW]     Sidebar dots on Updates, My Questions (an answer arrived) and My Care Plan (reminders or a released
+              document); "Mark all read"; "Mark as read" on each; an "Open ..." button on each update.
+    [CHANGED] New "document reviewed" updates say which document and lead to My Journey.
+  Sharing & Consent tab
+    [NEW]     Card "Who can see or get what" (her doctor and clinic, her trusted people, her WhatsApp numbers).
+              The old "Your permissions" card is now "Permission history".
+    [NEW]     "Preview the message" in the "Give sharing permission" card (same function as real sends).
+  My Journey (My Care -> View My Journey)
+    [NEW]     "What these words mean" under each entry (definitions only, from the glossary; new entries for NST,
+              GDMA1/2, EFW, NIPT, MFM, CRL, AFI, Doppler, Trisomy, Fetal fraction, Fundal height) and
+              "Ask my doctor about this" (opens My Questions with the box filled in).
+    [CHECKED] Every entry comes from a doctor action: a document appears after the doctor verifies it, a consultation
+              note on approval, a released output when it is released, referral entries are fixed neutral text; the
+              "Inbound Patient Portal Message" is demo data. Two caveats: approving a consultation note creates its
+              entry with no separate release switch; if the care-team login is ever switched back on, a care-team
+              member can also verify a document.
+  Care Companion tab
+    [FIXED]   One language picker (the sidebar one); the page's own Language box is gone.
+    [NEW]     When there is no reviewed note, the reply points to the matching References topic as well as offering the
+              doctor. Not shown for questions about her own values or safety. "Read aloud" on each reply.
+  References tab
+    [NEW]     Four topics: What happens in labour and birth; Breastfeeding and feeding your newborn; Caring for your
+              newborn baby; Family planning after the birth (18 in all). Written in our own words from the MoHFW,
+              NHM, WHO and NHS sources opened for this; they NEED A CLINICIAN'S REVIEW.
+    [NEW]     A star to save favourites ("Saved" chip), "Read next" links, /patient/references?topic=<id>.
+    [NEW]     "Reviewed by your clinic on ... (doctor)" or "Not yet reviewed by your clinic" on each topic. Doctor:
+              References -> new tab "Patient information" (mark or clear a topic as reviewed, with a private note).
+  Other
+    [CHANGED] The data download also lists the new things (document kind, follow-up and attached files, change requests).
+
+=====================================================================================
 HOSTING (Vercel website + free Render API)
 =====================================================================================
   [NEW]     Website: https://maternasync.vercel.app     API: https://maternasync-api.onrender.com
@@ -383,14 +526,20 @@ HOSTING (Vercel website + free Render API)
 =====================================================================================
 CHECKS RUN BEFORE THIS FILE WAS WRITTEN
 =====================================================================================
-  Backend tests ............ 241 pass (205 before the trusted-person work; 28 new in
+  Backend tests ............ 318 pass (253 before section 11, plus 65 new in six new test
+                             files; 205 before the trusted-person work; 28 new in
                              backend/tests/test_care_partners.py, 8 new in
-                             backend/tests/test_obstetric_additions.py. The meaning search has
+                             backend/tests/test_obstetric_additions.py, 12 new in
+                             backend/tests/test_patient_home.py. The meaning search has
                              its own backend/tests/test_semantic_search.py.)
   Front end ................ type check clean; translation check (every new text has Hindi,
                              Tamil and Telugu); wording guard (no risk grading, no range
                              comparing); oxlint 0 errors (warnings of the same kinds as before)
-  Real browser runs ........ doctor, patient and caregiver screens in English and Tamil,
+  Real browser runs ........ (section 10: patient My Care, Daily Check-in, Step-by-step
+                             check-in, Appointments and My Care Plan, also with no signal, in
+                             English and Tamil, at desktop and phone width, with no serious
+                             accessibility problems and no sideways scrolling.)
+                             doctor, patient and caregiver screens in English and Tamil,
                              phone width (no sideways scrolling except the existing
                              "SIMULATED" WhatsApp note on Connected Care -> Reminders &
                              outreach, 2 px), accessibility scan with no serious problems
@@ -407,6 +556,21 @@ FILES: NEW, MOVED, REMOVED
             backend/evaluate_semantic_search.py, backend/fetch_search_model.py
             backend/tests/test_semantic_search.py, backend/tests/test_care_partners.py
   New (section 8)  src/roles/doctor/AboutWebsiteView.tsx, src/i18n/dicts/doctor-about.ts
+  New (section 11) backend/app/account_service.py, clinic_emergency.py, document_types.py, seed_documents.py,
+            update_links.py, visit_changes.py, models/topic_review.py, routers/account.py, clinic_emergency.py,
+            patient_updates.py, question_extras.py, topic_reviews.py; src/api/ account.ts, clinicEmergency.ts,
+            questions.ts, topicReviews.ts, updates.ts; src/roles/patient/ AccessSummary.tsx, AccountCards.tsx,
+            ConsentPreview.tsx, HospitalCard.tsx, documentTypes.ts, emergencyCache.ts, pdfFromPhotos.ts,
+            referenceMatch.ts, savedTopics.ts, useUnreadUpdates.ts; src/roles/doctor/ ClinicEmergencySettings.tsx,
+            AssistantReplyTime.tsx, PatientInformationView.tsx; src/i18n/dicts/ doctor-emergency.ts,
+            doctor-questions.ts, doctor-patientinfo.ts; backend tests test_account_security.py,
+            test_emergency_clinic.py, test_questions_visits.py, test_records_types.py, test_topic_reviews.py,
+            test_updates_consent_journey.py
+  New (section 10) src/calendar/calendarFile.ts (replaces src/roles/caregiver/calendar.ts),
+            src/offline/ (pendingCheckIns.ts, useOnline.ts, registerServiceWorker.ts),
+            src/roles/patient/ AddToCalendar.tsx, calendarEvents.ts, checkInRules.ts, EntriesPrint.tsx,
+            PendingCheckInsNotice.tsx, useCheckInSource.ts, public/sw.js, public/manifest.webmanifest,
+            public/icons/, backend/tests/test_patient_home.py
   New (section 7)  backend/tests/test_obstetric_additions.py
             clinician-review-urgent-warning-signs.txt
   Moved     render.yaml -> deploy/render.yaml
@@ -429,4 +593,19 @@ KNOWN GAPS AND OPEN ITEMS
   - Other "care team" wording (records, appointments, journey, emergency, references) is
     unchanged; it can be switched to "doctor" the same way if wanted.
   - WhatsApp, real hospital systems and the Claude provider were not run against live services.
-  - The live Vercel/Render copy is the old version until it is redeployed.
+  - Section 11: the four new References topics and all Hindi, Tamil and Telugu text need a native speaker / clinician.
+    There is no way in the app for a clinic to reopen a closed account (done by hand in the database). A
+    withdrawn visit-change request does not remove an assistant proposal already waiting for it. The data
+    download lists its tables explicitly: a new table needs adding to backend/app/account_service.py.
+    Patient pages that still say "care team" (for example the Emergency help sentence "Nothing on this
+    page alerts your care team") were not changed.
+  - The live Vercel/Render copy is the old version until it is redeployed. The website and the API must
+    be redeployed together: the new My Care card needs the new API (an older API simply leaves the
+    Today card out).
+  - Calendar: no silent Google Calendar add and no clock-app alarm (see section 10). Adding them
+    would need a Google Cloud OAuth client ID and Google's app review.
+  - The browser's own print dialog is used for "Print my entries"; the list was checked by printing to
+    PDF, not on a physical printer.
+  - Offline: only the Daily Check-in and Step-by-step check-in pages are made to work without a
+    signal. Other pages still need the server. Check-ins kept on a shared phone stay on that phone
+    until sent or removed.

@@ -94,6 +94,8 @@ def _to_question_out(db: Session, q: models.PatientQuestion) -> schemas_v2.CareT
             schemas_v2.QuestionResponseOut(id=r.id, response_text=r.response_text, responder_role=r.responder_role, created_at=r.created_at)
             for r in q.responses
         ],
+        attachments=[schemas_v2.AttachmentOut(id=a.document_id, filename=a.document.filename) for a in q.attachments if a.document],
+        follow_up_of_text=q.follow_up_of.question_text[:300] if q.follow_up_of else None,
     )
 
 
@@ -399,6 +401,7 @@ def _to_document_out(db: Session, doc: models.MedicalDocument) -> schemas_v2.Car
         uploaded_by_name=uploader.full_name if uploader else "Unknown",
         uploaded_by_role=doc.uploaded_by_role, uploaded_at=doc.uploaded_at,
         status=doc.status, status_label=schemas_v2.DOCUMENT_STATUS_LABELS.get(doc.status, doc.status),
+        document_type=doc.document_type,
         extraction=extraction_out,
         reviews=[
             schemas_v2.DocumentReviewOut(id=r.id, action=r.action, reviewer_name=_user_name(db, r.reviewer_user_id) or "Unknown",
@@ -464,7 +467,8 @@ def verify_document(document_id: str, current_user: models.User = Depends(requir
         gestational_age_weeks=episode.gestational_age_weeks if episode else 0, gestational_age_days=episode.gestational_age_days if episode else 0,
         actor_label=current_user.full_name,
     ))
-    server_text.notify_key(db, document.uploaded_by_user_id, "document_verified_patient", episode_id=document.episode_id, type_="document_verified",
+    server_text.notify_key(db, document.uploaded_by_user_id, "document_reviewed_named", episode_id=document.episode_id, type_="document_verified",
+                           params={"title": (ext.record_type if ext and ext.record_type else document.filename)},
                            related_entity_type="MedicalDocument", related_entity_id=document.id)
     _complete_open_tasks_for(db, "document_review", document.id)
     _log(db, document.episode_id, current_user, "document_verified", f"{current_user.full_name} verified \"{document.filename}\"", "Clinically verified and added to journey.", "MedicalDocument", document.id)

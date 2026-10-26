@@ -6,6 +6,7 @@ import { api, fetchBlobWithAuth } from "../../api/client";
 import { getLibrary, languages, formatTime } from "../../api/continuity";
 import type { Language, Resource } from "../../api/continuity";
 import { tx, useLanguage } from "../../i18n";
+import { ClinicEmergencySettings } from "../../roles/doctor/ClinicEmergencySettings";
 import {
   Badge,
   Empty,
@@ -144,6 +145,7 @@ export function LibraryPage() {
       )}
     >
       <Feedback error={action.error} message={action.message} />
+      {doctor && <ClinicEmergencySettings />}
       <div className="continuity-tabs">
         {Object.entries(kinds).map(([key, label]) => (
           <button

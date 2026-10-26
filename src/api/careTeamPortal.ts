@@ -98,6 +98,10 @@ export interface CareTeamQuestion {
   assignedToName: string | null;
   createdAt: string;
   responses: CareTeamQuestionResponse[];
+  /** Photos or reports the patient attached to the question (documents of her record). */
+  attachments?: { id: string; filename: string }[];
+  /** The earlier question this one follows up. */
+  followUpOfText?: string | null;
 }
 
 export interface Task {
