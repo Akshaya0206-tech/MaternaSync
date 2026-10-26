@@ -157,10 +157,11 @@ Leave `VITE_API_BASE_URL` empty. The trade-offs: the address is fixed in a file,
 
 ## Deployed so far
 
-- **Website:** https://maternasync.vercel.app (Vercel project `maternasync`, team `andy-bf71`, Hobby plan, account comeonletse@gmail.com), deployed with `vercel deploy --prod` on 25 October 2026.
+- **Website:** https://maternasync.vercel.app (Vercel project `maternasync`, team `andy-bf71`, Hobby plan, account comeonletse@gmail.com), deployed with `vercel deploy --prod` on 25 October 2026 and again on 26 October 2026 (commit `bfe9358`).
   `VITE_API_BASE_URL=https://maternasync-api.onrender.com` is set for Production, so a new build is needed whenever the API address changes.
 - **API:** https://maternasync-api.onrender.com (Render service `maternasync-api`, free plan, Singapore, built from `backend/Dockerfile` on `main`, account andryandurai@gmail.com). See "Render, free plan" for its limits.
   Its `MATERNASYNC_CORS_ORIGINS` is `https://maternasync.vercel.app`.
+  Redeployed on 26 October 2026 from commit `bfe9358` with `render deploys create srv-dbf1lei9lscs738g2g40` (live about three minutes after it started).
 - **Checked on the live pair** (a real browser on the Vercel address, 32 API calls, every one to the Render address): the patient, doctor and caregiver demonstration accounts sign in and open
   their pages (patient profile with the trusted person, doctor Care Assistant page, caregiver home); a wrong password gives the plain message; no CORS error in the console; the API answers a preflight for the Vercel
   address and refuses a stranger's. The website also serves deep links, answers 404 (not a page of HTML) on `/api/...` at its own address, and has the safety headers and the one-year cache on built files.

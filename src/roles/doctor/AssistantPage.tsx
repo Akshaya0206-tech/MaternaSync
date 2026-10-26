@@ -183,7 +183,7 @@ export function AssistantPage() {
             <dd>{status.handoverPaused ? t('Handover is paused, so the assistant prepares none.') : t('On. It prepares a draft from open tasks, visit requests and questions, and you edit and share it.')}</dd>
           </dl>
           <p className="continuity-muted">
-            {t('To switch it off at once, set MATERNASYNC_AI_COORDINATOR_MODE=off and restart the API. The “Talk to a person” buttons for patients and trusted people keep working either way.')}
+            {t('The “Talk to a person” buttons for patients and trusted people keep working even when the assistant is off or paused.')}
           </p>
         </Panel>
       )}

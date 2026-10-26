@@ -577,7 +577,7 @@ function Reminders({
           {data.whatsapp?.mode === "simulator" && (
             <strong>
               {t(
-                "SIMULATED: no message leaves this server and no phone receives anything. Statuses are generated so the flow can be demonstrated. Set MATERNASYNC_WHATSAPP_PROVIDER=cloud_api with WhatsApp Business credentials to send for real.",
+                "SIMULATED: no message leaves this server and no phone receives anything. Statuses are generated so the flow can be demonstrated.",
               )}
             </strong>
           )}

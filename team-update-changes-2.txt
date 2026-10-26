@@ -56,7 +56,10 @@ THE BIG CHANGES IN ONE GLANCE
   8. ABOUT WEBSITE: a new fourth tab on the doctor's References page, a twelve-section guide
      for a doctor who is new to the app. See section 8.
   9. Small fixes: phone sidebar edge strip, caregiver banner under the menu button,
-     amber badge contrast.
+     amber badge contrast. Developer-only wording removed from the screens: the setting name
+     and restart instruction on Doctor -> Care Assistant -> Status card, the setting name on the
+     WhatsApp outreach card (Connected Care -> Reminders & outreach), and the "API / backend"
+     sign-in error messages (they now say the server cannot be reached, try again).
 
 =====================================================================================
 SIGN-IN AND SIGN-UP PAGES (everyone)

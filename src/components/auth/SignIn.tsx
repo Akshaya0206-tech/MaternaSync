@@ -51,12 +51,12 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
   // Until the server says the care-team login is on, its demo accounts are hidden (they would only be refused).
   const [careTeamOn, setCareTeamOn] = useState(false);
   useEffect(() => { let active = true; fetchAuthOptions().then(o => { if (active) setCareTeamOn(o.careTeamEnabled); }).catch(() => undefined); return () => { active = false; }; }, []);
-  useEffect(() => { let active = true; fetchDemoAccounts().then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError(tx('Demo logins are unavailable. Check that the API is running.')); }); return () => { active = false; }; }, []);
+  useEffect(() => { let active = true; fetchDemoAccounts().then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError(tx('Demo logins are unavailable right now. Please try again in a moment.')); }); return () => { active = false; }; }, []);
   const signInDemo = async (account: PortalDemoAccount) => {
     if (isSubmitting) return;
     setEmail(account.email); setPassword(account.password); setDemoRole(account.role); setIsSubmitting(true); setError(null);
     try { const result = await login(account.email, account.password); onAuthenticated(result.accessToken, result.user); }
-    catch (err) { setError(err instanceof ApiError ? err.message : tx('Could not reach the API. Start the backend and try again.')); }
+    catch (err) { setError(err instanceof ApiError ? err.message : tx("Can't reach the server right now. Please try again in a moment.")); }
     finally { setIsSubmitting(false); setDemoRole(''); }
   };
   const [showDemoAccounts, setShowDemoAccounts] = useState(false);
