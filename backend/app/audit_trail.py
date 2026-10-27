@@ -32,11 +32,12 @@ _EXPLICIT = {
     ],
     "documents": [
         "document_uploaded", "document_verified", "document_rejected", "document_edited", "document_sent_to_doctor", "referral_document_attached",
-        "question_file_attached",
+        "question_file_attached", "caregiver_question_file_attached",
     ],
     "questions": [
         "question_asked", "question_answered", "question_assigned", "question_closed", "question_closed_offline", "question_logged",
         "question_routed_by_rule", "response_approved", "talk_to_a_person", "caregiver_question_asked",
+        "caregiver_question_followup",
     ],
     "visits": [
         "appointment_requested", "appointment_status_changed", "visit_change_requested", "visit_change_withdrawn", "visit_change_confirmed_new_time",
@@ -51,7 +52,8 @@ _EXPLICIT = {
     ],
     "trusted": [
         "caregiver_invited", "caregiver_invite_accepted", "caregiver_permissions_changed", "caregiver_removed", "caregiver_access_limit_changed",
-        "caregiver_code_renewed",
+        "caregiver_code_renewed", "caregiver_nudge_reminder", "caregiver_nudge_check_in", "caregiver_hospital_card_opened",
+        "caregiver_stopped_helping",
     ],
     "approved": [
         "consultation_started", "transcript_generated", "draft_approved", "draft_edited", "draft_rejected", "ai_draft_generated", "brief_reviewed",

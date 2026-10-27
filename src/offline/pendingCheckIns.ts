@@ -58,7 +58,7 @@ export function usePendingCheckIns(userId: string): PendingCheckIn[] {
 /** No signal, a server that is still waking up, or a gateway error: trying again later can work. A refusal (400/403/404/409/422) cannot. */
 export const isUnreachable = (error: unknown): boolean => !(error instanceof ApiError) || [502, 503, 504].includes(error.status);
 
-const makeRef = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`);
+export const makeRef = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`);
 
 /** Sends a new check-in. Without a signal it is kept on the phone instead and 'queued' is returned; anything else the server says is thrown. */
 export async function sendOrKeepCheckIn(userId: string, episodeId: string, body: Record<string, unknown>): Promise<'sent' | 'queued'> {

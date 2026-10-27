@@ -16,15 +16,16 @@ DAILY = "/patient/daily-log"
 
 # message key -> page
 BY_KEY = {
-    "question_answered": QUESTIONS, "question_answered_doctor": QUESTIONS, "question_handled_offline": QUESTIONS, "caregiver_acted_question": QUESTIONS, "caregiver_acted_talk": QUESTIONS,
+    "question_answered": QUESTIONS, "question_answered_doctor": QUESTIONS, "question_handled_offline": QUESTIONS, "caregiver_acted_question": QUESTIONS, "caregiver_acted_talk": QUESTIONS, "caregiver_acted_attachment": QUESTIONS,
     "reminders_added": CARE_PLAN, "reminder_due": CARE_PLAN, "approved_document": CARE_PLAN,
     "appointment_scheduled": APPOINTMENTS, "appointment_cancelled": APPOINTMENTS, "appointment_completed": APPOINTMENTS, "appointment_no_show": APPOINTMENTS,
     "appointment_requested": APPOINTMENTS, "visit_reminder": APPOINTMENTS, "visit_confirmed": APPOINTMENTS, "new_times_offered": APPOINTMENTS,
     "visit_missed": APPOINTMENTS, "visit_prep_added": APPOINTMENTS, "visit_change_sent": APPOINTMENTS, "visit_change_withdrawn": APPOINTMENTS, "caregiver_visit_yes": APPOINTMENTS, "caregiver_visit_no": APPOINTMENTS,
+    "caregiver_nudged_reminder": CARE_PLAN,
     "document_verified_patient": JOURNEY, "document_reviewed_named": JOURNEY, "document_rejected_patient": RECORDS, "document_rejected_default": RECORDS,
     "referral_sent_patient": JOURNEY, "referral_appointment_patient": JOURNEY, "referral_response_patient": JOURNEY,
-    "caregiver_acted_checkin": DAILY,
-    "caregiver_joined": PROFILE, "caregiver_removed": PROFILE, "caregiver_whatsapp_on": PROFILE, "caregiver_whatsapp_off": PROFILE,
+    "caregiver_acted_checkin": DAILY, "caregiver_nudge_checkin": DAILY,
+    "caregiver_joined": PROFILE, "caregiver_removed": PROFILE, "caregiver_stopped": PROFILE, "caregiver_whatsapp_on": PROFILE, "caregiver_whatsapp_off": PROFILE,
     "access_ending": PROFILE, "access_ended": PROFILE, "helper_asked_her": PROFILE, "caregiver_helper_yes": PROFILE, "caregiver_helper_no": PROFILE,
 }
 # notification type -> page, for rows that have no usable key

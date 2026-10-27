@@ -27,6 +27,10 @@ export const loadDoctorDictionary: Loader = async () => {
     import("./dicts/doctor-search"),
     import("./dicts/doctor-updprofile"),
     import("./dicts/doctor-workspace2"),
+    import("./dicts/doctor-cgnudge"),
+    import("./dicts/doctor-cgquestions"),
+    import("./dicts/doctor-cgemergency"),
+    import("./dicts/doctor-cghome"),
   ]);
   return Object.assign({}, ...parts.map((part) => part.entries));
 };

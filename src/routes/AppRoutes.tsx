@@ -47,6 +47,7 @@ const CaregiverRemindersPage = lazyPage(() => import('../roles/caregiver/Caregiv
 const CaregiverQuestionsPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverQuestionsPage')));
 const CaregiverEmergencyPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverEmergencyPage')));
 const CaregiverUpdatesPage = lazyPage(() => import('../roles/caregiver/CaregiverPages').then(named('CaregiverUpdatesPage')));
+const CaregiverProfilePage = lazyPage(() => import('../roles/caregiver/CaregiverProfile').then(named('CaregiverProfilePage')));
 
 // Care team (the sign-in is switched off on the server, but these screens are kept so it can be switched back on)
 const CareTeamShell = lazyPage(() => import('../roles/careteam/CareTeamShell').then(named('CareTeamShell')), shell);
@@ -129,6 +130,7 @@ export function AppRoutes() {
         <Route path="questions" element={<CaregiverQuestionsPage />} />
         <Route path="emergency" element={<CaregiverEmergencyPage />} />
         <Route path="updates" element={<CaregiverUpdatesPage />} />
+        <Route path="profile" element={<CaregiverProfilePage />} />
       </Route>
 
       <Route path="/care-team" element={<RequireRole role="care_team"><CareTeamShell /></RequireRole>}>

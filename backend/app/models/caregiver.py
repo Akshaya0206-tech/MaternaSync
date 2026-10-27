@@ -32,6 +32,7 @@ class CaregiverLink(Base):
     created_at = Column(DateTime, default=now)
     accepted_at = Column(DateTime, nullable=True)
     revoked_at = Column(DateTime, nullable=True)
+    revoked_by = Column(String, nullable=True)  # "patient" (she removed them) or "caregiver" (they stopped helping); empty on older rows means she removed them
     # The woman can limit how long the person may help. After this moment the link stops working by itself; she can extend it.
     access_until = Column(DateTime, nullable=True)
 

@@ -15,13 +15,16 @@ from .reminders import check_reminders
 from .routers import auth, care_team_portal, clinical_guidelines, doctor_portal, episodes, external_simulator, patient_portal, patient_updates, patients, records, workflow
 from .seed_data import run_seed
 from .routers import account
+from .routers import caregiver_visits
 from .routers import doctor_consult_questions
 from .routers import clinic_setup
 from .routers import audit_trail as audit_trail_router
 from .routers import care_connected
 from .routers import doctor_search
 from .routers import doctor_overview
-from .routers import assistant, caregiver, continuity, clinical_library, clinic_emergency, companion, doctor_updates, emergency as emergency_router, question_extras, references, topic_reviews, whatsapp_webhook
+from .routers import caregiver_home
+from .routers import caregiver_checkins, caregiver_questions
+from .routers import assistant, caregiver, caregiver_emergency, continuity, clinical_library, clinic_emergency, companion, doctor_updates, emergency as emergency_router, question_extras, references, topic_reviews, whatsapp_webhook
 from .seed_continuity import ensure_demo_locations, remove_withdrawn_features, run_seed_continuity
 from .seed_assistant import ensure_assistant_user, ensure_demo_caregiver
 from .seed_documents import ensure_document_labels
@@ -77,6 +80,11 @@ app.include_router(clinical_guidelines.router)
 app.include_router(assistant.router)
 app.include_router(caregiver.patient_router)
 app.include_router(caregiver.router)
+app.include_router(caregiver_home.router)
+app.include_router(caregiver_visits.router)
+app.include_router(caregiver_checkins.router)
+app.include_router(caregiver_questions.router)
+app.include_router(caregiver_emergency.router)
 
 
 scheduler = BackgroundScheduler()

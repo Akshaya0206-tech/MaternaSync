@@ -44,6 +44,13 @@ async def attach_to_question(
     question = db.get(models.PatientQuestion, question_id)
     if question is None or question.episode_id != episode.id or question.asked_by_user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Question not found.")
+    return await store_attachment(db, episode, question, current_user, file)
+
+
+async def store_attachment(db: Session, episode: models.PregnancyEpisode, question: models.PatientQuestion, current_user: models.User, file: UploadFile,
+                           *, commit: bool = True) -> schemas_v2.AttachmentOut:
+    """Keep a file on a question the caller has already been checked to own: the same rules whoever asked (a patient, or a trusted person
+    for her). The caller decides who may attach; this decides what may be attached."""
     if len(question.attachments) >= MOST_ATTACHMENTS:
         raise HTTPException(status_code=400, detail=f"A question can have up to {MOST_ATTACHMENTS} files.")
     suffix = Path(file.filename or "").suffix.lower()
@@ -90,7 +97,8 @@ async def attach_to_question(
     )
     # One note per question while the doctor has not read it, however many files she attaches.
     doctor_notices.tell_doctors(db, episode, "question_attachment", related_type="PatientQuestion", related_id=question.id, once_while_unread=True)
-    db.commit()
+    if commit:
+        db.commit()
     return schemas_v2.AttachmentOut(id=document.id, filename=document.filename)
 
 

@@ -1003,3 +1003,32 @@
   .audit-filters { padding: 14px; }
   .brief-extra { padding: 14px; }
 }
+
+/* caregiver visits */
+.caregiver-visit-change { margin: 8px 0; padding: 10px 14px; border-left: 4px solid var(--amber-pending); background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.caregiver-visit-change p { margin: 0 0 4px; }
+.caregiver-visit-change p:last-child { margin-bottom: 0; }
+.caregiver-legend { margin: 0 0 8px; }
+.caregiver-legend li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.continuity-actions .btn-secondary svg { flex-shrink: 0; }
+
+/* caregiver home, updates and profile (round 5) */
+.caregiver-allowed { margin-top: 10px; }
+.caregiver-allowed summary { cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 10px; min-height: 44px; list-style: none; }
+.caregiver-allowed summary::-webkit-details-marker { display: none; }
+.caregiver-allowed summary::before { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); }
+.caregiver-allowed[open] summary::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: no-preference) { .caregiver-allowed summary::before { transition: transform 0.15s ease; } }
+.caregiver-allowed summary:focus-visible { outline: 2px solid var(--teal-primary); outline-offset: 2px; border-radius: 4px; }
+.caregiver-switcher { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.caregiver-switch { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 14px; border-radius: 999px; border: 2px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); font: inherit; font-weight: 600; cursor: pointer; }
+.caregiver-switch:hover { border-color: var(--teal-primary); }
+.caregiver-switch-on { border-color: var(--teal-primary); background: var(--sidebar-active-bg); color: var(--sidebar-text-active); font-weight: 800; }
+.caregiver-switch-count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--terracotta); background: var(--peach-muted); color: #7a4521; font-size: 0.75rem; font-weight: 800; }
+.updates-day h3 { margin: 14px 0 2px; font-family: var(--font-sans); font-size: 0.8rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-secondary); }
+.updates-day:first-of-type h3 { margin-top: 4px; }
+.continuity-panel .updates-list .update-item { padding-left: 0; padding-right: 0; }
+.update-woman { font-weight: 700; }
+.stop-helping-confirm:focus { outline: none; }
+.stop-helping-confirm h3 { margin: 0 0 6px; font-size: 1rem; }
+.caregiver-profile-security { margin-top: 4px; }

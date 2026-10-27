@@ -9,11 +9,12 @@ is active, belongs to this caregiver, and carries the permission, on every reque
 from datetime import date, datetime, timezone
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import Field
 from sqlalchemy.orm import Session
 
-from .. import automation, caregiver_service, caregiver_whatsapp, models, server_text
+from .. import automation, caregiver_nudge, caregiver_service, caregiver_whatsapp, models, server_text
+from .. import caregiver_update_links
 from ..ai_coordinator import messages, scheduling, tools
 from ..continuity_schemas import Input, LogIn
 from ..continuity_service import output_out
@@ -59,6 +60,7 @@ def link_out(db: Session, link: models.CaregiverLink) -> dict:
             .order_by(models.AuditLog.timestamp.desc()).first()) if link.caregiver_user_id else None
     return {"id": link.id, "displayName": link.display_name, "relationship": link.relationship, "status": link.status, "permissions": link.permissions or {},
             "caregiverName": who.full_name if who else None, "createdAt": _iso(link.created_at), "acceptedAt": _iso(link.accepted_at), "revokedAt": _iso(link.revoked_at),
+            "revokedBy": (link.revoked_by or "patient") if link.status == "REVOKED" else None,
             "inviteExpiresAt": _iso(link.code_expires_at), "lastActivity": _iso(last.timestamp) if last else None,
             "accessUntil": caregiver_service.iso(link.access_until), "ended": caregiver_service.is_ended(link),
             "whatsapp": caregiver_whatsapp.status(db, link)["status"] if link.status == "ACTIVE" else "off",
@@ -131,7 +133,7 @@ def new_code(link_id: str, user=Depends(patient), db: Session = Depends(get_db))
 def remove_trusted(link_id: str, user=Depends(patient), db: Session = Depends(get_db)):
     link = _mine(db, user, link_id)
     if link.status != "REVOKED":
-        link.status, link.revoked_at, link.code_hash, link.code_expires_at = "REVOKED", _now(), None, None
+        link.status, link.revoked_at, link.revoked_by, link.code_hash, link.code_expires_at = "REVOKED", _now(), "patient", None, None
         if link.caregiver_user_id:
             server_text.notify_key(db, link.caregiver_user_id, "caregiver_removed", episode_id=link.episode_id, type_="caregiver_removed")
         _log(db, user, link, "caregiver_removed", "Removed a trusted person", link.display_name)
@@ -289,8 +291,8 @@ def _prompt_reminders(db: Session, user: models.User) -> None:
 @router.get("/notifications")
 def notifications(user=Depends(caregiver), db: Session = Depends(get_db)):
     _prompt_reminders(db, user)
-    rows = db.query(models.Notification).filter_by(recipient_user_id=user.id).order_by(models.Notification.created_at.desc()).limit(30).all()
-    return [{"id": n.id, "title": (text := server_text.texts(db, user.id, n))[0], "body": text[1], "createdAt": _iso(n.created_at), "type": n.type} for n in rows]
+    rows = db.query(models.Notification).filter_by(recipient_user_id=user.id).order_by(models.Notification.created_at.desc()).limit(50).all()
+    return caregiver_update_links.describe(db, user, rows)
 
 
 @router.get("/{link_id}/home")
@@ -317,8 +319,10 @@ def home(link: models.CaregiverLink = Depends(access()), user=Depends(caregiver)
 def appointments(link: models.CaregiverLink = Depends(access("appointments")), db: Session = Depends(get_db)):
     rows = db.query(models.Appointment).filter_by(episode_id=link.episode_id).order_by(models.Appointment.scheduled_at.desc()).limit(30).all()
     mine = {h.appointment_id: h for h in db.query(models.CaregiverVisitHelp).filter_by(link_id=link.id).all()}
+    # A request she made to cancel or move a visit, while it is still open (the visit is still confirmed): the kind and when she asked, never her note.
     return [{"id": a.id, "scheduledAt": _iso(a.scheduled_at), "type": a.appointment_type, "location": a.location, "status": a.status,
-             "help": {"status": mine[a.id].status, "updatedAt": _iso(mine[a.id].updated_at)} if a.id in mine else None} for a in rows]
+             "help": {"status": mine[a.id].status, "updatedAt": _iso(mine[a.id].updated_at)} if a.id in mine else None,
+             "changeRequest": {"kind": a.change_kind, "requestedAt": _iso(a.change_requested_at)} if a.change_kind and a.status == "scheduled" else None} for a in rows]
 
 
 def _upcoming_visit(db: Session, link: models.CaregiverLink, appointment_id: str) -> models.Appointment:
@@ -403,8 +407,10 @@ def whatsapp_off(link: models.CaregiverLink = Depends(access()), user=Depends(ca
 
 
 @router.get("/{link_id}/check-ins")
-def check_ins(link: models.CaregiverLink = Depends(access("check_in")), db: Session = Depends(get_db)):
-    rows = db.query(models.DailyLog).filter_by(episode_id=link.episode_id).order_by(models.DailyLog.recorded_at.desc()).limit(14).all()
+def check_ins(offset: int = Query(0, ge=0, le=2000), limit: int = Query(14, ge=1, le=50), link: models.CaregiverLink = Depends(access("check_in")), db: Session = Depends(get_db)):
+    """Her newest check-ins, 14 at a time; `offset` asks for the next older ones."""
+    rows = (db.query(models.DailyLog).filter_by(episode_id=link.episode_id).order_by(models.DailyLog.recorded_at.desc(), models.DailyLog.id)
+            .offset(offset).limit(limit).all())
     return [{"id": l.id, "recordedAt": _iso(l.recorded_at), "systolic": l.systolic, "diastolic": l.diastolic, "weightKg": l.weight_kg, "symptoms": l.symptoms,
              "mood": l.mood, "adherence": l.adherence, "skipped": l.skipped, "enteredWithHelp": l.entered_with_help} for l in rows]
 
@@ -413,6 +419,11 @@ def check_ins(link: models.CaregiverLink = Depends(access("check_in")), db: Sess
 def add_check_in(payload: LogIn, link: models.CaregiverLink = Depends(access("check_in")), user=Depends(caregiver), db: Session = Depends(get_db)):
     data = payload.model_dump()
     data["entered_with_help"] = f"Family member: {user.full_name}"  # taken from their own login, never from what the browser sent
+    if payload.client_ref:
+        # The same check-in sent again (it was kept on the phone, or the answer was lost): one entry, and she is not told twice.
+        again = db.query(models.DailyLog).filter_by(episode_id=link.episode_id, client_ref=payload.client_ref, entered_with_help=data["entered_with_help"]).first()
+        if again is not None:
+            return {"id": again.id, "recordedAt": _iso(again.recorded_at), "enteredWithHelp": again.entered_with_help}
     log = models.DailyLog(episode_id=link.episode_id, **data)
     db.add(log)
     db.flush()
@@ -434,6 +445,8 @@ def care_plan(link: models.CaregiverLink = Depends(access("care_plan")), db: Ses
 def questions(link: models.CaregiverLink = Depends(access("questions")), user=Depends(caregiver), db: Session = Depends(get_db)):
     rows = (db.query(models.PatientQuestion).filter_by(episode_id=link.episode_id, asked_by_user_id=user.id).order_by(models.PatientQuestion.created_at.desc()).limit(30).all())
     return [{"id": q.id, "text": q.question_text, "status": q.status, "createdAt": _iso(q.created_at),
+             "attachments": [{"id": a.document_id, "filename": a.document.filename} for a in q.attachments if a.document],  # names only: a trusted person never opens her documents
+             "followUpOfText": q.follow_up_of.question_text[:200] if q.follow_up_of else None,
              "replies": [{"text": r.response_text, "at": _iso(r.approved_at)} for r in q.responses if r.status == "APPROVED" and r.visible_to_patient]} for q in rows]
 
 
@@ -495,7 +508,8 @@ def answer_helper(payload: HelperAnswerIn, link: models.CaregiverLink = Depends(
 def reminders(link: models.CaregiverLink = Depends(access("reminders")), user=Depends(caregiver), db: Session = Depends(get_db)):
     """When her reminders are due. The names and instructions of medicine and vaccine reminders appear only if she also allows the doctor's summaries."""
     _prompt_reminders(db, user)
-    return {"items": caregiver_service.reminders_for(db, link), "detailsAllowed": bool((link.permissions or {}).get("care_plan"))}
+    return {"items": caregiver_service.reminders_for(db, link), "detailsAllowed": bool((link.permissions or {}).get("care_plan")),
+            "nudgesLeft": caregiver_nudge.left(db, link, "reminder"), "nudgeLimit": caregiver_nudge.DAILY_LIMIT}
 
 
 @router.get("/{link_id}/emergency")

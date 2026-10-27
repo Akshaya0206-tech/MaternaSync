@@ -144,7 +144,7 @@ export function TrustedPeopleCard({ index = 3 }: { index?: number }) {
       {people?.map((person) => (
         <article key={person.id} className="continuity-item trusted-person">
           <h3>
-            {person.displayName}{person.relationship ? ` · ${person.relationship}` : ''} <Badge>{t(STATUS[person.status])}</Badge>
+            {person.displayName}{person.relationship ? ` · ${person.relationship}` : ''} <Badge>{t(person.status === 'REVOKED' && person.revokedBy === 'caregiver' ? tx('Stopped helping') : STATUS[person.status])}</Badge>
           </h3>
           {person.status === 'ACTIVE' && (
             <p className="continuity-muted">
@@ -153,7 +153,7 @@ export function TrustedPeopleCard({ index = 3 }: { index?: number }) {
             </p>
           )}
           {person.status === 'INVITED' && <p className="continuity-muted">{t('Waiting to join. The invite stops working on {when}.', { when: formatTime(person.inviteExpiresAt) })}</p>}
-          {person.status === 'REVOKED' && <p className="continuity-muted">{t('Removed on {when}. They can no longer see anything.', { when: formatTime(person.revokedAt) })}</p>}
+          {person.status === 'REVOKED' && <p className="continuity-muted">{person.revokedBy === 'caregiver' ? t('Stopped helping on {when}. They can no longer see anything.', { when: formatTime(person.revokedAt) }) : t('Removed on {when}. They can no longer see anything.', { when: formatTime(person.revokedAt) })}</p>}
           {person.checkInHelper && (
             <p className="continuity-muted">
               {person.checkInHelper === 'ASKED'

@@ -104,6 +104,7 @@ ADDITIVE_COLUMNS = {
     ],
     "caregiver_links": [
         ("access_until", "DATETIME"),
+        ("revoked_by", "VARCHAR"),
     ],
     "doctor_profiles": [
         ("display_title", "VARCHAR"),

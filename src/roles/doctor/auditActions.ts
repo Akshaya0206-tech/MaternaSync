@@ -33,6 +33,8 @@ export const AUDIT_SENTENCES: Record<string, string> = {
   response_approved: tx('A reply to a question was approved'),
   talk_to_a_person: tx('A request to talk to a person was sent'),
   caregiver_question_asked: tx('A trusted person asked a question for her'),
+  caregiver_question_followup: tx('A trusted person asked a follow-up question for her'),
+  caregiver_question_file_attached: tx('A trusted person attached a file to a question for her'),
   // visits, reminders and tasks
   appointment_requested: tx('A visit was requested'),
   appointment_status_changed: tx('A visit’s status was changed'),
@@ -78,6 +80,10 @@ export const AUDIT_SENTENCES: Record<string, string> = {
   caregiver_removed: tx('A trusted person was removed'),
   caregiver_access_limit_changed: tx('A trusted person’s end date was changed'),
   caregiver_code_renewed: tx('An invite code was renewed'),
+  caregiver_nudge_reminder: tx('A trusted person reminded her about a reminder'),
+  caregiver_nudge_check_in: tx('A trusted person reminded her to fill in a check-in'),
+  caregiver_hospital_card_opened: tx('A trusted person opened the hospital card'),
+  caregiver_stopped_helping: tx('A trusted person stopped helping her'),
   // notes and documents the doctor approved
   consultation_started: tx('A consultation was started'),
   transcript_generated: tx('A transcript was generated'),

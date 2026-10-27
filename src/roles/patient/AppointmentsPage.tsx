@@ -11,8 +11,8 @@ import { tickMyVisitPrep, visitHelpForMe, visitPrepForMe } from '../../api/careg
 import type { PrepByVisit, VisitHelpAnswer } from '../../api/caregiver';
 import type { PatientAppointment } from '../../api/patientPortal';
 import { StatusBadge } from '../../components/StatusBadge';
-import type { BadgeTone } from '../../components/StatusBadge';
 import { formatFriendlyDate, formatFriendlyTime } from './format';
+import { visitStatusOf } from './visit-format';
 import { Feedback, Field, Panel, useAction, useWorkspace } from '../../components/continuity/shared';
 import { VisitChecklist } from '../../components/continuity/VisitChecklist';
 import { SummaryList } from './SupportPages';
@@ -33,21 +33,6 @@ const BEFORE_FIRST_VISIT = [
   tx('Any questions you want to ask your doctor.'),
 ];
 
-// The words a visit's status is shown in on her page: a visit she asked for is waiting, then confirmed or not going ahead.
-const VISIT_STATUS: Record<string, string> = {
-  requested: tx('Waiting for confirmation'),
-  scheduled: tx('Confirmed'),
-  completed: tx('Completed'),
-  cancelled: tx('Not going ahead'),
-  no_show: tx('Missed appointment'),
-};
-const STATUS_TONE: Record<string, BadgeTone> = {
-  requested: 'amber',
-  scheduled: 'blue',
-  completed: 'green',
-  cancelled: 'neutral',
-  no_show: 'neutral',
-};
 const CLOSED_VISITS_SHOWN_FOR_DAYS = 30;
 const DAY = 86_400_000;
 
@@ -135,12 +120,7 @@ export function AppointmentsPage() {
     requestPanel.current?.querySelector<HTMLElement>('input')?.focus();
   };
 
-  const statusOf = (appt: PatientAppointment) =>
-    appt.status === 'scheduled' && !isAhead(appt)
-      ? { label: t('The time has passed'), tone: 'neutral' as BadgeTone }
-      : appt.status === 'requested' && !isAhead(appt)
-        ? { label: t('The time you asked for has passed'), tone: 'neutral' as BadgeTone }
-        : { label: t(VISIT_STATUS[appt.status] ?? appt.status), tone: STATUS_TONE[appt.status] ?? 'neutral' };
+  const statusOf = (appt: PatientAppointment) => visitStatusOf(appt.status, isAhead(appt), t);
 
   const row = (appt: PatientAppointment, extra?: React.ReactNode) => {
     const status = statusOf(appt);

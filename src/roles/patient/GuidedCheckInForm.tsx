@@ -106,9 +106,11 @@ interface Props {
   doneLabel: string;
   /** Where this device keeps an unfinished check-in. Leave out to keep none. */
   draftKey?: string;
+  /** Offer to read the "please check this number" message aloud (a trusted person asked for it; the patient's form is unchanged without it). */
+  readAloudChecks?: boolean;
 }
 
-export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, filledInBy, subtitle, savedText, doneTo, doneLabel, draftKey }: Props) {
+export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, filledInBy, subtitle, savedText, doneTo, doneLabel, draftKey, readAloudChecks = false }: Props) {
   const { t, language } = useLanguage();
   const action = useAction();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -130,6 +132,7 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
   const [savedMessage, setSavedMessage] = useState('');
   const [attempted, setAttempted] = useState<Step[]>([]);
   const [reading, setReading] = useState<'idle' | 'speaking' | 'no-voice'>('idle');
+  const [checkReading, setCheckReading] = useState<'idle' | 'speaking' | 'no-voice'>('idle');
 
   const step = steps[Math.min(index, steps.length - 1)];
   const errors = checkNumbers({ systolic, diastolic, weightKg: weight, movementCount: '', movementMinutes: '' }, t);
@@ -172,9 +175,22 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
     setReading(result === 'speaking' ? 'speaking' : 'no-voice');
   };
 
+  // The "please check this number" message for the question on screen, once she has tried to move on from it.
+  const checkText = !showErrors(step) ? '' : step === 'bp' ? [errors.systolic, errors.diastolic].filter(Boolean).join(' ') : step === 'weight' ? errors.weightKg ?? '' : '';
+  const readCheckAloud = () => {
+    if (checkReading === 'speaking') {
+      stopSpeaking();
+      setCheckReading('idle');
+      return;
+    }
+    const result = speak(checkText, language, () => setCheckReading('idle'));
+    setCheckReading(result === 'speaking' ? 'speaking' : 'no-voice');
+  };
+
   const go = (next: number) => {
     stopSpeaking();
     setReading('idle');
+    setCheckReading('idle');
     setIndex(Math.max(0, Math.min(steps.length - 1, next)));
   };
 
@@ -329,6 +345,15 @@ export function GuidedCheckInForm({ ready, error, save: send, skipWho = false, f
                 <input type="number" inputMode="decimal" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} />
               </Field>
             </div>
+          )}
+
+          {readAloudChecks && canSpeak() && checkText && (
+            <>
+              <button type="button" className="btn-secondary" aria-pressed={checkReading === 'speaking'} onClick={readCheckAloud}>
+                <Volume2 size={16} aria-hidden="true" /> {checkReading === 'speaking' ? t('Stop reading') : t('Read the message aloud')}
+              </button>
+              {checkReading === 'no-voice' && <p role="status" className="continuity-muted">{t('Your device has no voice installed for this language.')}</p>}
+            </>
           )}
 
           {step === 'symptoms' && (

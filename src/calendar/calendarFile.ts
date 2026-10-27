@@ -84,3 +84,5 @@ export function googleCalendarUrl(visit: CalendarVisit): string {
 
 /** A map search for the address the clinic wrote on the visit (OpenStreetMap: no account, and nothing is sent until they open it). */
 export const mapUrl = (location: string) => `https://www.openstreetmap.org/search?query=${encodeURIComponent(location)}`;
+/** Opens the maps app with a route to the place. The map app decides where the route starts: nothing about where she or the helper is goes to us. */
+export const directionsUrl = (place: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}`;

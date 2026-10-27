@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ApiError, getToken, setToken } from '../api/client';
 import { isUnreachable } from '../offline/pendingCheckIns';
 import { forgetEmergency } from '../roles/patient/emergencyCache';
+import { forgetCheckInWomen } from '../offline/pendingCaregiverCheckIns';
 import { fetchCurrentUser } from '../api/auth';
 import type { CurrentUser } from '../api/auth';
 
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     keepUser(null);
     forgetEmergency(); // the emergency page's copy kept for a phone with no signal: a shared phone must not keep it for the next person
+    forgetCheckInWomen(); // the same for the name of the woman a trusted person last filled a check-in in for
     setUser(null);
   };
 

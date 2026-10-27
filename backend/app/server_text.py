@@ -31,6 +31,17 @@ CATALOG = {
         _m("Your access was removed", "आपकी पहुँच हटा दी गई", "உங்கள் அணுகல் நீக்கப்பட்டது", "మీ యాక్సెస్ తొలగించబడింది"),
         _m("You can no longer see this person's information in MaternaSync.", "अब आप MaternaSync में इस व्यक्ति की जानकारी नहीं देख सकते।",
            "இனி MaternaSync-இல் இந்த நபரின் தகவலைப் பார்க்க முடியாது.", "ఇకపై MaternaSync లో ఈ వ్యక్తి సమాచారాన్ని మీరు చూడలేరు.")),
+    "caregiver_nudged_reminder": (
+        _m("{name} sent you a reminder", "{name} ने आपको एक रिमाइंडर भेजा", "{name} உங்களுக்கு ஒரு நினைவூட்டலை அனுப்பினார்", "{name} మీకు ఒక రిమైండర్ పంపారు"),
+        _m("{name} is reminding you about one of your reminders. Open your care plan to see it.", "{name} आपको आपके एक रिमाइंडर की याद दिला रहे हैं। उसे देखने के लिए अपनी देखभाल योजना खोलें।",
+           "{name} உங்கள் நினைவூட்டல்களில் ஒன்றை நினைவுபடுத்துகிறார். அதைப் பார்க்க உங்கள் பராமரிப்புத் திட்டத்தைத் திறக்கவும்.",
+           "{name} మీ రిమైండర్లలో ఒకదాని గురించి మీకు గుర్తు చేస్తున్నారు. దాన్ని చూడటానికి మీ సంరక్షణ ప్రణాళికను తెరవండి.")),
+    "caregiver_stopped": (
+        _m("{name} stopped helping you", "{name} ने आपकी मदद करना बंद कर दिया", "{name} உங்களுக்கு உதவுவதை நிறுத்திவிட்டார்", "{name} మీకు సహాయం చేయడం ఆపేశారు"),
+        _m("They can no longer see anything about you. If you want them back, you can invite them again from your Profile page.",
+           "वे अब आपके बारे में कुछ नहीं देख सकते। अगर आप उन्हें वापस चाहती हैं, तो अपने प्रोफ़ाइल पेज से उन्हें फिर आमंत्रित कर सकती हैं।",
+           "இனி அவர்களால் உங்களைப் பற்றி எதையும் பார்க்க முடியாது. அவர்கள் மீண்டும் வேண்டுமென்றால் உங்கள் சுயவிவரப் பக்கத்திலிருந்து மீண்டும் அழைக்கலாம்.",
+           "వారు ఇకపై మీ గురించి ఏమీ చూడలేరు. వారు మళ్లీ కావాలంటే మీ ప్రొఫైల్ పేజీ నుండి మళ్లీ ఆహ్వానించవచ్చు.")),
     # ---- a doctor works with a trusted person (all four are worded for the person who reads them)
     "visit_prep_added": (
         _m("Your doctor added a checklist for your visit", "आपके डॉक्टर ने आपकी मुलाक़ात के लिए एक सूची जोड़ी", "உங்கள் மருத்துவர் உங்கள் வருகைக்கான ஒரு பட்டியலைச் சேர்த்தார்", "మీ డాక్టర్ మీ సందర్శన కోసం ఒక జాబితాను జోడించారు"),
@@ -164,6 +175,14 @@ CATALOG = {
         _m("{name} helped you", "{name} ने आपकी मदद की", "{name} உங்களுக்கு உதவினார்", "{name} మీకు సహాయం చేశారు"),
         _m("{name} asked your doctor a question for you.", "{name} ने आपकी ओर से आपके डॉक्टर से एक प्रश्न पूछा।",
            "{name} உங்கள் சார்பாக உங்கள் மருத்துவரிடம் ஒரு கேள்வி கேட்டார்.", "{name} మీ తరపున మీ డాక్టర్‌ను ఒక ప్రశ్న అడిగారు.")),
+    "caregiver_acted_attachment": (
+        _m("{name} helped you", "{name} ने आपकी मदद की", "{name} உங்களுக்கு உதவினார்", "{name} మీకు సహాయం చేశారు"),
+        _m("{name} attached a file to a question for you.", "{name} ने आपके लिए एक प्रश्न के साथ एक फ़ाइल जोड़ी।",
+           "{name} உங்களுக்காக ஒரு கேள்வியுடன் ஒரு கோப்பை இணைத்தார்.", "{name} మీ కోసం ఒక ప్రశ్నకు ఒక ఫైల్‌ను జతచేశారు.")),
+    "caregiver_nudge_checkin": (
+        _m("A reminder from {name}", "{name} की ओर से एक याद दिलाना", "{name} அனுப்பிய நினைவூட்டல்", "{name} నుండి ఒక గుర్తుచేయడం"),
+        _m("{name} is reminding you to fill in today’s check-in.", "{name} आपको आज का चेक-इन भरने की याद दिला रहे हैं।",
+           "{name} இன்றைய பதிவை நிரப்ப உங்களுக்கு நினைவூட்டுகிறார்.", "{name} ఈ రోజు చెక్-ఇన్ నింపమని మీకు గుర్తు చేస్తున్నారు.")),
     "caregiver_acted_talk": (
         _m("{name} helped you", "{name} ने आपकी मदद की", "{name} உங்களுக்கு உதவினார்", "{name} మీకు సహాయం చేశారు"),
         _m("{name} asked your doctor to get in touch.", "{name} ने कहा कि आपके डॉक्टर संपर्क करें।",

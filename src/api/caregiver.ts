@@ -1,6 +1,8 @@
 import { api } from './client';
 import { ROOT } from './continuity';
 import type { Workspace } from './continuity';
+import { pruneCaregiverEmergency } from '../offline/caregiverEmergencyCache';
+import { warmEmergencyPage } from '../roles/caregiver/warmEmergencyPage';
 
 /** What a woman can allow a trusted person to do. Only `appointments` is on unless she chooses more. `reminders` shows WHEN her reminders are due; the names of a medicine or vaccine need `care_plan` too. */
 export type Permission = 'appointments' | 'check_in' | 'care_plan' | 'reminders' | 'questions' | 'emergency';
@@ -17,6 +19,8 @@ export interface TrustedPerson {
   createdAt: string | null;
   acceptedAt: string | null;
   revokedAt: string | null;
+  /** For a removed person: who ended it. She removed them, or they stopped helping. */
+  revokedBy: 'patient' | 'caregiver' | null;
   inviteExpiresAt: string | null;
   lastActivity: string | null;
   /** The last day they may help, or null for no end date. After it they see nothing until she extends it. */
@@ -74,7 +78,7 @@ export interface CaregiverReminder {
   /** Empty for a medicine or vaccine unless she also allows the summaries and instructions. */
   title: string | null; instructions: string | null; detailsHidden: boolean;
 }
-export interface CaregiverReminders { items: CaregiverReminder[]; detailsAllowed: boolean }
+export interface CaregiverReminders { items: CaregiverReminder[]; detailsAllowed: boolean; nudgesLeft: number; nudgeLimit: number }
 
 // ---------------------------------------------------------------- the doctor's side (what a doctor sees of her trusted people)
 export interface DoctorTrustedPerson {
@@ -85,6 +89,8 @@ export type VisitAnswer = 'WILL_TAKE' | 'CANNOT';
 export interface CaregiverAppointment {
   id: string; scheduledAt: string; type: string; location: string | null; status: string;
   help: { status: VisitAnswer; updatedAt: string | null } | null;
+  /** She asked to move or cancel this visit and the clinic has not answered yet. Only the kind and when she asked: never her note. */
+  changeRequest: { kind: 'cancel' | 'reschedule'; requestedAt: string | null } | null;
 }
 export interface CaregiverWhatsAppStatus {
   available: boolean; mode: string; status: 'off' | 'waiting' | 'on'; number: string | null; expiresAt: string | null; visits: boolean; checkIns: boolean;
@@ -95,7 +101,12 @@ export interface CaregiverCheckIn {
   id: string; recordedAt: string; systolic: number | null; diastolic: number | null; weightKg: number | null; symptoms: string; mood: string;
   adherence: string; skipped: boolean; enteredWithHelp: string | null;
 }
-export interface CaregiverQuestion { id: string; text: string; status: string; createdAt: string; replies: { text: string; at: string | null }[] }
+export interface CaregiverQuestion {
+  id: string; text: string; status: string; createdAt: string; replies: { text: string; at: string | null }[];
+  /** File names only: a trusted person never opens her documents. */
+  attachments?: { id: string; filename: string }[];
+  followUpOfText?: string | null;
+}
 export interface CaregiverNotification { id: string; title: string; body: string; createdAt: string | null; type: string }
 export interface CaregiverEmergency {
   region: string | null;
@@ -111,7 +122,8 @@ export interface CaregiverEmergency {
 }
 
 const BASE = '/api/v2/caregiver';
-export const listWomen = () => api.get<Woman[]>(`${BASE}/women`);
+/** Every time the list is loaded, the copy of her emergency page kept on this phone is trimmed to the women still listed, still allowed and not ended. */
+export const listWomen = () => api.get<Woman[]>(`${BASE}/women`).then((women) => { pruneCaregiverEmergency(women); if (women.some((w) => !w.ended && w.permissions?.emergency)) warmEmergencyPage(); return women; });
 export const acceptInvite = (code: string) => api.post<Woman>(`${BASE}/accept`, { code });
 export const getCaregiverLanguage = () => api.get<{ language: string }>(`${BASE}/preferences`);
 export const setCaregiverLanguage = (language: string) => api.patch<{ language: string }>(`${BASE}/preferences`, { language });

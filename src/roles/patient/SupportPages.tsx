@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { CalendarPlus } from "lucide-react";
 import { api } from "../../api/client";
@@ -187,11 +188,14 @@ export function SummaryList({
   data,
   appointmentId,
   emptyText,
+  renderActions,
 }: {
   data: Pick<Workspace, "outputs" | "appointments">;
   appointmentId?: string;
   /** What to say when there is nothing yet; a page that shows only some of the summaries can say which. */
   emptyText?: string;
+  /** Extra controls under each summary's heading (for example Read aloud). */
+  renderActions?: (output: Workspace["outputs"][number]) => ReactNode;
 }) {
   const { t } = useLanguage();
   const outputs = data.outputs.filter(
@@ -224,6 +228,7 @@ export function SummaryList({
                 )}
               </p>
             )}
+            {renderActions?.(o)}
             <div className="continuity-copy" lang={o.language}>
               {o.content}
             </div>
