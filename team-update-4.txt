@@ -5,14 +5,19 @@ Prepared 27 Oct 2026, from the work done by Andry (with Claude Code)
 
 HOW TO READ THIS
   team-update-3.txt (26 Oct, 23:22) described the PATIENT, CAREGIVER and DOCTOR work of 26
-  Oct. This file lists only what changed AFTER it, in two parts, in the order of the menus:
+  Oct. This file lists only what changed AFTER it, in three parts, in menu order:
 
     PART A - DOCTOR login: two rounds of doctor-tab work (the "round 3" and "round 4" lists
              from the review of every doctor tab). ALREADY COMMITTED: commit bd6348e,
              27 Oct 10:31 ("rework on each tabs from doctor login").
     PART B - CAREGIVER login: one round from the review of every caregiver tab (all nine
-             tabs, plus a new Profile tab). NOT COMMITTED YET: 66 files (25 changed, 41
-             new) are in the working folder only. Nothing here is on Vercel or Render.
+             tabs, plus a new Profile tab). ALREADY COMMITTED: commit 73b11e1, 27 Oct
+             20:37 ("reworks in caregiver login tab by tab"). Nothing here is on Vercel
+             or Render.
+    PART C - THE LINKS BETWEEN THE THREE LOGINS: a check, after Part B, of what one login
+             does and what the other two then see (notes, pages they open, names, status
+             words, permissions). It found and fixed three mismatches. NOT COMMITTED YET
+             (12 files).
 
   NEW / CHANGED / FIXED / REMOVED / UNCHANGED mark what happened to each item. "Tab" is a
   sidebar item, "card" is a box on a page. Every item exists in the app now.
@@ -65,6 +70,10 @@ THE BIG CHANGES IN ONE GLANCE
      hospitals, Directions, and the numbers with no signal.
  13. Updates: unread dot, Mark all read, "Open ..." buttons. A new Profile tab: Security,
      how she lists them, WhatsApp reminders.
+  LINKS BETWEEN THE LOGINS (Part C)
+ 14. The doctor's chosen name is used in the check-in-helper notes and on the caregiver
+     Home card. A doctor's question note opens THAT question. The doctor's Patient
+     Questions says when a trusted person asked and that the reply goes to them.
 
 =====================================================================================
 PART A - DOCTOR LOGIN (committed in bd6348e; tabs in menu order)
@@ -191,7 +200,7 @@ PART A - DOCTOR LOGIN (committed in bd6348e; tabs in menu order)
             keyboard on a phone. They are now focusable regions with a name.
 
 =====================================================================================
-PART B - CAREGIVER LOGIN (NOT committed yet; tabs in menu order)
+PART B - CAREGIVER LOGIN (committed in 73b11e1; tabs in menu order)
 =====================================================================================
   The woman still owns every permission. Every new screen shows only what she allowed, the
   server checks the permission again on every request, and anything a trusted person does
@@ -317,6 +326,83 @@ PART B - CAREGIVER LOGIN (NOT committed yet; tabs in menu order)
             follow-up, hospital card opened, stopped helping.
 
 =====================================================================================
+PART C - THE LINKS BETWEEN THE THREE LOGINS (checked 27 Oct, after Part B)
+=====================================================================================
+  Why: the caregiver screens feed the patient's Updates and the doctor's Patient Questions,
+  Updates, Audit trail and trusted-people list, and the doctor's choices (name, clinic
+  details, checklists, visit answers) feed back. Every chain below was driven through the
+  real routes with all three logins on one fresh database (94 checks, all passing at the
+  end), and the doctor's and caregiver's screens were then checked in a browser.
+
+  Chains checked, both ends each time
+    1. Doctor chooses a shown name, asks Ravi to help with check-ins: Sarah's note, Ravi's
+       note, Ravi's Home card and the doctor's Trusted people card agree; Ravi says yes
+       (Sarah is told, the doctor sees it); the doctor withdraws (Ravi is told).
+    2. Ravi's "Remind her" (reminder and check-in): Sarah's note has no reminder name and
+       opens her Care plan / Daily Check-in; the limit of 3 holds.
+    3. Ravi fills in a check-in (also sent twice with the same reference): one entry,
+       marked "Family member: Ravi", in her record; her My Care Today card, his Today
+       card, the doctor's patient list and Sarah's note all agree.
+    4. Ravi asks a question with a file, the doctor answers, Ravi asks a follow-up, the
+       doctor closes another by phone: the doctor's list, the doctor's notices (with links),
+       Ravi's reply and status, Sarah's notes; the doctor's private note never reaches
+       Ravi or Sarah.
+    5. Sarah asks to move a visit and another to be cancelled; the doctor confirms the new
+       time and cancels the other: Ravi sees "she asked to move" (never her reason), then
+       the new visit; the doctor's open-request list empties; Sarah and Ravi show the same
+       status for the same visit.
+    6. The doctor's visit checklist: Ravi sees it, ticks it, Sarah and the doctor see who.
+    7. The doctor's clinic details, hospitals and shown name: her Emergency card and his
+       hospital card give the same clinic phone, MCP number and doctor name, and both
+       follow a later name change at once.
+    8. Sarah narrows his permissions: every caregiver route refuses (403), the Today card
+       is empty, nudges are refused, update buttons for pages he may not open disappear, the
+       doctor's read-only list shows the narrowed permissions; restored afterwards.
+    9. Each login is refused the other logins' routes (a patient, the doctor, another
+       patient, and the caregiver against patient and doctor routes).
+   10. Words follow each person's language: a note to Sarah in Tamil, to Ravi in Hindi
+       (and still with the doctor's shown name).
+   11. The doctor's Audit trail has a sentence for every action above (an action with no
+       sentence of its own shows the log's stored wording, never a raw code).
+   12. Ravi stops helping: Sarah is told and her note opens her Profile; her Trusted people
+       says he stopped; the old link is closed on every route and on the doctor's list;
+       she invites him again and he joins with the new code, the old link staying closed.
+  Screens checked in a browser (English, Tamil, desktop and 390 px, accessibility, no
+  console errors): the doctor's Updates -> Open -> the question; the doctor's Patient
+  Questions; the caregiver Home card; each caregiver note on Sarah's Updates -> the page it
+  opens (Daily check-in, Profile, My Questions).
+
+  Three mismatches found and fixed
+  [FIXED]   A doctor's chosen name (Profile -> "How my name appears to patients") was
+            ignored in three kinds of note and one card: "asked ... to help with
+            check-ins" to the woman, the same to the trusted person, "no longer needs you"
+            to the trusted person, and "Your doctor asked for your help" on the caregiver
+            Home. They showed the account name. They use the shown name now.
+  [CHANGED] Doctor -> Updates -> "Open ..." on a note about a question (needs your reply,
+            a file attached, a follow-up) opened the Patient Questions LIST. It now opens
+            that question, open and scrolled to (/doctor/questions?question=<id>).
+  [NEW]     Doctor -> Patient Questions: a question a trusted person asked said only the
+            patient's name, but the approved reply goes to the person who asked. The row now
+            says "Asked by Ravi (husband)" (the name she gave him). Opened, it says "This
+            question was asked by Ravi (husband) for Sarah Jenkins. Your reply goes to
+            Ravi (husband), not to Sarah Jenkins.", the files line says "Files Ravi
+            (husband) attached:" (not "the patient"), and the line under the reply box and
+            the "handled by phone" note name him. A patient's own question is unchanged.
+  [CHANGED] Backend: the doctor's question output carries askedByName (empty when the
+            patient asked); one new test in test_doctor_questions_consults, one in
+            test_doctor_updates_profile for the shown name, and two existing assertions
+            about the question link were updated.
+
+  Seen and left as it is
+  - A new question reaches the doctor's list a few seconds after it is sent (the assistant
+    assigns it in the background). This is the same for the patient's own questions.
+  - A trusted person whose end date has passed cannot use "Stop helping" (the server
+    refuses every request from them); she can remove them herself.
+  - The doctor is not notified when a trusted person stops helping (the doctor's list just
+    drops them), and the woman's own My Questions never shows a question her helper asked
+    (she gets a note that he asked; the reply goes to him).
+
+=====================================================================================
 BACKEND (what the screens rely on)
 =====================================================================================
   Doctor side (Part A): the Dashboard lists, the search, the audit trail, the clinic export,
@@ -393,13 +479,16 @@ HOSTING (Vercel website + free Render API)
 =====================================================================================
 CHECKS RUN
 =====================================================================================
-  Backend tests ............ 491 pass (318 in team-update-3, +114 in Part A, +59 in Part B).
+  Backend tests ............ 493 pass (318 in team-update-3, +114 in Part A, +59 in Part B,
+                             +2 in Part C).
                              Part A: test_doctor_dashboard 20, test_doctor_questions_
                              consults 15, test_doctor_connected_care 12, test_topic_
                              fingerprints 10, test_doctor_overview 11, test_doctor_updates_
                              profile 13, test_doctor_workspace 17, test_doctor_search 16.
                              Part B: test_caregiver_home 16, test_caregiver_visits 13,
                              test_caregiver_checkins 18, test_caregiver_emergency 12.
+                             Part C: one more test each in test_doctor_questions_consults
+                             (now 16) and test_doctor_updates_profile (now 14).
   Front end ................ type check clean; oxlint 0 errors (warnings only, of the kinds
                              already in the project); translation check: 2530 texts on the
                              translated screens and 125 server texts all have Hindi, Tamil
@@ -462,7 +551,7 @@ FILES: NEW AND MOVED
                     test_doctor_connected_care, test_doctor_overview, test_doctor_updates_
                     profile, test_doctor_workspace, test_doctor_search, test_topic_
                     fingerprints; tests/topic-fingerprint.mjs
-  Part B (not committed)
+  Part B (in 73b11e1)
     Caregiver       src/roles/caregiver/: the old one big CaregiverPages.tsx is split into
     screens         one file per page and is now only an index: CaregiverHome,
                     CaregiverAppointments, CaregiverCheckIns, CaregiverCarePlan,
@@ -489,7 +578,13 @@ FILES: NEW AND MOVED
                     read-aloud for the number message), pendingCheckIns (one exported
                     function), AuthContext (sign-out also forgets the remembered woman on a
                     shared phone), question_extras (shared attachment function)
-  Removed           (nothing deleted in Part A or B)
+  Part C (not committed)
+    Backend         routers/continuity.py (shown name in the helper notes), routers/
+                    caregiver.py (shown name on the Home card), routers/doctor_portal.py and
+                    schemas_v2.py (askedByName), doctor_update_links.py (the question link)
+    Front end       src/roles/doctor/QuestionsPage.tsx, src/api/careTeamPortal.ts, src/i18n/
+                    dicts/doctor-consultq.ts (five new texts in Hindi, Tamil, Telugu)
+  Removed           (nothing deleted in Part A, B or C)
 
 =====================================================================================
 KNOWN GAPS AND OPEN ITEMS
@@ -497,7 +592,7 @@ KNOWN GAPS AND OPEN ITEMS
   - All Hindi, Tamil and Telugu text written in Part A and Part B (the new doctor
     dictionaries, the caregiver texts and the server notes) needs a native speaker's
     review. The four References topics added on 26 Oct still need a CLINICIAN's review.
-  - Nothing is deployed (see Hosting), and Part B is not committed.
+  - Nothing is deployed (see Hosting), and Part C (12 files) is not committed yet.
   - Caregiver offline: the check-in form opens with no signal only for the woman last
     viewed online (with several women only the last is remembered). The service worker
     learns which files to keep about 6 seconds after a page opens, so losing the signal in

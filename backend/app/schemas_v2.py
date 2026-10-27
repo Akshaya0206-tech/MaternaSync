@@ -334,6 +334,8 @@ class CareTeamQuestionOut(CamelModel):
     responses: list[QuestionResponseOut]
     attachments: list[AttachmentOut] = []
     follow_up_of_text: str | None = None
+    # Set only when a trusted person asked it and not the patient herself: the name she gave that person. The reply goes to them.
+    asked_by_name: str | None = None
     # Closed without a written reply (phone or clinic). The note is for doctors only; the patient's own question output never carries it.
     closed_how: str | None = None
     closed_note: str | None = None

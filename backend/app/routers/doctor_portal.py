@@ -86,6 +86,16 @@ def _log(db: Session, episode_id: str, current_user: models.User, action: str, t
     ))
 
 
+def _asker_name(db: Session, q: models.PatientQuestion) -> str | None:
+    """Who asked, when it was not the patient herself: the name she gave that trusted person. The approved reply goes to whoever asked."""
+    episode = db.get(models.PregnancyEpisode, q.episode_id)
+    if q.asked_by_user_id is None or episode is None or q.asked_by_user_id == episode.patient_user_id:
+        return None
+    link = (db.query(models.CaregiverLink).filter_by(episode_id=q.episode_id, caregiver_user_id=q.asked_by_user_id)
+            .order_by(models.CaregiverLink.created_at.desc()).first())
+    return link.display_name if link else _user_name(db, q.asked_by_user_id)
+
+
 def _to_question_out(db: Session, q: models.PatientQuestion) -> schemas_v2.CareTeamQuestionOut:
     return schemas_v2.CareTeamQuestionOut(
         id=q.id, episode_id=q.episode_id, patient_name=_episode_name(db, q.episode_id),
@@ -96,7 +106,7 @@ def _to_question_out(db: Session, q: models.PatientQuestion) -> schemas_v2.CareT
             for r in q.responses
         ],
         attachments=[schemas_v2.AttachmentOut(id=a.document_id, filename=a.document.filename) for a in q.attachments if a.document],
-        follow_up_of_text=q.follow_up_of.question_text[:300] if q.follow_up_of else None,
+        follow_up_of_text=q.follow_up_of.question_text[:300] if q.follow_up_of else None, asked_by_name=_asker_name(db, q),
         closed_how=q.closed_how, closed_note=q.closed_note, closed_at=q.closed_at, closed_by_name=_user_name(db, q.closed_by_user_id),
     )
 

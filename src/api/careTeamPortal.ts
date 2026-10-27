@@ -102,6 +102,8 @@ export interface CareTeamQuestion {
   responses: CareTeamQuestionResponse[];
   /** Photos or reports the patient attached to the question (documents of her record). */
   attachments?: { id: string; filename: string }[];
+  /** Who asked, when it was a trusted person and not the patient: the name she gave them. The reply goes to them. */
+  askedByName?: string | null;
   /** The earlier question this one follows up. */
   followUpOfText?: string | null;
   /** Set when a doctor closed the question without a written reply (phone or clinic). The note is for doctors only. */

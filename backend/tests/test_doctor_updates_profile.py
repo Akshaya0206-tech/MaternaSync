@@ -151,7 +151,7 @@ class DoctorUpdates(Base):
         newest = updates[0]
         self.assertIn(self.patient_name, newest["body"])
         self.assertNotIn("lavender", newest["body"] + newest["title"])
-        self.assertEqual(newest["link"], "/doctor/questions")
+        self.assertEqual(newest["link"], f"/doctor/questions?question={second['id']}")  # opens that question, not just the list
         self.assertFalse(newest["isRead"])
         self.assertEqual(self.titles("other_doctor").count("A patient asked a follow-up question"), 0)  # not her doctor
         self.assertTrue(second["id"])
@@ -175,7 +175,7 @@ class DoctorUpdates(Base):
         newest = count()[0]
         self.assertIn(self.patient_name, newest["body"])
         self.assertNotIn("report-one", newest["body"])  # not the file's name
-        self.assertEqual(newest["link"], "/doctor/questions")
+        self.assertEqual(newest["link"], f"/doctor/questions?question={question['id']}")  # opens that question
         self.assertEqual(self.titles("other_doctor").count("A patient attached a file to a question"), 0)
         # once she has read it, another file is news again
         self.call("PATCH", f"{UPDATES}/{newest['id']}/read", "doctor")
@@ -268,6 +268,33 @@ class DoctorUpdates(Base):
         self.assertEqual(self.call("GET", "/api/v2/doctor/profile", "doctor")["fullName"], real)
 
     # ---------------------------------------------------------------- the clinic's opening hours
+    def test_the_request_to_help_with_check_ins_uses_the_name_the_doctor_chose_for_her_and_for_the_trusted_person(self):
+        shown = "Prof. Eleanor Vance"
+        self.call("PATCH", "/api/v2/doctor/profile", "doctor", {"displayTitle": "Prof.", "displayName": "Eleanor Vance"})
+        with SessionLocal() as db:
+            ravi_id = db.get(models.CaregiverLink, self.ravi_link).caregiver_user_id
+            before = {n.id for n in db.query(models.Notification).filter(models.Notification.recipient_user_id.in_([self.sarah_id, ravi_id])).all()}
+
+        def clean():
+            with SessionLocal() as db:
+                db.query(models.CheckInHelper).filter_by(episode_id=self.ep).delete()
+                for n in db.query(models.Notification).filter(models.Notification.recipient_user_id.in_([self.sarah_id, ravi_id])).all():
+                    if n.id not in before:
+                        db.delete(n)
+                db.commit()
+        self.addCleanup(clean)
+        self.call("PUT", f"/api/v2/continuity/episodes/{self.ep}/checkin-helper", "doctor", {"linkId": self.ravi_link})
+        hers = [n for n in self.call("GET", "/api/v2/patient/updates", "patient") if n["id"] not in before and "to help you fill in" in n["body"]]
+        his = [n for n in self.call("GET", "/api/v2/caregiver/notifications", "ravi") if n["id"] not in before and "to help" in n["body"]]
+        self.assertTrue(hers and his)
+        self.assertIn(shown, hers[0]["body"])  # not the account name
+        self.assertIn(shown, his[0]["body"])
+        home = self.call("GET", f"/api/v2/caregiver/{self.ravi_link}/home", "ravi")
+        self.assertEqual(home["checkInHelper"]["askedBy"], shown)  # the card on his Home says the same
+        self.call("DELETE", f"/api/v2/continuity/episodes/{self.ep}/checkin-helper", "doctor")
+        ended = [n for n in self.call("GET", "/api/v2/caregiver/notifications", "ravi") if n["id"] not in before and "no longer needs you" in n["body"]]
+        self.assertTrue(ended and shown in ended[0]["body"])
+
     def test_the_opening_hours_are_part_of_the_clinic_details_patients_read(self):
         before = self.call("GET", CONTACT, "doctor")
         saved = self.call("PUT", CONTACT + "/contact", "doctor", {"clinicName": before["name"] or "Test clinic", "clinicPhone": before["phone"] or "+914412345678", "clinicHours": "  Mon-Sat 9:00-17:00  "})

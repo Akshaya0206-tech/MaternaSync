@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import Field
 from sqlalchemy.orm import Session
 
-from .. import automation, caregiver_nudge, caregiver_service, caregiver_whatsapp, models, server_text
+from .. import automation, caregiver_nudge, caregiver_service, caregiver_whatsapp, doctor_names, models, server_text
 from .. import caregiver_update_links
 from ..ai_coordinator import messages, scheduling, tools
 from ..continuity_schemas import Input, LogIn
@@ -311,7 +311,7 @@ def home(link: models.CaregiverLink = Depends(access()), user=Depends(caregiver)
         asked = db.get(models.CheckInHelper, link.episode_id)
         if asked is not None and asked.link_id == link.id:
             doctor = db.get(models.User, asked.asked_by_user_id)
-            out["checkInHelper"] = {"status": asked.status, "askedBy": doctor.full_name if doctor else "", "askedAt": _iso(asked.asked_at)}
+            out["checkInHelper"] = {"status": asked.status, "askedBy": (doctor_names.shown_name(db, doctor) if doctor else "") or "", "askedAt": _iso(asked.asked_at)}
     return out
 
 

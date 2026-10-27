@@ -84,6 +84,18 @@ class DoctorQuestionsConsultsTests(Base):
     def doctor_row(self, question_id):
         return next(q for q in self.call("GET", f"{DOCTOR}/questions", "doctor") if q["id"] == question_id)
 
+    # ---------------------------------------------------------------- who asked
+    def test_a_question_a_trusted_person_asked_says_who_asked_and_a_patients_own_does_not(self):
+        asked = self.call("POST", f"/api/v2/caregiver/{self.ravi_link}/questions", "ravi", {"questionText": "Can she travel by bus next week?"})
+        self.made["questions"].append(asked["id"])
+        with SessionLocal() as db:  # the care assistant (switched off in tests) would have assigned it to her doctor
+            stored = db.get(models.PatientQuestion, asked["id"])
+            stored.assigned_to_user_id, stored.status = self.doctor_id, "ASSIGNED"
+            db.commit()
+        self.assertEqual(self.doctor_row(asked["id"])["askedByName"], "Ravi (husband)")  # the name she gave him: the reply goes to him
+        own = self.question("Can I take the bus to my sister's wedding?")
+        self.assertIsNone(self.doctor_row(own["id"])["askedByName"])
+
     # ---------------------------------------------------------------- readable titles for the documents in the brief
     def test_the_brief_carries_what_a_screen_needs_for_a_readable_title(self):
         with SessionLocal() as db:

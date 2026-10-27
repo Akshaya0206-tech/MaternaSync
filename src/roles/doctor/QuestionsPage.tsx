@@ -213,6 +213,7 @@ export function QuestionsPage() {
                           {q.patientName} · {formatFriendlyDate(q.createdAt)}
                           {!isAnswered && <> · {waitingText(q.createdAt, now, t)}</>}
                           {q.followUpOfText && <> · {t('Follow-up')}</>}
+                          {q.askedByName && <> · {t('Asked by {name}', { name: q.askedByName })}</>}
                           {(q.attachments ?? []).length > 0 && <> · {t('Files attached: {count}', { count: (q.attachments ?? []).length })}</>}
                         </div>
                         <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>{q.questionText}</div>
@@ -225,6 +226,11 @@ export function QuestionsPage() {
 
                     {isOpen && (
                       <div style={{ padding: '0 20px 20px 20px' }}>
+                        {q.askedByName && (
+                          <p className="continuity-note" style={{ fontSize: '0.82rem', margin: '0 0 10px 0' }}>
+                            {t('This question was asked by {name} for {patient}. Your reply goes to {name}, not to {patient}.', { name: q.askedByName, patient: q.patientName })}
+                          </p>
+                        )}
                         {q.followUpOfText && (
                           <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 10px 0' }}>
                             <strong>{t('Follow-up to an earlier question:')}</strong> “{q.followUpOfText}”
@@ -232,7 +238,7 @@ export function QuestionsPage() {
                         )}
                         {(q.attachments ?? []).length > 0 && (
                           <div style={{ margin: '0 0 12px 0', fontSize: '0.82rem' }}>
-                            <strong>{t('Files the patient attached:')}</strong>
+                            <strong>{q.askedByName ? t('Files {name} attached:', { name: q.askedByName }) : t('Files the patient attached:')}</strong>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
                               {(q.attachments ?? []).map((file) => (
                                 <button key={file.id} type="button" className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => void openFile(file.id)}>
@@ -253,7 +259,9 @@ export function QuestionsPage() {
                             <strong>{t('Handled by phone or in clinic')}</strong>
                             <p>{q.closedNote}</p>
                             <p className="continuity-muted">
-                              {t('{name} · {date}. Only doctors see this note. The patient was told you handled it by phone or at the clinic.', { name: q.closedByName ?? '', date: formatFriendlyDate(q.closedAt) })}
+                              {q.askedByName
+                                ? t('{name} · {date}. Only doctors see this note. {asker} was told you handled it by phone or at the clinic.', { name: q.closedByName ?? '', date: formatFriendlyDate(q.closedAt), asker: q.askedByName })
+                                : t('{name} · {date}. Only doctors see this note. The patient was told you handled it by phone or at the clinic.', { name: q.closedByName ?? '', date: formatFriendlyDate(q.closedAt) })}
                             </p>
                           </div>
                         )}
@@ -280,7 +288,7 @@ export function QuestionsPage() {
                               )}
                             </div>
                             <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                              {t('Draft, then approve — the patient only sees the response after you approve it.')}
+                              {q.askedByName ? t('Draft, then approve — {name} only sees the response after you approve it.', { name: q.askedByName }) : t('Draft, then approve — the patient only sees the response after you approve it.')}
                             </p>
                             {closingId === q.id && (
                               <div className="close-handled" role="group" aria-label={t('Handled by phone or in clinic')}>

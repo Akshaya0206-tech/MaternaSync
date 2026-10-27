@@ -38,6 +38,8 @@ def link_for(note: models.Notification) -> str | None:
     pattern = BY_KEY.get(update_links._key(note)) or BY_TYPE.get(note.type)
     if pattern is None:
         return None
+    if pattern == QUESTIONS and note.related_entity_type == "PatientQuestion" and note.related_entity_id:
+        return f"{QUESTIONS}?question={note.related_entity_id}"  # that question, opened and scrolled to (the page reads ?question=)
     if "{ep}" not in pattern:
         return pattern
     # A note about one patient needs her record; without it the list of patients is the best place.

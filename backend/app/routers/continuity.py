@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from .. import caregiver_service, clinic_range, config, models, server_text, visit_changes
+from .. import caregiver_service, clinic_range, config, doctor_names, models, server_text, visit_changes
 from ..models.caregiver import PERMISSIONS
 from ..database import get_db
 from ..deps import require_role
@@ -253,12 +253,12 @@ def ask_checkin_helper(episode_id: str, payload: S.HelperIn, user=Depends(doctor
     elif current.link_id != link.id and current.status != "DECLINED":  # asking someone else ends the earlier request, and that person is told
         earlier = db.get(models.CaregiverLink, current.link_id)
         if earlier is not None and earlier.caregiver_user_id and caregiver_service.is_current(earlier):
-            notify(db, ep.id, earlier.caregiver_user_id, "helper_ended_caregiver", name=(ep.patient_name or "").split(" ")[0], doctor=user.full_name)
+            notify(db, ep.id, earlier.caregiver_user_id, "helper_ended_caregiver", name=(ep.patient_name or "").split(" ")[0], doctor=doctor_names.shown_name(db, user) or user.full_name)
     current.link_id, current.status, current.asked_by_user_id, current.asked_at, current.responded_at = link.id, "ASKED", user.id, now(), None
     audit(db, user, "checkin_helper_asked", link, episode_id=ep.id, details=link.display_name)
     first_name = (ep.patient_name or "").split(" ")[0]
-    notify(db, ep.id, ep.patient_user_id, "helper_asked_her", name=link.display_name, doctor=user.full_name)
-    notify(db, ep.id, link.caregiver_user_id, "helper_asked_caregiver", name=first_name, doctor=user.full_name)
+    notify(db, ep.id, ep.patient_user_id, "helper_asked_her", name=link.display_name, doctor=doctor_names.shown_name(db, user) or user.full_name)
+    notify(db, ep.id, link.caregiver_user_id, "helper_asked_caregiver", name=first_name, doctor=doctor_names.shown_name(db, user) or user.full_name)
     db.commit()
     return {"linkId": link.id, "status": current.status}
 
@@ -271,7 +271,7 @@ def clear_checkin_helper(episode_id: str, user=Depends(doctor), db: Session = De
         link = db.get(models.CaregiverLink, current.link_id)
         audit(db, user, "checkin_helper_cleared", link, episode_id=ep.id, details=link.display_name if link else "")
         if link is not None and link.caregiver_user_id and caregiver_service.is_current(link):
-            notify(db, ep.id, link.caregiver_user_id, "helper_ended_caregiver", name=(ep.patient_name or "").split(" ")[0], doctor=user.full_name)
+            notify(db, ep.id, link.caregiver_user_id, "helper_ended_caregiver", name=(ep.patient_name or "").split(" ")[0], doctor=doctor_names.shown_name(db, user) or user.full_name)
         db.delete(current)
         db.commit()
     return {"status": None}
