@@ -10,11 +10,18 @@ from . import models
 from .database import Base, SessionLocal, engine, get_db
 from .deps import require_role
 from .migrations import backfill_handover_versions, run_additive_migrations
+from .owner_housekeeping import reassign_inactive_owners
 from .reminders import check_reminders
 from .routers import auth, care_team_portal, clinical_guidelines, doctor_portal, episodes, external_simulator, patient_portal, patient_updates, patients, records, workflow
 from .seed_data import run_seed
 from .routers import account
-from .routers import assistant, caregiver, continuity, clinical_library, clinic_emergency, companion, emergency as emergency_router, question_extras, references, topic_reviews, whatsapp_webhook
+from .routers import doctor_consult_questions
+from .routers import clinic_setup
+from .routers import audit_trail as audit_trail_router
+from .routers import care_connected
+from .routers import doctor_search
+from .routers import doctor_overview
+from .routers import assistant, caregiver, continuity, clinical_library, clinic_emergency, companion, doctor_updates, emergency as emergency_router, question_extras, references, topic_reviews, whatsapp_webhook
 from .seed_continuity import ensure_demo_locations, remove_withdrawn_features, run_seed_continuity
 from .seed_assistant import ensure_assistant_user, ensure_demo_caregiver
 from .seed_documents import ensure_document_labels
@@ -48,10 +55,17 @@ app.include_router(episodes.router)
 app.include_router(patient_portal.router)
 app.include_router(question_extras.router)
 app.include_router(patient_updates.router)
+app.include_router(doctor_updates.router)
 app.include_router(care_team_portal.router)
 app.include_router(doctor_portal.router)
+app.include_router(doctor_consult_questions.router)
+app.include_router(clinic_setup.router)
+app.include_router(audit_trail_router.router)
+app.include_router(doctor_search.router)
 app.include_router(external_simulator.router)
 app.include_router(continuity.router)
+app.include_router(care_connected.router)
+app.include_router(doctor_overview.router)
 app.include_router(clinical_library.router)
 app.include_router(references.router)
 app.include_router(topic_reviews.router)
@@ -95,6 +109,7 @@ def on_startup():
         sync_reference_library(db)
         remove_withdrawn_features(db)  # drug-safety lists and blood-pressure/weight rules are no longer used anywhere
         ensure_assistant_user(db)  # the care assistant's own account: it can never sign in, it only owns what it records
+        reassign_inactive_owners(db)  # work still owned by a care-team account whose login is off goes to the patient's doctor
     finally:
         db.close()
 

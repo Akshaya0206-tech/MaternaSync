@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getSchedulingRules, saveSchedulingRules } from '../../api/assistant';
 import type { SchedulingRules } from '../../api/assistant';
-import { Feedback, Field, Panel, useAction } from '../../components/continuity/shared';
+import { Feedback, Field, useAction } from '../../components/continuity/shared';
+import { PanelOrFold } from './FoldPanel';
+import type { Fold } from './FoldPanel';
 import { tx, useLanguage } from '../../i18n';
 
 // The server sends English weekday names; the page translates them through t().
@@ -11,7 +13,7 @@ const WEEKDAY_TEXT: Record<string, string> = {
 };
 
 /** The clinic's booking rules: the days, hours and visit length the assistant checks a visit request against. A doctor sets them. */
-export function AssistantBookingRules() {
+export function AssistantBookingRules({ fold }: { fold?: Fold } = {}) {
   const { t } = useLanguage();
   const action = useAction();
   const [rules, setRules] = useState<SchedulingRules | null>(null);
@@ -32,7 +34,7 @@ export function AssistantBookingRules() {
     }, t('Booking rules saved.'));
 
   return (
-    <Panel title={t('Booking rules')}>
+    <PanelOrFold title={t('Booking rules')} fold={fold}>
       <Feedback error={action.error} message={action.message} />
       <p className="continuity-muted">
         {t("The assistant checks every visit request against these rules and against visits already booked. A request inside them becomes a proposal to confirm; one outside them becomes a proposal to offer the next free times. Nothing about a patient's health is looked at. Changing the rules never moves a visit that is already booked.")}
@@ -62,6 +64,6 @@ export function AssistantBookingRules() {
       <div className="continuity-actions">
         <button className="btn-primary" disabled={action.busy} onClick={() => void save()}>{t('Save booking rules')}</button>
       </div>
-    </Panel>
+    </PanelOrFold>
   );
 }

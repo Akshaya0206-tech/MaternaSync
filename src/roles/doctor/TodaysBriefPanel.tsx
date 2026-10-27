@@ -5,6 +5,7 @@ import { fetchTodaysBrief, markBriefReviewed } from '../../api/doctorPortal';
 import type { TodaysBrief } from '../../api/doctorPortal';
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatFriendlyDate, formatFriendlyDateTime, formatFriendlyTime } from './format';
+import { documentTitle } from './documentTitle';
 import { Link } from 'react-router-dom';
 import { TrendsPanel } from '../../components/continuity/TrendsPanel';
 import { tx, useLanguage } from '../../i18n';
@@ -73,7 +74,7 @@ export function TodaysBriefPanel({ episodeId }: Props) {
           brief.pendingItems.map((task) => (
             <div key={task.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.86rem', color: 'var(--text-primary)' }}>
               <Link to={`/doctor/care-workspace?episodeId=${episodeId}`}>{task.title}</Link>{task.dueDate && <span style={{ color: 'var(--text-muted)' }}> · {t('Due {date}', { date: formatFriendlyDate(task.dueDate) })}</span>}
-              <span style={{ display: 'block', color: 'var(--text-muted)' }}>{t('Owner: {name}', { name: task.ownerName || t('Unassigned') })}</span>
+              <span style={{ display: 'block', color: 'var(--text-muted)' }}>{t('Owner: {name}', { name: task.ownerName ? (task.ownerLoginOff ? t('{name} (care-team account, login off)', { name: task.ownerName }) : task.ownerName) : t('Unassigned') })}</span>
             </div>
           ))
         )}
@@ -105,7 +106,7 @@ export function TodaysBriefPanel({ episodeId }: Props) {
         {brief.relevantDocuments.length === 0 ? <Empty text={t(NOT_AVAILABLE)} /> : (
           brief.relevantDocuments.map((d) => (
             <div key={d.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.86rem', color: 'var(--text-primary)' }}>{d.filename}</span>
+              <span style={{ fontSize: '0.86rem', color: 'var(--text-primary)' }}>{documentTitle(d, t)}</span>
               <StatusBadge label={t(d.statusLabel)} tone="green" />
             </div>
           ))

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { getReplyTime, saveReplyTime } from '../../api/assistant';
-import { Feedback, Field, Panel, useAction } from '../../components/continuity/shared';
+import { Feedback, Field, useAction } from '../../components/continuity/shared';
+import { PanelOrFold } from './FoldPanel';
+import type { Fold } from './FoldPanel';
 import { useLanguage } from '../../i18n';
 
 /** The usual reply time patients see on their My Questions page, for example "within 1 working day". A doctor sets it for the clinic. */
-export function AssistantReplyTime() {
+export function AssistantReplyTime({ fold }: { fold?: Fold } = {}) {
   const { t } = useLanguage();
   const action = useAction();
   const [text, setText] = useState('');
@@ -27,7 +29,7 @@ export function AssistantReplyTime() {
     }, t('Reply time saved.'));
 
   return (
-    <Panel title={t('Usual reply time')}>
+    <PanelOrFold title={t('Usual reply time')} fold={fold}>
       <Feedback error={action.error} message={action.message} />
       <p className="continuity-muted">
         {t('Patients see this on their My Questions page. It is only a guide to when a reply usually comes. It promises nothing, and anything urgent is sent to the emergency numbers.')}
@@ -39,6 +41,6 @@ export function AssistantReplyTime() {
       <div className="continuity-actions">
         <button className="btn-primary" disabled={action.busy} onClick={() => void save()}>{t('Save reply time')}</button>
       </div>
-    </Panel>
+    </PanelOrFold>
   );
 }

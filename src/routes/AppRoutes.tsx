@@ -70,6 +70,7 @@ const DoctorPatientsListPage = lazyPage(() => import('../roles/doctor/PatientsLi
 const DoctorPatientWorkspacePage = lazyPage(() => import('../roles/doctor/PatientWorkspacePage').then(named('PatientWorkspacePage')));
 const ConsultationsPage = lazyPage(() => import('../roles/doctor/ConsultationsPage').then(named('ConsultationsPage')));
 const DoctorQuestionsPage = lazyPage(() => import('../roles/doctor/QuestionsPage').then(named('QuestionsPage')));
+const DoctorSearchResultsPage = lazyPage(() => import('../roles/doctor/SearchResultsPage').then(named('SearchResultsPage')));
 const FollowUpsPage = lazyPage(() => import('../roles/doctor/FollowUpsPage').then(named('FollowUpsPage')));
 const DoctorReferralDetailPage = lazyPage(() => import('../roles/doctor/ReferralDetailPage').then(named('ReferralDetailPage')));
 const DoctorHandoverPage = lazyPage(() => import('../roles/doctor/HandoverPage').then(named('HandoverPage')));
@@ -158,6 +159,7 @@ export function AppRoutes() {
         <Route path="todays-brief" element={<Navigate to="/doctor/dashboard" replace />} />
         <Route path="consultations" element={<ConsultationsPage />} />
         <Route path="questions" element={<DoctorQuestionsPage />} />
+        <Route path="search" element={<DoctorSearchResultsPage />} />
         <Route path="assistant" element={<AssistantPage />} />
         <Route path="documentation" element={<Navigate to="/doctor/consultations?tab=history" replace />} />
         <Route path="follow-ups" element={<FollowUpsPage />} />

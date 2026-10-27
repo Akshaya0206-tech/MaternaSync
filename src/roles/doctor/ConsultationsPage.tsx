@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Mic, Square, Keyboard, Sparkles, Edit3, CheckCircle2, XCircle, RotateCcw, Loader2, AlertTriangle } from 'lucide-react';
 import {
@@ -9,11 +9,17 @@ import type { DoctorPatientRow, TodaysBrief, Consultation, ConsultationDraft, Co
 import { ApiError } from '../../api/client';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
 import { StatusBadge } from '../../components/StatusBadge';
-import { friendlyDraftStatus, DRAFT_STATUS_TONE } from './format';
+import { friendlyDraftStatus, DRAFT_STATUS_TONE, formatFriendlyDate } from './format';
+import { documentTitle } from './documentTitle';
+import { fetchLastApprovedVisit, fetchNoteLayouts } from '../../api/doctorConsultQ';
+import type { LastApprovedVisit, NoteLayout } from '../../api/doctorConsultQ';
 import { tx, useLanguage } from '../../i18n';
 import { DocumentationHistoryView } from './DocumentationHistoryPage';
 
 type Stage = 'select' | 'context' | 'documenting' | 'draft';
+
+// The note layout she chose is kept for this visit to the site (this browser tab), so it is there for the next patient too.
+const LAYOUT_KEY = 'maternasync.doctor.noteLayout';
 
 // One menu item, two tabs. The consultation in progress stays mounted (only hidden) while the history is open, so a recording or a half-written
 // note is not lost; the history is read afresh each time it is opened, so a note approved a moment ago is in it.
@@ -62,6 +68,10 @@ function NewConsultationView() {
   const [suggestedFollowUp, setSuggestedFollowUp] = useState<string | null>(null);
   const [followUpStatus, setFollowUpStatus] = useState<'pending' | 'confirmed' | 'skipped'>('pending');
   const [isConfirmingFollowUp, setIsConfirmingFollowUp] = useState(false);
+  const layoutSelectId = useId();
+  const [layouts, setLayouts] = useState<NoteLayout[]>([]);
+  const [layoutId, setLayoutId] = useState(() => { try { return sessionStorage.getItem(LAYOUT_KEY) ?? ''; } catch { return ''; } });
+  const [lastVisit, setLastVisit] = useState<LastApprovedVisit | null | undefined>(undefined);
 
   const recorder = useVoiceRecorder();
   const mediaRecorderBlobRef = useRef<Blob | null>(null);
@@ -70,9 +80,23 @@ function NewConsultationView() {
     fetchPatients().then(setPatients).catch(() => {});
   }, []);
 
+  // Only layouts the clinic has approved are offered; a layout remembered from earlier that is no longer approved is dropped.
+  useEffect(() => {
+    fetchNoteLayouts()
+      .then((rows) => { setLayouts(rows); setLayoutId((current) => (rows.some((row) => row.id === current) ? current : '')); })
+      .catch(() => setLayouts([]));
+  }, []);
+
+  const chooseLayout = (id: string) => {
+    setLayoutId(id);
+    try { sessionStorage.setItem(LAYOUT_KEY, id); } catch { /* the choice just is not remembered */ }
+  };
+
   useEffect(() => {
     if (episodeId && stage === 'context') {
       fetchTodaysBrief(episodeId).then(setBrief).catch(() => setError(tx("We couldn't load this patient's context.")));
+      setLastVisit(undefined);
+      fetchLastApprovedVisit(episodeId).then(setLastVisit).catch(() => setLastVisit(null));
     }
   }, [episodeId, stage]);
 
@@ -89,7 +113,7 @@ function NewConsultationView() {
     setIsLoading(true);
     setError(null);
     try {
-      const c = await startConsultation(episodeId, inputMode);
+      const c = await startConsultation(episodeId, inputMode, layoutId || null);
       setConsultation(c);
       setWriteMode(inputMode);
       setStage('documenting');
@@ -280,9 +304,10 @@ function NewConsultationView() {
                 GA {brief.gestationalAgeWeeks}w{brief.gestationalAgeDays}d
               </div>
               <ContextRow label={t('Recent Journey')} value={brief.recentEvents.length ? brief.recentEvents.slice(0, 3).map((e) => t(e.title)).join('; ') : t('Not available in current records.')} />
-              <ContextRow label={t('Relevant Documents')} value={brief.relevantDocuments.length ? brief.relevantDocuments.map((d) => d.filename).join(', ') : t('Not available in current records.')} />
+              <ContextRow label={t('Relevant Documents')} value={brief.relevantDocuments.length ? brief.relevantDocuments.map((d) => documentTitle(d, t)).join(', ') : t('Not available in current records.')} />
               <ContextRow label={t('Patient Questions')} value={brief.patientQuestions.length ? t('{count} unanswered', { count: brief.patientQuestions.length }) : t('None')} />
               <ContextRow label={t('Pending Follow-ups')} value={brief.pendingItems.length ? t('{count} open', { count: brief.pendingItems.length }) : t('None')} isLast />
+              <LastVisit visit={lastVisit} />
             </div>
           ) : (
             <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading context…')}</div>
@@ -290,6 +315,18 @@ function NewConsultationView() {
 
           <div className="glass-panel" style={{ padding: '20px 24px' }}>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>{t('Documentation')}</div>
+            <div className="note-layout-choice">
+              <label htmlFor={layoutSelectId}>{t('Note layout')}</label>
+              <select id={layoutSelectId} value={layoutId} onChange={(e) => chooseLayout(e.target.value)}>
+                <option value="">{t('Standard layout')}</option>
+                {layouts.map((layout) => <option key={layout.id} value={layout.id}>{layout.title} · v{layout.version}</option>)}
+              </select>
+            </div>
+            <p className="continuity-muted note-layout-help">
+              {layouts.length > 0
+                ? t('Only layouts your clinic has approved are listed. The layout’s headings are added to the draft as empty boxes for you to fill in.')
+                : t('No note layout is approved yet, so only the standard layout is available. Approve one under Clinical Settings → Note templates.')}
+            </p>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button onClick={() => handleStartConsultation('text')} disabled={isLoading} className="btn-secondary"><Keyboard size={14} /> {t('Write Note')}</button>
               <button onClick={() => handleStartConsultation('voice')} disabled={isLoading} className="btn-primary"><Mic size={14} /> {t('Start Voice Note')}</button>
@@ -376,7 +413,7 @@ function NewConsultationView() {
       {stage === 'draft' && draft && edits && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="glass-panel" style={{ padding: '20px 24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
               <div>
                 <div className="page-title" style={{ fontSize: '1.1rem' }}>{t('Consultation Documentation')}</div>
                 <div style={{ fontSize: '0.74rem', color: 'var(--purple-ai)', fontWeight: 700, textTransform: 'uppercase', marginTop: '2px' }}>{t('AI-Generated · Draft')}</div>
@@ -388,6 +425,21 @@ function NewConsultationView() {
             <DraftField label={t('Documented Discussion')} value={edits.documentedDiscussion} onChange={(v) => setEdits({ ...edits, documentedDiscussion: v })} disabled={draft.status !== 'DRAFT'} rows={4} />
             <DraftField label={t('Relevant Information')} value={edits.relevantInformation} onChange={(v) => setEdits({ ...edits, relevantInformation: v })} disabled={draft.status !== 'DRAFT'} />
             <DraftField label={t('Follow-up / Next Steps')} value={edits.followUpNextSteps} onChange={(v) => setEdits({ ...edits, followUpNextSteps: v })} disabled={draft.status !== 'DRAFT'} />
+            {edits.layoutSections && Object.keys(edits.layoutSections).length > 0 && (
+              <div className="layout-sections">
+                <div className="continuity-muted">{t('Note layout: {title}', { title: edits.layout?.title ?? '' })}</div>
+                {Object.entries(edits.layoutSections).map(([heading, value]) => (
+                  <DraftField
+                    key={heading}
+                    label={heading}
+                    value={value}
+                    onChange={(v) => setEdits({ ...edits, layoutSections: { ...(edits.layoutSections ?? {}), [heading]: v } })}
+                    disabled={draft.status !== 'DRAFT'}
+                    rows={3}
+                  />
+                ))}
+              </div>
+            )}
 
             {draft.status === 'DRAFT' && (
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px' }}>
@@ -425,6 +477,51 @@ function NewConsultationView() {
   );
 }
 
+// The names of the standard sections of a note, in the order they are read.
+const SECTION_LABELS: Record<string, string> = {
+  visitContext: tx('Visit Context'),
+  documentedDiscussion: tx('Documented Discussion'),
+  relevantInformation: tx('Relevant Information'),
+  followUpNextSteps: tx('Follow-up / Next Steps'),
+};
+
+/** The note the doctor approved most recently for this patient, exactly as she approved it: the first lines, then the whole note. Read-only. */
+function LastVisit({ visit }: { visit: LastApprovedVisit | null | undefined }) {
+  const { t } = useLanguage();
+  if (visit === undefined) return <div className="last-visit continuity-muted">{t('Loading…')}</div>;
+  if (visit === null) {
+    return (
+      <div className="last-visit">
+        <div className="last-visit-heading">{t('Last approved visit')}</div>
+        <p className="continuity-muted">{t('No visit note has been approved for this patient yet.')}</p>
+      </div>
+    );
+  }
+  const written = visit.sections.filter((section) => section.text.trim() && section.text.trim() !== 'Not documented.');
+  const lead = written.find((section) => section.key === 'documentedDiscussion') ?? written[0];
+  const preview = lead ? lead.text.trim().split('\n').slice(0, 3).join('\n').slice(0, 320) : '';
+  return (
+    <div className="last-visit">
+      <div className="last-visit-heading">{t('Last approved visit: {date}', { date: formatFriendlyDate(visit.approvedAt) })}</div>
+      <div className="continuity-muted">
+        {t('Approved by {name}', { name: visit.approvedByName })}{visit.layoutTitle ? ` · ${visit.layoutTitle}` : ''}
+      </div>
+      {preview ? <p className="last-visit-preview">{preview}</p> : <p className="continuity-muted">{t('Nothing was written in this note.')}</p>}
+      {visit.sections.length > 0 && (
+        <details>
+          <summary>{t('Read it all')}</summary>
+          {visit.sections.map((section) => (
+            <div key={`${section.key}-${section.heading ?? ''}`} className="last-visit-section">
+              <strong>{section.heading ?? t(SECTION_LABELS[section.key] ?? section.key)}</strong>
+              <p>{section.text}</p>
+            </div>
+          ))}
+        </details>
+      )}
+    </div>
+  );
+}
+
 function ContextRow({ label, value, isLast }: { label: string; value: string; isLast?: boolean }) {
   return (
     <div style={{ padding: '8px 0', borderBottom: isLast ? 'none' : '1px solid var(--border-color)' }}>
@@ -435,10 +532,12 @@ function ContextRow({ label, value, isLast }: { label: string; value: string; is
 }
 
 function DraftField({ label, value, onChange, disabled, rows = 2 }: { label: string; value: string; onChange: (v: string) => void; disabled: boolean; rows?: number }) {
+  const id = useId();
   return (
     <div style={{ marginBottom: '14px' }}>
-      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '5px' }}>{label}</div>
+      <label htmlFor={id} style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '5px' }}>{label}</label>
       <textarea
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}

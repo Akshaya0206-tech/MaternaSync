@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import Field, model_validator
 from sqlalchemy.orm import Session
 
-from .. import automation, extraction, models, schemas_v2, server_text, visit_changes
+from .. import automation, doctor_notices, extraction, models, schemas_v2, server_text, visit_changes
 from ..ai_coordinator import orchestrator, scheduling
 from ..config import UPLOAD_DIR
 from ..continuity_schemas import Input
@@ -88,6 +88,8 @@ async def attach_to_question(
         db, automation.events.DOCUMENT_UPLOADED, episode_id=episode.id, actor_user_id=current_user.id,
         source_type="MedicalDocument", source_id=document.id, payload={"filename": document.filename},
     )
+    # One note per question while the doctor has not read it, however many files she attaches.
+    doctor_notices.tell_doctors(db, episode, "question_attachment", related_type="PatientQuestion", related_id=question.id, once_while_unread=True)
     db.commit()
     return schemas_v2.AttachmentOut(id=document.id, filename=document.filename)
 

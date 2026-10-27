@@ -3,6 +3,7 @@ import { Send, CheckCircle2, Calendar, MessageSquare, Stethoscope, Upload, Arrow
 import { StatusBadge } from '../StatusBadge';
 import type { BadgeTone } from '../StatusBadge';
 import { currentLanguage, currentLocale, tx, useLanguage } from '../../i18n';
+import { documentTitle } from '../../roles/doctor/documentTitle';
 
 export interface ReferralDetailData {
   referral: {
@@ -26,10 +27,10 @@ export interface ReferralDetailData {
     doctorReviewedAt: string | null;
     createdAt: string;
   };
-  events: { id: string; fromStatus: string | null; toStatus: string; note: string | null; actorName: string | null; actorSource: string; createdAt: string }[];
+  events: { id: string; fromStatus: string | null; toStatus: string; note: string | null; actorName: string | null; actorLoginOff?: boolean; actorSource: string; createdAt: string }[];
   communications: { id: string; type: string; direction: string; senderLabel: string | null; recipientLabel: string | null; subject: string | null; content: string; createdAt: string; receivedAt: string | null }[];
   relatedTask: { title: string; status: string; waitingFor: string | null } | null;
-  documents: { id: string; filename: string; status: string; statusLabel: string }[];
+  documents: { id: string; filename: string; status: string; statusLabel: string; description?: string | null; documentType?: string | null; documentDate?: string | null }[];
 }
 
 const STATUS_TONE: Record<string, BadgeTone> = {
@@ -207,7 +208,7 @@ export function ReferralDetailView({ data, careTeamActions, doctorActions, isAct
           <div key={e.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.82rem' }}>
             <strong style={{ color: 'var(--text-primary)' }}>{t(STATUS_LABEL[e.toStatus] ?? e.toStatus)}</strong>
             <span style={{ color: 'var(--text-muted)' }}>
-              {' '}· {formatDateTime(e.createdAt)} · {e.actorName ?? t('External Hospital Simulator')}
+              {' '}· {formatDateTime(e.createdAt)} · {e.actorName ? (e.actorLoginOff ? t('{name} (care-team account, login off)', { name: e.actorName }) : e.actorName) : t('External Hospital Simulator')}
             </span>
             {e.note && <div style={{ color: 'var(--text-secondary)', marginTop: '2px' }}>{e.note}</div>}
           </div>
@@ -229,7 +230,7 @@ export function ReferralDetailView({ data, careTeamActions, doctorActions, isAct
         <SectionCard title={t('Documents')}>
           {documents.map((d) => (
             <div key={d.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>{d.filename}</span>
+              <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)' }}>{documentTitle(d, t)}</span>
               <StatusBadge label={t(DOCUMENT_STATUS_LABEL[d.status] ?? d.statusLabel)} tone="amber" />
             </div>
           ))}

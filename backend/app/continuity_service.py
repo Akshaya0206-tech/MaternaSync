@@ -5,7 +5,7 @@ import re
 from fastapi import HTTPException
 from sqlalchemy import inspect
 
-from . import models, server_text
+from . import config, models, server_text
 from .deps import require_episode_access
 from .plain_language import (LAB_NOTE_PREFIX, SECTIONED_KINDS, build_explanation, build_lab_explanation, build_visit_summary,
                              format_when, review_notes, section_kinds, stage_for_weeks)
@@ -70,9 +70,22 @@ def member_ids(db, episode_id):
     return list(dict.fromkeys([r.doctor_user_id for r in doctors] + [r.care_team_user_id for r in staff]))
 
 
+def login_is_off(db, user_id) -> bool:
+    """A care-team account whose login is switched off (MATERNASYNC_CARE_TEAM_ENABLED=false) cannot open or act on anything it is given."""
+    user = db.get(models.User, user_id) if user_id else None
+    return bool(user and user.role == "care_team" and not config.CARE_TEAM_ENABLED)
+
+
+def assignable_ids(db, episode_id):
+    """The people work can be given to: everyone assigned to the patient who can actually sign in."""
+    return [uid for uid in member_ids(db, episode_id) if not login_is_off(db, uid)]
+
+
 def require_member(db, episode_id, user_id):
     if user_id not in member_ids(db, episode_id):
         raise HTTPException(400, "The owner must be assigned to this patient.")
+    if login_is_off(db, user_id):
+        raise HTTPException(409, "That person's login is switched off, so work given to them would not be seen. Choose a doctor.")
 
 
 def get_object(db, user, table, object_id):
@@ -119,9 +132,16 @@ def resource_out(db, resource):
             "hasFile": bool(resource.file_path), "usable": current_resource(resource)}
 
 
+def patient_facing_name(db, user_id):
+    """A doctor's name as patients read it (the title and name she chose to show them; see doctor_names.py)."""
+    from .doctor_names import shown_name_of
+    return shown_name_of(db, user_id, "Unassigned")
+
+
 def output_out(db, output, patient=False):
     excluded = ("source_snapshot", "selected_codes") if patient else ()
-    result = {**row(output, excluded), "approvedByName": name(db, output.approved_by_user_id) if output.approved_by_user_id else None}
+    reviewer = patient_facing_name if patient else name
+    result = {**row(output, excluded), "approvedByName": reviewer(db, output.approved_by_user_id) if output.approved_by_user_id else None}
     if output.kind in SECTIONED_KINDS:
         result["sectionKinds"] = section_kinds(output.language, (output.structured_data or {}).keys() if output.kind == "explanation" else ())
     if not patient:
@@ -159,7 +179,7 @@ def plain_language_draft(db, ep, payload, snapshot):
         by_topic = {}
         for r in db.query(models.ClinicalResource).filter_by(kind="education", status="APPROVED", language=payload.language).all():
             if r.topic in chosen and r.topic not in by_topic and current_resource(r) and not r.family_id.startswith(LAB_NOTE_PREFIX):
-                by_topic[r.topic] = {"title": r.title, "content": r.content, "issuer": r.issuer, "version": r.version, "reviewer": name(db, r.approved_by_user_id)}
+                by_topic[r.topic] = {"title": r.title, "content": r.content, "issuer": r.issuer, "version": r.version, "reviewer": patient_facing_name(db, r.approved_by_user_id)}
         upcoming = sorted((a for a in db.query(models.Appointment).filter_by(episode_id=ep.id, status="scheduled").all() if utc(a.scheduled_at) > now()), key=lambda a: utc(a.scheduled_at))
         return build_explanation(language=payload.language, episode=ep, approved_content=approved.final_content or {}, consult_date=format_when(approved.approved_at),
                                  chosen=chosen, modules=by_topic,
@@ -168,7 +188,7 @@ def plain_language_draft(db, ep, payload, snapshot):
     modules = [r for r in db.query(models.ClinicalResource).filter_by(kind="education", status="APPROVED", language=payload.language).all()
                if current_resource(r) and r.stage in (stage, "all") and not r.family_id.startswith(("starter-condition-", LAB_NOTE_PREFIX))][:3]
     education = [{"title": r.title, "content": r.content, "issuer": r.issuer, "version": r.version,
-                  "reviewer": name(db, r.approved_by_user_id)} for r in modules]
+                  "reviewer": patient_facing_name(db, r.approved_by_user_id)} for r in modules]
     upcoming = sorted((a for a in db.query(models.Appointment).filter_by(episode_id=ep.id, status="scheduled").all() if utc(a.scheduled_at) > now()),
                       key=lambda a: utc(a.scheduled_at))
     next_appointment = {"when": format_when(upcoming[0].scheduled_at), "kind": upcoming[0].appointment_type} if upcoming else None
@@ -242,7 +262,15 @@ def source_snapshot(db, ep, source_type, source_id):
         consult = db.get(models.Consultation, approved.consultation_id) if approved else None
         if not consult or consult.episode_id != ep.id:
             raise HTTPException(400, "Select an approved consultation for this patient.")
-        return {"title": "Approved consultation", "text": "\n".join(f"{k}: {v}" for k, v in approved.final_content.items()),
+        lines = []
+        for key, value in approved.final_content.items():
+            if key == "layout":
+                continue
+            if isinstance(value, dict):  # the headings of an approved note layout and what the doctor wrote under each
+                lines += [f"{heading}: {text}" for heading, text in value.items() if str(text).strip()]
+            else:
+                lines.append(f"{key}: {value}")
+        return {"title": "Approved consultation", "text": "\n".join(lines),
                 "date": utc(approved.approved_at).isoformat(), "reviewer": name(db, approved.approved_by_user_id)}
     if source_type == "document":
         doc = db.get(models.MedicalDocument, source_id)

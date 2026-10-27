@@ -61,6 +61,9 @@ export interface Appointment {
   appointmentType: string;
   status: string;
   notes: string;
+  /** A request from the patient to cancel or move this visit that no doctor has answered yet. */
+  changeKind?: "cancel" | "reschedule" | null;
+  changeNewAppointmentId?: string | null;
 }
 export interface Source {
   id: string;
@@ -87,6 +90,8 @@ export interface Resource {
   reviewDue: string | null;
   lastCheckedAt: string | null;
   approvedByName: string | null;
+  /** When it was approved (the preview in Clinical Settings -> Patient education shows it). */
+  approvedAt?: string | null;
   usable: boolean;
   hasFile: boolean;
   configuration: {
@@ -199,7 +204,11 @@ export interface Task {
   status: string;
   ownerName: string;
   ownerUserId: string | null;
-  history: { name: string; by: string; at: string }[];
+  /** The owner is a care-team account whose login is switched off. */
+  ownerLoginOff?: boolean;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  history: { name: string; by: string; at: string; note?: string | null; nameLoginOff?: boolean; byLoginOff?: boolean }[];
 }
 export interface Workspace {
   episodeId: string;
@@ -249,7 +258,12 @@ export interface Clinic {
     missingCheckIn: boolean;
     openFlagCount: number;
     monitoringOwner: string | null;
+    /** Counted inside the chosen dates (or over all recorded dates when none is chosen). */
+    inRange: { visits: number; checkIns: number; tasksCreated: number; tasksCompleted: number };
   }[];
+  range: { from: string; to: string } | null;
+  periodTotals: { visits: number; checkIns: number; tasksCreated: number; tasksCompleted: number };
+  clinic: { name: string | null; phone: string | null };
   metrics: {
     recordedScans: number;
     onTimeScans: number;
@@ -261,6 +275,8 @@ export interface Clinic {
   definition: string;
 }
 export const getContext = () => api.get<Context>(`${ROOT}/context`);
+export const getClinic = (range: { from: string; to: string } | null) =>
+  api.get<Clinic>(`${ROOT}/clinic${range ? `?from=${range.from}&to=${range.to}` : ""}`);
 export const getWorkspace = (id: string) =>
   api.get<Workspace>(`${ROOT}/episodes/${id}`);
 export const getLibrary = (query = "") =>

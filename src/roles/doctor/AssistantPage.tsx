@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   assistantActivity, assistantItems, assistantStatus, changeAssistantSettings, decideAssistantItem, pauseAssistantForPatient,
   resumeAssistantForPatient, runAssistantNow, undoAssistantAction,
@@ -10,6 +10,7 @@ import { Badge, Empty, Feedback, Field, Page, Panel, useAction } from '../../com
 import { AssistantBookingRules } from './AssistantBookingRules';
 import { AssistantReplyTime } from './AssistantReplyTime';
 import { AssistantCounts } from './AssistantCounts';
+import { FoldPanel, useFold } from './FoldPanel';
 import { tx, useLanguage } from '../../i18n';
 
 const MODE_TEXT: Record<AssistantStatus['mode'], string> = {
@@ -96,6 +97,38 @@ export function AssistantPage() {
   const [undoing, setUndoing] = useState('');
   const [undoNote, setUndoNote] = useState('');
   const action = useAction();
+  const location = useLocation();
+  // The rarely used settings are folded; what the doctor opens stays open for this visit. Paused: the controls open by themselves, since Resume is in them.
+  const [controlsOpen, setControlsOpen] = useFold('assistant-controls');
+  const [bookingOpen, setBookingOpen] = useFold('booking-rules');
+  const [replyOpen, setReplyOpen] = useFold('reply-time');
+  const folds: Record<string, [boolean, (open: boolean) => void]> = {
+    'assistant-controls': [controlsOpen, setControlsOpen], 'booking-rules': [bookingOpen, setBookingOpen], 'reply-time': [replyOpen, setReplyOpen],
+  };
+  const alsoInClinicSetup = (
+    <p className="continuity-muted assistant-also">
+      {t('Also under Clinical Settings → Clinic setup')} · <Link to="/doctor/clinical-settings#clinic-setup">{t('Open Clinic setup')}</Link>
+    </p>
+  );
+
+  // Go to a card: open it if it is folded, scroll to it and put the keyboard focus on its heading.
+  const goTo = useCallback((id: string) => {
+    folds[id]?.[1](true);
+    window.setTimeout(() => {
+      const target = document.getElementById(id);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const heading = target.tagName === 'DETAILS' ? target.querySelector<HTMLElement>('summary') : target.querySelector<HTMLElement>('h2');
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+    }, 30);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (location.hash && status) goTo(location.hash.slice(1));
+  }, [location.hash, status, goTo]);
 
   const load = useCallback(async () => {
     try {
@@ -164,6 +197,17 @@ export function AssistantPage() {
         </div>
       )}
 
+      <nav className="assistant-toc" aria-label={t('On this page')}>
+        <strong>{t('On this page')}:</strong>
+        {[
+          ['assistant-status', t('Status')], ['assistant-needs', t('Needs you')], ['assistant-controls', t('Your controls')], ['booking-rules', t('Booking rules')],
+          ['reply-time', t('Usual reply time')], ['assistant-counts', t('The last {days} days', { days: 7 })], ['assistant-log', t('What the assistant did')],
+        ].map(([id, label]) => (
+          <a key={id} href={`#${id}`} onClick={(e) => { e.preventDefault(); goTo(id); }}>{label}</a>
+        ))}
+      </nav>
+
+      <div id="assistant-status">
       {status && (
         <Panel
           title={t('Status')}
@@ -188,9 +232,50 @@ export function AssistantPage() {
           </p>
         </Panel>
       )}
+      </div>
+
+      <div id="assistant-needs">
+      <Panel title={t('Needs you')}>
+        {open === null && !error && <p role="status" className="continuity-muted">{t('Loading…')}</p>}
+        {open && !open.length && <Empty>{t('Nothing is waiting for you.')}</Empty>}
+        {open?.map((item) => (
+          <article key={item.id} className={`continuity-item assistant-item${item.urgency === 'urgent' ? ' assistant-urgent' : ''}`}>
+            <h3>
+              {t(item.title)} {item.urgency === 'urgent' && <Badge>{t('Urgent')}</Badge>} <Badge>{item.kind === 'proposal' ? t('Proposal') : t('Needs a person')}</Badge>
+            </h3>
+            <p className="continuity-muted">
+              <Link to={`/doctor/patients/${item.episodeId}`}>{item.patientName}</Link> · {formatTime(item.createdAt)}
+            </p>
+            <div className="continuity-copy">{item.summary}</div>
+            {item.preview && <blockquote className="assistant-preview">{item.preview}</blockquote>}
+            {item.recommendedAction && <p><strong>{t('Suggested:')}</strong> {t(item.recommendedAction)}</p>}
+            <label className="assistant-note">
+              <span className="continuity-muted">{t('Note (optional)')}</span>
+              <input value={notes[item.id] ?? ''} maxLength={500} onChange={(e) => setNotes({ ...notes, [item.id]: e.target.value })} />
+            </label>
+            <div className="continuity-actions">
+              {item.kind === 'proposal'
+                ? <button className="btn-primary" disabled={action.busy} onClick={() => void decide(item, 'approve')}>{t('Approve')}</button>
+                : <button className="btn-primary" disabled={action.busy} onClick={() => void decide(item, 'acknowledge')}>{t('I have seen this')}</button>}
+              <button className="btn-secondary" disabled={action.busy} onClick={() => void decide(item, 'dismiss')}>{t('Dismiss')}</button>
+            </div>
+          </article>
+        ))}
+      </Panel>
+      </div>
+
+      <Panel title={t('Recently decided')}>
+        {!decided.length && <Empty>{t('Nothing yet.')}</Empty>}
+        {decided.map((item) => (
+          <article key={item.id} className="continuity-item">
+            <h3>{t(item.title)} <Badge>{item.status === 'APPROVED' ? t('Approved') : item.status === 'DISMISSED' ? t('Dismissed') : t('Seen')}</Badge></h3>
+            <p className="continuity-muted">{item.patientName} · {item.decidedBy ?? t('a doctor')} · {formatTime(item.decidedAt)}{item.decisionNote ? ` · “${item.decisionNote}”` : ''}</p>
+          </article>
+        ))}
+      </Panel>
 
       {status && (
-        <Panel title={t('Your controls')}>
+        <FoldPanel id="assistant-controls" title={t('Your controls')} open={controlsOpen || status.paused} onToggle={setControlsOpen}>
           <p className="continuity-muted">{t('You can stop the assistant, make it ask first, or reverse any step it has taken. Nothing it does is final.')}</p>
           <div className="continuity-actions">
             <button className={status.paused ? 'btn-primary' : 'btn-secondary'} disabled={action.busy}
@@ -232,57 +317,22 @@ export function AssistantPage() {
               ))}
             </ul>
           )}
-        </Panel>
+        </FoldPanel>
       )}
 
-      <AssistantBookingRules />
+      <AssistantBookingRules fold={{ id: 'booking-rules', open: bookingOpen, onToggle: setBookingOpen, note: alsoInClinicSetup }} />
 
-      <AssistantReplyTime />
+      <AssistantReplyTime fold={{ id: 'reply-time', open: replyOpen, onToggle: setReplyOpen, note: alsoInClinicSetup }} />
 
-      <Panel title={t('Needs you')}>
-        {open === null && !error && <p role="status" className="continuity-muted">{t('Loading…')}</p>}
-        {open && !open.length && <Empty>{t('Nothing is waiting for you.')}</Empty>}
-        {open?.map((item) => (
-          <article key={item.id} className={`continuity-item assistant-item${item.urgency === 'urgent' ? ' assistant-urgent' : ''}`}>
-            <h3>
-              {t(item.title)} {item.urgency === 'urgent' && <Badge>{t('Urgent')}</Badge>} <Badge>{item.kind === 'proposal' ? t('Proposal') : t('Needs a person')}</Badge>
-            </h3>
-            <p className="continuity-muted">
-              <Link to={`/doctor/patients/${item.episodeId}`}>{item.patientName}</Link> · {formatTime(item.createdAt)}
-            </p>
-            <div className="continuity-copy">{item.summary}</div>
-            {item.preview && <blockquote className="assistant-preview">{item.preview}</blockquote>}
-            {item.recommendedAction && <p><strong>{t('Suggested:')}</strong> {t(item.recommendedAction)}</p>}
-            <label className="assistant-note">
-              <span className="continuity-muted">{t('Note (optional)')}</span>
-              <input value={notes[item.id] ?? ''} maxLength={500} onChange={(e) => setNotes({ ...notes, [item.id]: e.target.value })} />
-            </label>
-            <div className="continuity-actions">
-              {item.kind === 'proposal'
-                ? <button className="btn-primary" disabled={action.busy} onClick={() => void decide(item, 'approve')}>{t('Approve')}</button>
-                : <button className="btn-primary" disabled={action.busy} onClick={() => void decide(item, 'acknowledge')}>{t('I have seen this')}</button>}
-              <button className="btn-secondary" disabled={action.busy} onClick={() => void decide(item, 'dismiss')}>{t('Dismiss')}</button>
-            </div>
-          </article>
-        ))}
-      </Panel>
+      <div id="assistant-counts">
+        <AssistantCounts refresh={log.length + decided.length} />
+      </div>
 
-      <Panel title={t('Recently decided')}>
-        {!decided.length && <Empty>{t('Nothing yet.')}</Empty>}
-        {decided.map((item) => (
-          <article key={item.id} className="continuity-item">
-            <h3>{t(item.title)} <Badge>{item.status === 'APPROVED' ? t('Approved') : item.status === 'DISMISSED' ? t('Dismissed') : t('Seen')}</Badge></h3>
-            <p className="continuity-muted">{item.patientName} · {item.decidedBy ?? t('a doctor')} · {formatTime(item.decidedAt)}{item.decisionNote ? ` · “${item.decisionNote}”` : ''}</p>
-          </article>
-        ))}
-      </Panel>
-
-      <AssistantCounts refresh={log.length + decided.length} />
-
+      <div id="assistant-log">
       <Panel title={t('What the assistant did')}>
         {!log.length && <Empty>{t('It has not done anything yet.')}</Empty>}
         {!!log.length && (
-          <div className="assistant-log-wrap">
+          <div className="assistant-log-wrap" tabIndex={0} role="region" aria-label={t('What the assistant did')}>
             <table className="assistant-log">
               <thead>
                 <tr>
@@ -328,6 +378,7 @@ export function AssistantPage() {
           </div>
         )}
       </Panel>
+      </div>
     </Page>
   );
 }

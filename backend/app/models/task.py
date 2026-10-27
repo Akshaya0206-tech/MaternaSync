@@ -45,5 +45,6 @@ class TaskAssignment(Base):
     assigned_to_user_id = Column(String, ForeignKey("users.id"), nullable=False)
     assigned_by_user_id = Column(String, ForeignKey("users.id"), nullable=False)
     assigned_at = Column(DateTime, default=now)
+    note = Column(String, nullable=True)  # why, when the system (not a person) moved it
 
     task = relationship("Task", back_populates="assignments")

@@ -7,7 +7,7 @@ import re
 
 from sqlalchemy.orm import Session
 
-from . import models
+from . import doctor_names, models
 
 PHONE = re.compile(r"^\+?[0-9][0-9 \-()]{3,22}[0-9]$")
 MAX_HOSPITALS = 20  # a short list is easier to use in an emergency, and easier for the clinic to keep correct
@@ -23,7 +23,7 @@ def clinic_out(db: Session) -> dict:
     contact = db.get(models.ClinicContact, CLINIC_KEY)
     hospitals = db.query(models.ClinicHospital).order_by(models.ClinicHospital.created_at, models.ClinicHospital.id).all()
     return {"name": contact.clinic_name if contact else None, "phone": contact.clinic_phone if contact else None,
-            "hospitals": [hospital_out(h) for h in hospitals]}
+            "hours": contact.clinic_hours if contact else None, "hospitals": [hospital_out(h) for h in hospitals]}
 
 
 def doctor_name_for(db: Session, episode: models.PregnancyEpisode | None) -> str | None:
@@ -35,7 +35,7 @@ def doctor_name_for(db: Session, episode: models.PregnancyEpisode | None) -> str
     for assignment in assignments:
         doctor = db.get(models.User, assignment.doctor_user_id)
         if doctor:
-            return doctor.full_name
+            return doctor_names.shown_name(db, doctor)  # the title and name she chose to show patients
     return None
 
 

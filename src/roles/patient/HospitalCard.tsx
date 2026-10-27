@@ -64,6 +64,7 @@ export function HospitalCard({ overview, onClose }: { overview: EmergencyOvervie
   if (clinic?.doctorName) lines.push({ label: tx('My doctor'), value: clinic.doctorName });
   if (clinic?.name) lines.push({ label: tx('My clinic'), value: clinic.name });
   if (clinic?.phone) lines.push({ label: tx('Clinic phone'), value: clinic.phone, phone: clinic.phone });
+  if (clinic?.hours) lines.push({ label: tx('Clinic opening hours'), value: clinic.hours });
   if (profile.mcpNumber) lines.push({ label: tx('MCP card number'), value: profile.mcpNumber });
   if (profile.contactPhone) {
     lines.push({ label: tx('Emergency contact'), value: [profile.contactName, profile.contactRelation && `(${profile.contactRelation})`].filter(Boolean).join(' ') || profile.contactPhone });

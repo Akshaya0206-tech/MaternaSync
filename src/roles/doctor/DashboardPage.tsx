@@ -9,6 +9,9 @@ import { tx, useLanguage } from '../../i18n';
 import type { LanguageValue } from '../../i18n';
 import { formatFriendlyTime, timeOfDayGreeting } from './format';
 import { StatusBadge } from '../../components/StatusBadge';
+import { SetupChecklist } from './SetupChecklist';
+import { NeedsYouList } from './NeedsYouList';
+import { lastCheckInWords } from './format';
 
 // The server sends these two words (backend/app/routers/doctor_portal.py).
 const BRIEF_STATUS_LABELS: Record<string, string> = {
@@ -58,14 +61,14 @@ export function DashboardPage() {
         { label: t('Briefs Ready'), value: dashboard.briefsReady, icon: <ClipboardCheck size={18} />, to: '/doctor/patients', scrollTo: 'todays-patients' },
         { label: t('Questions'), value: dashboard.questions, icon: <MessageCircle size={18} />, to: '/doctor/questions' },
         { label: t('Documents to Review'), value: dashboard.documentsToReview, icon: <FileCheck2 size={18} />, to: '/doctor/patients' },
-        { label: t('Follow-ups'), value: dashboard.followUps, icon: <ListTodo size={18} />, to: '/doctor/follow-ups' },
+        { label: t('Follow-ups owned by you'), value: dashboard.followUps, icon: <ListTodo size={18} />, to: '/doctor/follow-ups' },
         { label: t('Drafts to Approve'), value: dashboard.draftsToApprove, icon: <Stethoscope size={18} />, to: '/doctor/consultations?tab=history' },
         ...(assistantOpen === null ? [] : [{ label: t('Care Assistant: needs you'), value: assistantOpen, icon: <Bot size={18} />, to: '/doctor/assistant' }]),
       ]
     : [];
 
   return (
-    <main style={{ padding: '24px', flex: 1, maxWidth: '980px', margin: '0 auto', width: '100%' }}>
+    <main className="doctor-top" style={{ padding: '24px', flex: 1, maxWidth: '980px', margin: '0 auto', width: '100%' }}>
       <h1 className="page-title" style={{ fontSize: '1.5rem', margin: '8px 0 6px 0' }}>
         {timeOfDayGreeting()}{user?.fullName ? `, ${user.fullName}` : ''}
       </h1>
@@ -76,6 +79,7 @@ export function DashboardPage() {
 
       {dashboard && !isLoading && (
         <>
+          <SetupChecklist />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '28px' }}>
             {stats.map((s) => (
               <button
@@ -94,6 +98,8 @@ export function DashboardPage() {
             ))}
           </div>
 
+          <NeedsYouList />
+
           <h2 id="todays-patients" tabIndex={-1} className="page-title" style={{ fontSize: '1.05rem', margin: '0 0 12px 0' }}>{t("Today's Patients")}</h2>
           {dashboard.todayPatientRows.length === 0 ? (
             <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -106,8 +112,11 @@ export function DashboardPage() {
                   <div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>{row.patientName}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {row.appointmentTime ? formatFriendlyTime(row.appointmentTime) : t('No time set')} · {translateSummary(row.pendingItemsSummary, t)}
+                      {row.appointmentTime ? formatFriendlyTime(row.appointmentTime) : t('No time set')}{row.visitType ? ` · ${row.visitType}` : ''} · {translateSummary(row.pendingItemsSummary, t)}
                     </div>
+                    {row.lastCheckIn !== undefined && (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>{lastCheckInWords(t, row.lastCheckIn)}</div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <StatusBadge label={t(BRIEF_STATUS_LABELS[row.briefStatus] ?? row.briefStatus)} tone={row.briefStatus === 'Ready' ? 'green' : 'neutral'} />

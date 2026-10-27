@@ -3,8 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ExternalLink, PhoneCall, Star, Volume2 } from 'lucide-react';
 import { canSpeak, speak, stopSpeaking } from './speech';
 import { patientReferences } from '../../data/patientReferences';
+import { topicFingerprints } from '../../data/topicFingerprints';
 import type { ReferenceTopic } from '../../data/patientReferencesTypes';
-import { fetchTopicReviews } from '../../api/topicReviews';
+import { fetchTopicReviews, reviewState } from '../../api/topicReviews';
 import type { TopicReview, TopicReviews } from '../../api/topicReviews';
 import { useAuth } from '../../auth/AuthContext';
 import { useLanguage } from '../../i18n';
@@ -28,6 +29,7 @@ export function ReferencesPage() {
   const [reviews, setReviews] = useState<TopicReviews | null>(null); // null: not known (not loaded), which is not the same as "no review"
   const { saved, toggle } = useSavedTopics(user?.id ?? '');
   const { categories, topics, helplines } = patientReferences;
+  const prints = topicFingerprints();
 
   useEffect(() => {
     fetchTopicReviews().then(setReviews).catch(() => setReviews(null));
@@ -68,7 +70,7 @@ export function ReferencesPage() {
         <Empty>{category === SAVED && !text ? t('You have not saved any topics yet. Tap the star on a topic to keep it here.') : t('Nothing matched. Try one simple word, or choose All topics.')}</Empty>
       )}
       {matches.map((topic) => (
-        <Topic key={topic.id} topic={topic} focused={topic.id === focusId} isSaved={saved.includes(topic.id)} onToggleSaved={() => toggle(topic.id)} review={reviews === null ? undefined : reviews[topic.id] ?? false} />
+        <Topic key={topic.id} topic={topic} focused={topic.id === focusId} isSaved={saved.includes(topic.id)} onToggleSaved={() => toggle(topic.id)} review={reviews === null ? undefined : reviews[topic.id] ?? false} changed={reviews !== null && reviewState(reviews[topic.id], prints[topic.id]) === 'changed'} />
       ))}
 
       {helplines.length > 0 && !text && (
@@ -97,9 +99,11 @@ interface TopicProps {
   onToggleSaved: () => void;
   /** The clinic's review of this topic; false when nobody has reviewed it; undefined when that could not be loaded. */
   review: TopicReview | false | undefined;
+  /** The text of this topic has changed since the clinic reviewed it, so the review no longer stands for what is on the page. */
+  changed: boolean;
 }
 
-function Topic({ topic, focused, isSaved, onToggleSaved, review }: TopicProps) {
+function Topic({ topic, focused, isSaved, onToggleSaved, review, changed }: TopicProps) {
   const { t, language } = useLanguage();
   const urgent = topic.id === 'danger-signs';
   const [reading, setReading] = useState<'idle' | 'speaking' | 'no-voice'>('idle');
@@ -125,14 +129,16 @@ function Topic({ topic, focused, isSaved, onToggleSaved, review }: TopicProps) {
     <div className="reference-wrap">
       <details ref={details} id={`topic-${topic.id}`} className={`glass-panel continuity-panel reference-topic${urgent ? ' reference-urgent' : ''}${focused ? ' reference-focus' : ''}`} open={urgent || focused}>
         <summary>
-          <h2 style={{ display: 'inline' }}>{title}</h2> {urgent && <Badge>{t('Read this first')}</Badge>} {review && <Badge>{t('Reviewed by your clinic')}</Badge>}
+          <h2 style={{ display: 'inline' }}>{title}</h2> {urgent && <Badge>{t('Read this first')}</Badge>} {review && !changed && <Badge>{t('Reviewed by your clinic')}</Badge>}
           <p className="continuity-muted" style={{ margin: '6px 0 0' }}>{topic.summary[language]}</p>
         </summary>
         {review !== undefined && (
           <p className="continuity-muted reference-review">
-            {review
-              ? t('Reviewed by your clinic on {date} ({name})', { date: formatFriendlyDate(review.reviewedAt), name: review.reviewerName })
-              : t('Not yet reviewed by your clinic. This is general information from official sources.')}
+            {review && changed
+              ? t('Updated since your clinic last reviewed it. This is general information from official sources.')
+              : review
+                ? t('Reviewed by your clinic on {date} ({name})', { date: formatFriendlyDate(review.reviewedAt), name: review.reviewerName })
+                : t('Not yet reviewed by your clinic. This is general information from official sources.')}
           </p>
         )}
         {canSpeak() && (

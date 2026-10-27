@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Stethoscope, Eye, CheckCircle2, XCircle, Plus } from 'lucide-react';
 import {
   fetchEpisode, fetchEpisodeJourney, fetchDocuments, fetchQuestions, fetchFollowUps, fetchHandover, fetchReferrals,
@@ -12,11 +12,16 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { formatFriendlyDate } from './format';
 import { DOCUMENT_STATUS_TONE, QUESTION_STATUS_TONE, TASK_STATUS_TONE, friendlyQuestionStatus, friendlyTaskStatus } from './format';
 import { TodaysBriefPanel } from './TodaysBriefPanel';
+import { BriefExtras } from './BriefExtras';
+import { AuditTrailPanel } from './AuditTrailPanel';
+import { PatientStepper } from './PatientStepper';
+import { documentTitle } from './documentTitle';
+import { typeLabel } from '../patient/documentTypes';
 import { CreateReferralModal } from './CreateReferralModal';
 import { CareWorkspaceLink } from '../../components/continuity/CareWorkspacePage';
 import { tx, useLanguage } from '../../i18n';
 
-type Tab = 'brief' | 'journey' | 'documents' | 'consultations' | 'questions' | 'followups' | 'handover' | 'referrals';
+type Tab = 'brief' | 'journey' | 'documents' | 'consultations' | 'questions' | 'followups' | 'handover' | 'referrals' | 'audit';
 
 // Journey event codes are shown as lower-case words (the screen capitalises them), so the keys are lower-case too.
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -41,7 +46,11 @@ export function PatientWorkspacePage() {
   const { t } = useLanguage();
   const { episodeId } = useParams<{ episodeId: string }>();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('brief');
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const [tab, setTab] = useState<Tab>(
+    (['brief', 'journey', 'documents', 'consultations', 'questions', 'followups', 'handover', 'referrals', 'audit'] as const).find((key) => key === requestedTab) ?? 'brief',
+  );
   const [episode, setEpisode] = useState<EpisodeDetail | null>(null);
   const [journey, setJourney] = useState<JourneyEvent[]>([]);
   const [documents, setDocuments] = useState<CareTeamDocument[]>([]);
@@ -107,16 +116,19 @@ export function PatientWorkspacePage() {
     { key: 'followups', label: t('Follow-ups') },
     { key: 'referrals', label: t('Referrals') },
     { key: 'handover', label: t('Handover') },
+    { key: 'audit', label: t('Audit trail') },
   ];
 
   return (
     <main style={{ padding: '24px', flex: 1, maxWidth: '980px', margin: '0 auto', width: '100%' }}>
       <button
         onClick={() => navigate('/doctor/patients')}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', color: 'var(--teal-primary)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, padding: 0, marginBottom: '14px' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', color: 'var(--teal-text)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, padding: 0, marginBottom: '14px' }}
       >
         <ArrowLeft size={15} /> {t('Back to My Patients')}
       </button>
+
+      {episode && !isLoading && <PatientStepper episodeId={episodeId} tab={tab} />}
 
       {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading patient workspace…')}</div>}
       {error && !isLoading && <div className="glass-panel" style={{ padding: '24px', color: 'var(--rose-urgent)', textAlign: 'center' }}>{t(error)}</div>}
@@ -144,7 +156,7 @@ export function PatientWorkspacePage() {
                 style={{
                   padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit',
                   fontSize: '0.85rem', fontWeight: tab === tabItem.key ? 700 : 500,
-                  color: tab === tabItem.key ? 'var(--teal-primary)' : 'var(--text-secondary)',
+                  color: tab === tabItem.key ? 'var(--teal-text)' : 'var(--text-secondary)',
                   borderBottom: tab === tabItem.key ? '2px solid var(--teal-primary)' : '2px solid transparent',
                   marginBottom: '-1px',
                 }}
@@ -154,7 +166,14 @@ export function PatientWorkspacePage() {
             ))}
           </div>
 
-          {tab === 'brief' && <TodaysBriefPanel episodeId={episodeId} />}
+          {tab === 'brief' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <BriefExtras episodeId={episodeId} />
+              <TodaysBriefPanel episodeId={episodeId} />
+            </div>
+          )}
+
+          {tab === 'audit' && <AuditTrailPanel episodeId={episodeId} patientName={episode.patientName} />}
 
           {tab === 'journey' && (
             journey.length === 0 ? (
@@ -183,8 +202,8 @@ export function PatientWorkspacePage() {
                 {documents.map((d, i) => (
                   <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '14px 20px', borderBottom: i === documents.length - 1 ? 'none' : '1px solid var(--border-color)' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{d.filename}</div>
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{t('Uploaded by {name}', { name: d.uploadedByName })}</div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>{documentTitle(d, t)} <span className="document-kind">{t(typeLabel(d.documentType))}</span></div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{t('Uploaded by {name}', { name: d.uploadedByLoginOff ? t('{name} (care-team account, login off)', { name: d.uploadedByName }) : d.uploadedByName })}{d.filename !== documentTitle(d, t) && <> · {t('File: {name}', { name: d.filename })}</>}</div>
                     </div>
                     <StatusBadge label={t(d.statusLabel)} tone={DOCUMENT_STATUS_TONE[d.status]} />
                     <button onClick={() => handleViewOriginal(d.id)} title={t('View original')} style={{ background: 'none', border: 'none', color: 'var(--teal-primary)', cursor: 'pointer', display: 'flex' }}>
@@ -247,7 +266,7 @@ export function PatientWorkspacePage() {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '3px' }}>{task.dueDate && <>{t('Due {date}', { date: formatFriendlyDate(task.dueDate) })}</>}</div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '3px' }}>{task.dueDate && <>{t('Due {date}', { date: formatFriendlyDate(task.dueDate) })}</>}{task.ownerName && <>{task.dueDate ? ' · ' : ''}{t('Owner: {name}', { name: task.ownerLoginOff ? t('{name} (care-team account, login off)', { name: task.ownerName }) : task.ownerName })}</>}</div>
                     </div>
                     <StatusBadge label={friendlyTaskStatus(task.status)} tone={TASK_STATUS_TONE[task.status]} />
                   </div>

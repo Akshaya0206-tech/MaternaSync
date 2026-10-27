@@ -19,6 +19,14 @@ export const loadDoctorDictionary: Loader = async () => {
     import("./dicts/doctor-patientinfo"),
     import("./dicts/doctor-questions"),
     import("./dicts/doctor-emergency"),
+    import("./dicts/doctor-careconn"),
+    import("./dicts/doctor-refsettings"),
+    import("./dicts/doctor-consultq"),
+    import("./dicts/doctor-dashboard"),
+    import("./dicts/doctor-overview"),
+    import("./dicts/doctor-search"),
+    import("./dicts/doctor-updprofile"),
+    import("./dicts/doctor-workspace2"),
   ]);
   return Object.assign({}, ...parts.map((part) => part.entries));
 };

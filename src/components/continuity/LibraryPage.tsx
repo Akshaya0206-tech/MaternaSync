@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { api, fetchBlobWithAuth } from "../../api/client";
 import { getLibrary, languages, formatTime } from "../../api/continuity";
 import type { Language, Resource } from "../../api/continuity";
 import { tx, useLanguage } from "../../i18n";
-import { ClinicEmergencySettings } from "../../roles/doctor/ClinicEmergencySettings";
+import { ClinicSetup } from "./ClinicSetup";
+import { EducationList } from "./EducationList";
+import { eduGroup, eduMatches } from "./educationFilters";
+import type { EduFilter } from "./educationFilters";
 import {
   Badge,
   Empty,
@@ -45,6 +48,10 @@ const stages: Record<string, string> = {
   third: tx("third"),
   postpartum: tx("postpartum"),
 };
+
+// The five tabs, as the ?tab= value in the address (so another page can link straight to one): /doctor/clinical-settings?tab=education
+const tabOfKind: Record<string, string> = { rule: "followup-rules", coding: "icd", education: "education", pathway: "pathways", template: "templates" };
+const kindOfTab: Record<string, string> = Object.fromEntries(Object.entries(tabOfKind).map(([kind, tab]) => [tab, kind]));
 
 const addTitles: Record<string, string> = {
   rule: tx("Add rule"),
@@ -88,7 +95,10 @@ export function LibraryPage() {
   const doctor = user?.role === "doctor";
   const action = useAction();
   const [items, setItems] = useState<Resource[]>([]);
-  const [kind, setKind] = useState("rule");
+  const [params, setParams] = useSearchParams();
+  const kind = kindOfTab[params.get("tab") ?? ""] ?? "rule"; // the tab is kept in the address, so a refresh or a shared link opens the same one
+  const [eduQuery, setEduQuery] = useState("");
+  const [eduFilter, setEduFilter] = useState<EduFilter>("all");
   const [query, setQuery] = useState("");
   const [issuer, setIssuer] = useState("");
   const [jurisdiction, setJurisdiction] = useState("");
@@ -121,7 +131,7 @@ export function LibraryPage() {
       active = false;
     };
   }, []);
-  const results = items.filter(
+  const kindResults = items.filter(
     (r) =>
       r.kind === kind &&
       (!issuer || r.issuer === issuer) &&
@@ -133,6 +143,16 @@ export function LibraryPage() {
         .toLowerCase()
         .includes(query.toLowerCase()),
   );
+  // Patient education: the search box and the status chips narrow the list further. The counts on the chips follow the search, not the chip,
+  // and "select all drafts" below only ever means the drafts that are on screen.
+  const eduBase = kind === "education" ? kindResults.filter((r) => eduMatches(r, eduQuery)) : kindResults;
+  const eduCounts: Record<EduFilter, number> = {
+    all: eduBase.length,
+    draft: eduBase.filter((r) => eduGroup(r) === "draft").length,
+    approved: eduBase.filter((r) => eduGroup(r) === "approved").length,
+    due: eduBase.filter((r) => eduGroup(r) === "due").length,
+  };
+  const results = kind === "education" && eduFilter !== "all" ? eduBase.filter((r) => eduGroup(r) === eduFilter) : eduBase;
   const drafts = results.filter((r) => r.status === "DRAFT");
   // Only what is on screen can be approved, even if filters changed after ticking.
   const chosen = picked.filter((id) => drafts.some((d) => d.id === id));
@@ -145,14 +165,14 @@ export function LibraryPage() {
       )}
     >
       <Feedback error={action.error} message={action.message} />
-      {doctor && <ClinicEmergencySettings />}
+      {doctor && <ClinicSetup />}
       <div className="continuity-tabs">
         {Object.entries(kinds).map(([key, label]) => (
           <button
             key={key}
             aria-pressed={kind === key}
             onClick={() => {
-              setKind(key);
+              setParams({ tab: tabOfKind[key] }, { replace: true });
               setSelected(null);
               setIssuer("");
               setTopic("");
@@ -350,7 +370,20 @@ export function LibraryPage() {
               </button>
             </div>
           )}
-          {results.map((r) => (
+          {kind === "education" ? (
+            <EducationList
+              results={results}
+              counts={eduCounts}
+              query={eduQuery}
+              onQuery={setEduQuery}
+              filter={eduFilter}
+              onFilter={setEduFilter}
+              doctor={doctor}
+              picked={picked}
+              onPick={(id, on) => setPicked((old) => (on ? [...old.filter((item) => item !== id), id] : old.filter((item) => item !== id)))}
+              onRead={choose}
+            />
+          ) : results.map((r) => (
             <article className="continuity-item" key={r.id}>
               <h3>{r.title}</h3>
               <p className="continuity-muted">

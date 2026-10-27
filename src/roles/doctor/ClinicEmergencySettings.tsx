@@ -14,6 +14,7 @@ export function ClinicEmergencySettings() {
   const [data, setData] = useState<ClinicEmergency | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [hours, setHours] = useState('');
   const [editing, setEditing] = useState<string | null>(null); // a hospital's id, or "new"
   const [loadError, setLoadError] = useState('');
 
@@ -21,6 +22,7 @@ export function ClinicEmergencySettings() {
     setData(next);
     setName(next.name ?? '');
     setPhone(next.phone ?? '');
+    setHours(next.hours ?? '');
   };
 
   useEffect(() => {
@@ -44,13 +46,14 @@ export function ClinicEmergencySettings() {
             onSubmit={(e) => {
               e.preventDefault();
               void action.run(async () => {
-                show(await saveClinicContact({ clinicName: name.trim() || null, clinicPhone: phone.trim() || null }));
+                show(await saveClinicContact({ clinicName: name.trim() || null, clinicPhone: phone.trim() || null, clinicHours: hours.trim() || null }));
               }, t('Clinic details saved.'));
             }}
           >
             <div className="continuity-fields">
               <Field label={t('Clinic name')}><input maxLength={200} value={name} onChange={(e) => setName(e.target.value)} /></Field>
               <Field label={t('Clinic phone')}><input type="tel" maxLength={30} value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+              <Field label={t('Opening hours')}><input maxLength={200} value={hours} onChange={(e) => setHours(e.target.value)} placeholder={t('e.g. Mon–Sat 9:00–17:00')} /></Field>
             </div>
             <div className="continuity-actions"><button className="btn-primary" disabled={action.busy}>{t('Save clinic details')}</button></div>
           </form>

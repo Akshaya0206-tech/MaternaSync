@@ -98,6 +98,9 @@ CATALOG = {
     "question_answered_doctor": (
         _m("Your doctor answered your question", "आपके डॉक्टर ने आपके प्रश्न का उत्तर दिया", "உங்கள் கேள்விக்கு உங்கள் மருத்துவர் பதிலளித்தார்", "మీ ప్రశ్నకు మీ డాక్టర్ సమాధానం ఇచ్చారు"),
         None),
+    "question_handled_offline": (
+        _m("Your doctor handled your question by phone or at the clinic", "आपके डॉक्टर ने आपके प्रश्न को फ़ोन पर या क्लिनिक में निपटा दिया", "உங்கள் கேள்வியை உங்கள் மருத்துவர் தொலைபேசியில் அல்லது கிளினிக்கில் கவனித்தார்", "మీ ప్రశ్నను మీ డాక్టర్ ఫోన్‌లో లేదా క్లినిక్‌లో చూసుకున్నారు"),
+        _m("If you still have a question, open My Questions and ask again.", "अगर आपका कोई और प्रश्न है, तो मेरे प्रश्न खोलकर फिर से पूछें।", "இன்னும் கேள்வி இருந்தால், எனது கேள்விகளைத் திறந்து மீண்டும் கேளுங்கள்.", "ఇంకా ప్రశ్న ఉంటే, నా ప్రశ్నలు తెరిచి మళ్లీ అడగండి.")),
     "question_answered": (
         _m("Your question was answered", "आपके प्रश्न का उत्तर दिया गया", "உங்கள் கேள்விக்குப் பதில் அளிக்கப்பட்டது", "మీ ప్రశ్నకు సమాధానం ఇవ్వబడింది"),
         _m("Open My Questions to read the reply.", "उत्तर पढ़ने के लिए मेरे प्रश्न खोलें।", "பதிலைப் படிக்க எனது கேள்விகளைத் திறக்கவும்.", "సమాధానం చదవడానికి నా ప్రశ్నలు తెరవండి.")),
@@ -201,6 +204,14 @@ CATALOG = {
     "visit_change_withdrawn": (
         _m("A patient withdrew a request to change a visit", "रोगी ने मुलाक़ात बदलने का अनुरोध वापस ले लिया", "நோயாளி வருகை மாற்றக் கோரிக்கையைத் திரும்பப் பெற்றார்", "రోగి సందర్శన మార్పు అభ్యర్థనను వెనక్కి తీసుకున్నారు"),
         _m("{what}", "{what}", "{what}", "{what}")),
+    "question_attachment": (
+        _m("A patient attached a file to a question", "एक रोगी ने प्रश्न के साथ एक फ़ाइल जोड़ी", "ஒரு நோயாளி கேள்வியுடன் ஒரு கோப்பை இணைத்தார்", "ఒక రోగి ప్రశ్నకు ఒక ఫైల్‌ను జోడించారు"),
+        _m("{name} attached a file to a question. It is on your Patient Questions list.", "{name} ने एक प्रश्न के साथ फ़ाइल जोड़ी है। वह आपकी रोगियों के प्रश्न सूची में है।",
+           "{name} ஒரு கேள்வியுடன் கோப்பை இணைத்துள்ளார். அது உங்கள் நோயாளிகளின் கேள்விகள் பட்டியலில் உள்ளது.", "{name} ఒక ప్రశ్నకు ఫైల్‌ను జోడించారు. అది మీ రోగుల ప్రశ్నల జాబితాలో ఉంది.")),
+    "question_followup": (
+        _m("A patient asked a follow-up question", "एक रोगी ने फ़ॉलो-अप प्रश्न पूछा", "ஒரு நோயாளி பின்தொடர்தல் கேள்வி கேட்டார்", "ఒక రోగి ఫాలో-అప్ ప్రశ్న అడిగారు"),
+        _m("{name} asked a follow-up to an earlier question. It is on your Patient Questions list.", "{name} ने पहले के प्रश्न के बारे में फ़ॉलो-अप प्रश्न पूछा है। वह आपकी रोगियों के प्रश्न सूची में है।",
+           "{name} முந்தைய கேள்வியைப் பற்றி பின்தொடர்தல் கேள்வி கேட்டுள்ளார். அது உங்கள் நோயாளிகளின் கேள்விகள் பட்டியலில் உள்ளது.", "{name} ముందటి ప్రశ్నకు ఫాలో-అప్ ప్రశ్న అడిగారు. అది మీ రోగుల ప్రశ్నల జాబితాలో ఉంది.")),
     "help_requested": (
         _m("A patient asked for help with a reminder", "रोगी ने रिमाइंडर में मदद माँगी", "நோயாளி நினைவூட்டலில் உதவி கேட்டார்", "రోగి రిమైండర్‌లో సహాయం కోరారు"),
         _m("{title}", "{title}", "{title}", "{title}")),
@@ -361,6 +372,7 @@ def texts(db, reader_id: str, note: models.Notification) -> tuple[str, str]:
 def notification_out(db, reader, note: models.Notification):
     from .schemas_v2 import NotificationOut
     from .update_links import link_for
+    from .doctor_update_links import link_for as doctor_link_for
     title, body = texts(db, reader.id, note)
-    return NotificationOut(id=note.id, type=note.type, title=title, body=body, is_read=bool(note.is_read), created_at=note.created_at,
-                           link=link_for(note) if reader.role == "patient" else None)
+    link = link_for(note) if reader.role == "patient" else doctor_link_for(note) if reader.role == "doctor" else None
+    return NotificationOut(id=note.id, type=note.type, title=title, body=body, is_read=bool(note.is_read), created_at=note.created_at, link=link)

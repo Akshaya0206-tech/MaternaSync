@@ -18,15 +18,16 @@ created by an explicit doctor approval action.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from .. import models, schemas_v2, server_text, transcription
+from .. import doctor_names, doctor_notices, models, schemas_v2, server_text, transcription
 from ..config import UPLOAD_DIR
+from ..continuity_service import current_resource, login_is_off
 from ..database import get_db
 from ..schemas import as_utc
 from ..deps import get_current_user, require_episode_access, require_role
@@ -96,6 +97,7 @@ def _to_question_out(db: Session, q: models.PatientQuestion) -> schemas_v2.CareT
         ],
         attachments=[schemas_v2.AttachmentOut(id=a.document_id, filename=a.document.filename) for a in q.attachments if a.document],
         follow_up_of_text=q.follow_up_of.question_text[:300] if q.follow_up_of else None,
+        closed_how=q.closed_how, closed_note=q.closed_note, closed_at=q.closed_at, closed_by_name=_user_name(db, q.closed_by_user_id),
     )
 
 
@@ -106,6 +108,7 @@ def _to_task_out(db: Session, t: models.Task) -> schemas_v2.TaskOut:
         created_by_name=_user_name(db, t.created_by_user_id) or "Unknown",
         due_date=t.due_date, priority=t.priority, status=t.status, source_type=t.source_type, source_id=t.source_id,
         waiting_for=t.waiting_for, waiting_since=t.waiting_since, auto_generated=bool(t.auto_generated), created_at=t.created_at,
+        owner_login_off=login_is_off(db, t.owner_user_id), created_by_login_off=login_is_off(db, t.created_by_user_id),
     )
 
 
@@ -200,10 +203,16 @@ def get_dashboard(current_user: models.User = Depends(require_role("doctor")), d
         if t_count:
             parts.append(f"{t_count} Follow-up{'s' if t_count != 1 else ''}")
         summary = " · ".join(parts) if parts else "No pending items"
+        last_log = (
+            db.query(models.DailyLog.recorded_at)
+            .filter(models.DailyLog.episode_id == episode.id, models.DailyLog.skipped.is_(False))
+            .order_by(models.DailyLog.recorded_at.desc()).first()
+        )
         today_rows.append(schemas_v2.TodayPatientRowOut(
             episode_id=episode.id, patient_name=episode.patient_name, appointment_time=appt.scheduled_at,
             brief_status="Ready" if episode.is_ready_for_today_brief else "Not Ready",
             pending_items_summary=summary,
+            visit_type=appt.appointment_type, last_check_in=last_log[0] if last_log else None,
         ))
 
     return schemas_v2.DoctorDashboardOut(
@@ -227,8 +236,20 @@ def list_patients(current_user: models.User = Depends(require_role("doctor")), d
         return []
     episodes = db.query(models.PregnancyEpisode).filter(models.PregnancyEpisode.id.in_(assigned_ids)).all()
 
+    # "This week" is counted on the clinic's own clock (the one set in the booking rules): from the start of today for seven days.
+    from ..ai_coordinator import scheduling
+    clinic_now = datetime.now(timezone.utc) + timedelta(minutes=scheduling.rules(db)["offset_minutes"])
+    week_start = clinic_now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(minutes=scheduling.rules(db)["offset_minutes"])
+    week_end = week_start + timedelta(days=7)
+    # "Overdue" is counted the same way the Connected Care tab counts it (a due date before today's UTC date), so the two screens never disagree.
+    today_text = datetime.now(timezone.utc).date().isoformat()
+
     rows = []
     for ep in episodes:
+        scheduled = db.query(models.Appointment.scheduled_at).filter(models.Appointment.episode_id == ep.id, models.Appointment.status == "scheduled").all()
+        visit_this_week = any(week_start <= s[0].replace(tzinfo=timezone.utc) < week_end for s in scheduled)
+        open_task_rows = db.query(models.Task.due_date).filter(models.Task.episode_id == ep.id, models.Task.status.in_(OPEN_TASK_STATUSES)).all()
+        overdue_tasks = sum(1 for (due,) in open_task_rows if due and due < today_text)
         next_appt = (
             db.query(models.Appointment)
             .filter(models.Appointment.episode_id == ep.id, models.Appointment.status == "scheduled")
@@ -249,6 +270,8 @@ def list_patients(current_user: models.User = Depends(require_role("doctor")), d
             next_appointment=next_appt.scheduled_at if next_appt else None,
             last_consultation=last_consult.started_at if last_consult else None,
             open_items=open_tasks, question_count=open_questions,
+            gestational_age_weeks=ep.gestational_age_weeks, gestational_age_days=ep.gestational_age_days,
+            overdue_tasks=overdue_tasks, visit_this_week=visit_this_week,
         ))
 
     rows.sort(key=lambda r: r.patient_name)
@@ -315,7 +338,8 @@ def _compute_brief_content(db: Session, episode: models.PregnancyEpisode) -> dic
         "latestApprovedInfo": latest_approved_info,
         "relevantDocuments": [
             {"id": d.id, "filename": d.filename, "status": d.status,
-             "statusLabel": schemas_v2.DOCUMENT_STATUS_LABELS.get(d.status, d.status), "documentDate": d.document_date}
+             "statusLabel": schemas_v2.DOCUMENT_STATUS_LABELS.get(d.status, d.status), "documentDate": d.document_date,
+             "description": d.description, "documentType": d.document_type}
             for d in relevant_docs
         ],
     }
@@ -339,8 +363,10 @@ def _get_or_create_brief_artifact(db: Session, episode: models.PregnancyEpisode)
 
 
 @router.get("/episodes/{episode_id}/todays-brief", response_model=schemas_v2.TodaysBriefOut)
-def get_todays_brief(episode: models.PregnancyEpisode = Depends(require_episode_access), db: Session = Depends(get_db)):
+def get_todays_brief(episode: models.PregnancyEpisode = Depends(require_episode_access), current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     artifact = _get_or_create_brief_artifact(db, episode)
+    # Opening her brief is reading the "Today's Brief ready" notes about her, so they do not pile up unread.
+    doctor_notices.mark_brief_notes_read(db, current_user.id, episode.id)
     db.commit()
     db.refresh(artifact)
     content = artifact.content
@@ -398,7 +424,7 @@ def _to_document_out(db: Session, doc: models.MedicalDocument) -> schemas_v2.Car
     return schemas_v2.CareTeamDocumentOut(
         id=doc.id, episode_id=doc.episode_id, patient_name=_episode_name(db, doc.episode_id),
         filename=doc.filename, description=doc.description, document_date=doc.document_date,
-        uploaded_by_name=uploader.full_name if uploader else "Unknown",
+        uploaded_by_name=uploader.full_name if uploader else "Unknown", uploaded_by_login_off=login_is_off(db, doc.uploaded_by_user_id),
         uploaded_by_role=doc.uploaded_by_role, uploaded_at=doc.uploaded_at,
         status=doc.status, status_label=schemas_v2.DOCUMENT_STATUS_LABELS.get(doc.status, doc.status),
         document_type=doc.document_type,
@@ -525,10 +551,17 @@ def list_consultations(episode_id: str | None = Query(None), current_user: model
 @router.post("/consultations", response_model=schemas_v2.ConsultationOut)
 def start_consultation(payload: schemas_v2.ConsultationStartIn, current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
     episode = _require_assigned_episode(db, current_user, payload.episode_id)
-    consultation = models.Consultation(episode_id=episode.id, doctor_user_id=current_user.id, input_mode=payload.input_mode, status="in_progress")
+    template = None
+    if payload.template_id:
+        template = db.get(models.ClinicalResource, payload.template_id)
+        if template is None or template.kind != "template" or not current_resource(template):
+            raise HTTPException(status_code=400, detail="Select a current, approved note layout.")
+    consultation = models.Consultation(episode_id=episode.id, doctor_user_id=current_user.id, input_mode=payload.input_mode, status="in_progress",
+                                       template_id=template.id if template else None)
     db.add(consultation)
     db.flush()
-    _log(db, episode.id, current_user, "consultation_started", f"{current_user.full_name} started a consultation", "", "Consultation", consultation.id)
+    _log(db, episode.id, current_user, "consultation_started", f"{current_user.full_name} started a consultation",
+         f"Note layout: {template.title} (v{template.version})" if template else "", "Consultation", consultation.id)
     db.commit()
     db.refresh(consultation)
     return _to_consultation_out(db, consultation)
@@ -601,12 +634,19 @@ def _build_draft_content(db: Session, episode: models.PregnancyEpisode, consulta
     recent_event = db.query(models.JourneyEvent).filter(models.JourneyEvent.episode_id == episode.id).order_by(models.JourneyEvent.event_date.desc()).first()
     relevant_information = f"Most recent prior record: {recent_event.title} ({recent_event.event_date})." if recent_event else "Not documented."
 
-    return {
+    content = {
         "visitContext": visit_context,
         "documentedDiscussion": documented_discussion,
         "relevantInformation": relevant_information,
         "followUpNextSteps": "Not documented.",
     }
+    # An approved note layout adds its headings as empty boxes. Nothing is filled in for the doctor: the words under each heading are hers.
+    template = db.get(models.ClinicalResource, consultation.template_id) if consultation.template_id else None
+    if template is not None and template.kind == "template":
+        fields = [str(field) for field in (template.configuration or {}).get("fields", [])]
+        content["layout"] = {"templateId": template.id, "title": template.title, "version": template.version}
+        content["layoutSections"] = {field: "" for field in fields}
+    return content
 
 
 def _get_assigned_draft(db: Session, current_user: models.User, draft_id: str) -> tuple[models.ConsultationDraft, models.Consultation]:
@@ -666,6 +706,15 @@ def edit_draft(draft_id: str, payload: schemas_v2.DraftUpdateIn, current_user: m
         value = getattr(payload, attr)
         if value is not None:
             content[key] = value
+    if payload.layout_sections is not None:
+        sections = dict(content.get("layoutSections") or {})
+        for heading, text in payload.layout_sections.items():
+            if heading not in sections:
+                raise HTTPException(status_code=400, detail="That heading is not part of the chosen note layout.")
+            if len(text) > 8000:
+                raise HTTPException(status_code=400, detail="That section is too long.")
+            sections[heading] = text
+        content["layoutSections"] = sections
     draft.structured_content = content
 
     _log(db, consultation.episode_id, current_user, "draft_edited", f"Documentation draft edited (v{draft.version})", "", "ConsultationDraft", draft.id)
@@ -912,7 +961,7 @@ def _referral_detail_out(db: Session, r: models.Referral) -> schemas_v2.Referral
         events=[
             schemas_v2.ReferralEventOut(id=e.id, from_status=e.from_status, to_status=e.to_status, note=e.note,
                                          actor_name=_user_name(db, e.actor_user_id), actor_source=e.actor_source or "MANUAL_ENTRY",
-                                         created_at=e.created_at)
+                                         created_at=e.created_at, actor_login_off=login_is_off(db, e.actor_user_id))
             for e in events
         ],
         communications=[
@@ -926,7 +975,7 @@ def _referral_detail_out(db: Session, r: models.Referral) -> schemas_v2.Referral
         documents=[
             schemas_v2.PatientDocumentOut(id=d.id, filename=d.filename, status=d.status,
                                            status_label=schemas_v2.DOCUMENT_STATUS_LABELS.get(d.status, d.status),
-                                           document_date=d.document_date, description=d.description, uploaded_at=d.uploaded_at)
+                                           document_date=d.document_date, description=d.description, uploaded_at=d.uploaded_at, document_type=d.document_type)
             for d in documents
         ],
     )
@@ -1120,10 +1169,17 @@ def mark_update_read(notification_id: str, current_user: models.User = Depends(r
 
 # ---------- profile ----------
 
+def _profile_out(db: Session, user: models.User, profile: models.DoctorProfile | None) -> schemas_v2.DoctorProfileOut:
+    return schemas_v2.DoctorProfileOut(
+        full_name=user.full_name, email=user.email, role=user.role, specialty=profile.specialty if profile else None, facility=profile.facility if profile else None,
+        display_title=profile.display_title if profile else None, display_name=profile.display_name if profile else None, shown_name=doctor_names.shown_name(db, user),
+    )
+
+
 @router.get("/profile", response_model=schemas_v2.DoctorProfileOut)
 def get_profile(current_user: models.User = Depends(require_role("doctor")), db: Session = Depends(get_db)):
     profile = db.query(models.DoctorProfile).filter(models.DoctorProfile.user_id == current_user.id).first()
-    return schemas_v2.DoctorProfileOut(full_name=current_user.full_name, email=current_user.email, role=current_user.role, specialty=profile.specialty if profile else None, facility=profile.facility if profile else None)
+    return _profile_out(db, current_user, profile)
 
 
 @router.patch("/profile", response_model=schemas_v2.DoctorProfileOut)
@@ -1138,7 +1194,16 @@ def update_profile(payload: schemas_v2.DoctorProfileUpdateIn, current_user: mode
         profile.specialty = payload.specialty.strip() or None
     if payload.facility is not None:
         profile.facility = payload.facility.strip() or None
+    shown_before = doctor_names.shown_name(db, current_user)
+    if payload.display_title is not None:
+        profile.display_title = payload.display_title.strip() or None
+    if payload.display_name is not None:
+        profile.display_name = payload.display_name.strip() or None
+    db.flush()
+    shown_after = doctor_names.shown_name(db, current_user)
+    if shown_after != shown_before:
+        _log(db, None, current_user, "doctor_shown_name_changed", "Changed how patients see this doctor's name", f"{shown_before} -> {shown_after}", "DoctorProfile", profile.id)
     db.commit()
     db.refresh(current_user)
     db.refresh(profile)
-    return schemas_v2.DoctorProfileOut(full_name=current_user.full_name, email=current_user.email, role=current_user.role, specialty=profile.specialty, facility=profile.facility)
+    return _profile_out(db, current_user, profile)

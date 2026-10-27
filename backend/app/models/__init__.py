@@ -33,6 +33,7 @@ from .emergency import PatientEmergencyProfile, ClinicContact, ClinicHospital
 from .caregiver import CaregiverLink, CaregiverVisitHelp, CaregiverWhatsApp, VisitPrepItem, CheckInHelper
 from .ai import AIRun, AIAction, ExceptionItem, AssistantSetting
 from .topic_review import PatientTopicReview
+from .reply_snippet import ReplySnippet
 
 __all__ = [
     # legacy

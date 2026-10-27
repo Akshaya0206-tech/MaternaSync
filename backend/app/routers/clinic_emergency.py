@@ -26,13 +26,14 @@ def _check_phone(value):
 class ContactIn(Input):
     clinic_name: str | None = Field(None, max_length=200)
     clinic_phone: str | None = Field(None, max_length=30)
+    clinic_hours: str | None = Field(None, max_length=200)
 
     @field_validator("clinic_phone")
     @classmethod
     def phone(cls, value):
         return _check_phone(value)
 
-    @field_validator("clinic_name")
+    @field_validator("clinic_name", "clinic_hours")
     @classmethod
     def blank_is_nothing(cls, value):
         return value or None
@@ -63,15 +64,19 @@ def read(user=Depends(doctor), db: Session = Depends(get_db)):
 @router.put("/contact")
 def save_contact(payload: ContactIn, user=Depends(doctor), db: Session = Depends(get_db)):
     contact = db.get(models.ClinicContact, clinic.CLINIC_KEY)
-    before = {"name": contact.clinic_name, "phone": contact.clinic_phone} if contact else {"name": None, "phone": None}
+    before = {"name": contact.clinic_name, "phone": contact.clinic_phone, "hours": contact.clinic_hours} if contact else {"name": None, "phone": None, "hours": None}
     if not contact:
         contact = models.ClinicContact(key=clinic.CLINIC_KEY)
         db.add(contact)
     contact.clinic_name, contact.clinic_phone = payload.clinic_name, payload.clinic_phone
+    if "clinic_hours" in payload.model_fields_set:  # a client that does not send the hours leaves them as they were
+        contact.clinic_hours = payload.clinic_hours
     contact.updated_by_user_id, contact.updated_at = user.id, now()
-    after = {"name": contact.clinic_name, "phone": contact.clinic_phone}
-    clinic.audit(db, user, "clinic_contact_changed", "Changed the clinic's name and phone on the patients' Emergency help page",
-                 f"{after['name'] or 'no name'}; {after['phone'] or 'no phone'}", "ClinicContact", clinic.CLINIC_KEY, before, after)
+    after = {"name": contact.clinic_name, "phone": contact.clinic_phone, "hours": contact.clinic_hours}
+    if not before["hours"] and not after["hours"]:  # no hours before or after: the record reads as it always did
+        before.pop("hours"), after.pop("hours")
+    clinic.audit(db, user, "clinic_contact_changed", "Changed the clinic's name, phone and opening hours on the patients' Emergency help page",
+                 f"{after['name'] or 'no name'}; {after['phone'] or 'no phone'}; {after.get('hours') or 'no hours'}", "ClinicContact", clinic.CLINIC_KEY, before, after)
     db.commit()
     return clinic.clinic_out(db)
 

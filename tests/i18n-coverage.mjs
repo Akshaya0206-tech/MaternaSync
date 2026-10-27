@@ -31,7 +31,7 @@ const scanned = [
 const files = [];
 const walk = (path) => {
   if (statSync(path).isDirectory()) readdirSync(path).forEach((name) => walk(join(path, name)));
-  else if (/\.(tsx|jsx)$/.test(path) || /(tour|format|checkInRules|calendarEvents)\.ts$/.test(path)) files.push(path);
+  else if (/\.(tsx|jsx)$/.test(path) || /(tour|format|checkInRules|calendarEvents|searchText|auditActions)\.ts$/.test(path)) files.push(path);
 };
 scanned.forEach(walk);
 const rel = (file) => file.replace(root, "").replaceAll("\\", "/");

@@ -16,6 +16,9 @@ class Consultation(Base):
     audio_path = Column(String, nullable=True)
     raw_transcript = Column(Text, nullable=True)
     status = Column(String, default="in_progress")  # in_progress | documented
+    # The clinic's approved note layout (a clinical_resources template) the doctor chose before starting this note; its headings are added
+    # to the draft as empty boxes for the doctor to fill in.
+    template_id = Column(String, nullable=True)
 
     started_at = Column(DateTime, default=now)
 

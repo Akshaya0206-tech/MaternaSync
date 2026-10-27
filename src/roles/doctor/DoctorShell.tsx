@@ -11,6 +11,8 @@ import { loadDoctorDictionary } from '../../i18n/dictionaries';
 import { TourProvider } from '../../tour/TourProvider';
 import { TextSizeControl } from '../../accessibility/TextSizeControl';
 import { doctorTourLabels, doctorTourSteps } from './tour';
+import { useDoctorUnread } from './useDoctorUnread';
+import { GlobalSearch } from './GlobalSearch';
 
 // Menu names are marked here and translated where the menu is drawn.
 const NAV_ITEMS: RoleNavItem[] = [
@@ -36,6 +38,8 @@ function DoctorLayout() {
   const { pathname } = useLocation();
   // How many things the care assistant is waiting on you for, shown beside "Care Assistant". Refreshed when you move between pages.
   const [waiting, setWaiting] = useState(0);
+  // Unread updates, for the dot beside "Updates".
+  const unread = useDoctorUnread(user?.id ?? '', pathname);
   useEffect(() => {
     let active = true;
     assistantStatus().then((s) => { if (active) setWaiting(s.open); }).catch(() => undefined);
@@ -46,6 +50,7 @@ function DoctorLayout() {
     label: t(item.label),
     // Just the number beside "Care Assistant": a word here squeezes a long translated menu name into broken lines.
     badge: item.to === '/doctor/assistant' && waiting > 0 ? String(waiting) : item.badge ? t(item.badge) : undefined,
+    dot: item.to === '/doctor/updates' && unread > 0 ? t('New updates') : undefined,
   }));
 
   return (
@@ -67,6 +72,7 @@ function DoctorLayout() {
           }
         />
         <div className="app-main-column" id="main-content" tabIndex={-1}>
+          <div className="doctor-search-bar"><GlobalSearch /></div>
           <Outlet />
         </div>
       </div>

@@ -6,6 +6,8 @@ evolving during the migration."""
 from datetime import datetime
 from typing import Literal
 
+from pydantic import Field
+
 from .schemas import CamelModel, UserOut  # reused: User is genuinely shared infrastructure
 
 __all__ = [
@@ -291,6 +293,7 @@ class CareTeamDocumentOut(CamelModel):
     extraction: ExtractionOut | None
     reviews: list[DocumentReviewOut]
     document_type: str | None = None
+    uploaded_by_login_off: bool = False
 
 
 class DocumentEditIn(CamelModel):
@@ -331,6 +334,11 @@ class CareTeamQuestionOut(CamelModel):
     responses: list[QuestionResponseOut]
     attachments: list[AttachmentOut] = []
     follow_up_of_text: str | None = None
+    # Closed without a written reply (phone or clinic). The note is for doctors only; the patient's own question output never carries it.
+    closed_how: str | None = None
+    closed_note: str | None = None
+    closed_at: datetime | None = None
+    closed_by_name: str | None = None
 
 
 class QuestionRespondIn(CamelModel):
@@ -356,6 +364,9 @@ class TaskOut(CamelModel):
     waiting_since: datetime | None
     auto_generated: bool
     created_at: datetime
+    # The owner / the person who made it is a care-team account whose login is switched off: the screen says so quietly.
+    owner_login_off: bool = False
+    created_by_login_off: bool = False
 
 
 TaskStatus = Literal["OPEN", "IN_PROGRESS", "WAITING", "COMPLETED", "CANCELLED"]
@@ -453,6 +464,7 @@ class ReferralEventOut(CamelModel):
     actor_name: str | None
     actor_source: str
     created_at: datetime
+    actor_login_off: bool = False
 
 
 class CommunicationEventOut(CamelModel):
@@ -555,6 +567,9 @@ class TodayPatientRowOut(CamelModel):
     appointment_time: datetime | None
     brief_status: str  # Ready | Not Ready
     pending_items_summary: str
+    visit_type: str | None = None
+    # The last time she recorded a check-in (a plain date; nothing is said about what it contained).
+    last_check_in: datetime | None = None
 
 
 class DoctorDashboardOut(CamelModel):
@@ -579,6 +594,11 @@ class DoctorPatientRowOut(CamelModel):
     last_consultation: datetime | None
     open_items: int
     question_count: int
+    gestational_age_weeks: int | None = None
+    gestational_age_days: int | None = None
+    overdue_tasks: int = 0
+    # A scheduled visit from the start of today (on the clinic's clock) through the next six days.
+    visit_this_week: bool = False
 
 
 # ---------- Today's Brief ----------
@@ -589,6 +609,9 @@ class DocumentSummaryOut(CamelModel):
     status: str
     status_label: str
     document_date: str | None
+    # What she wrote and the kind she chose at upload, so a screen can show a readable title instead of the file reference.
+    description: str | None = None
+    document_type: str | None = None
 
 
 class TodaysBriefOut(CamelModel):
@@ -613,6 +636,7 @@ class TodaysBriefOut(CamelModel):
 class ConsultationStartIn(CamelModel):
     episode_id: str
     input_mode: str = "voice"
+    template_id: str | None = None  # an approved note layout, chosen before the note is started
 
 
 class ConsultationOut(CamelModel):
@@ -645,6 +669,7 @@ class DraftUpdateIn(CamelModel):
     documented_discussion: str | None = None
     relevant_information: str | None = None
     follow_up_next_steps: str | None = None
+    layout_sections: dict[str, str] | None = None  # the headings of the chosen note layout and what the doctor wrote under each
 
 
 class ApprovedConsultationOut(CamelModel):
@@ -687,12 +712,18 @@ class DoctorProfileOut(CamelModel):
     role: str
     specialty: str | None
     facility: str | None
+    # How patients see her name: the title, the name she chose to show (both may be empty) and the result.
+    display_title: str | None = None
+    display_name: str | None = None
+    shown_name: str | None = None
 
 
 class DoctorProfileUpdateIn(CamelModel):
     full_name: str | None = None
     specialty: str | None = None
     facility: str | None = None
+    display_title: str | None = Field(None, max_length=20)
+    display_name: str | None = Field(None, max_length=80)
 
 
 # ================== External Hospital Simulator (prototype-only, no auth) ==================

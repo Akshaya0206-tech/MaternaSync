@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { api } from "../../api/client";
 import {
@@ -37,46 +37,48 @@ import {
 } from "./shared";
 import { DraftStudio } from "./DraftStudio";
 import { TrendsPanel } from "./TrendsPanel";
+import { VisitChangeActions } from "./VisitChangeActions";
+import { sentence } from "./careLabels";
 
 // Codes the server sends (appointment, reminder and message statuses and so on), shown as words. The English
 // wording is exactly what these pages always showed; the other languages come from the dictionary.
 const WORDS: Record<string, string> = {
-  appointment: tx("appointment"),
-  follow_up: tx("follow up"),
-  medicine: tx("medicine"),
-  vaccine: tx("vaccine"),
-  pending: tx("pending"),
-  done: tx("done"),
-  skipped: tx("skipped"),
-  needs_help: tx("needs help"),
-  requested: tx("requested"),
-  scheduled: tx("scheduled"),
-  completed: tx("completed"),
-  cancelled: tx("cancelled"),
-  no_show: tx("no show"),
-  scan: tx("scan"),
-  delivery: tx("delivery"),
-  on_time: tx("on time"),
-  late: tx("late"),
-  PREPARED: tx("PREPARED"),
-  COMPOSER_LINK_READY: tx("COMPOSER LINK READY"),
-  MANUALLY_SENT: tx("MANUALLY SENT"),
-  SENT: tx("SENT"),
-  DELIVERED: tx("DELIVERED"),
-  READ: tx("READ"),
-  FAILED: tx("FAILED"),
-  CANCELLED: tx("CANCELLED"),
+  appointment: tx("Appointment"),
+  follow_up: tx("Follow-up"),
+  medicine: tx("Medicine"),
+  vaccine: tx("Vaccine"),
+  pending: tx("Pending"),
+  done: tx("Done"),
+  skipped: tx("Skipped"),
+  needs_help: tx("Needs help"),
+  requested: tx("Requested"),
+  scheduled: tx("Scheduled"),
+  completed: tx("Completed"),
+  cancelled: tx("Cancelled"),
+  no_show: tx("Missed appointment"),
+  scan: tx("Scan"),
+  delivery: tx("Delivery"),
+  on_time: tx("On time"),
+  late: tx("Late"),
+  PREPARED: tx("Prepared"),
+  COMPOSER_LINK_READY: tx("Link ready"),
+  MANUALLY_SENT: tx("Sent by hand"),
+  SENT: tx("Sent"),
+  DELIVERED: tx("Delivered"),
+  READ: tx("Read"),
+  FAILED: tx("Failed"),
+  CANCELLED: tx("Cancelled"),
 };
-// Task statuses were always shown exactly as the server sends them.
+// Task statuses are shown as words too.
 const TASK_STATUS: Record<string, string> = {
-  OPEN: tx("OPEN"),
-  IN_PROGRESS: tx("IN_PROGRESS"),
-  WAITING: tx("WAITING"),
-  COMPLETED: tx("COMPLETED"),
-  CANCELLED: tx("CANCELLED"),
+  OPEN: tx("Open"),
+  IN_PROGRESS: tx("In progress"),
+  WAITING: tx("Waiting"),
+  COMPLETED: tx("Completed"),
+  CANCELLED: tx("Cancelled"),
 };
 // What a woman can allow a trusted person to do, as a doctor reads it.
-const PERMISSION_WORDS: Record<Permission, string> = {
+export const PERMISSION_WORDS: Record<Permission, string> = {
   appointments: tx("Appointments"),
   check_in: tx("Daily check-ins"),
   care_plan: tx("Summaries and instructions"),
@@ -86,9 +88,17 @@ const PERMISSION_WORDS: Record<Permission, string> = {
 };
 type Translate = ReturnType<typeof useLanguage>["t"];
 const word = (t: Translate, value: string) =>
-  t(Object.hasOwn(WORDS, value) ? WORDS[value] : value.replaceAll("_", " "));
+  t(Object.hasOwn(WORDS, value) ? WORDS[value] : sentence(value));
 const taskStatus = (t: Translate, value: string) =>
-  t(Object.hasOwn(TASK_STATUS, value) ? TASK_STATUS[value] : value);
+  t(Object.hasOwn(TASK_STATUS, value) ? TASK_STATUS[value] : sentence(value));
+// The server writes the title of a patient's request about a visit in English: say it in the doctor's language.
+const taskTitle = (t: Translate, task: Task) => {
+  const change = task.sourceType === "appointment_change" && /^Visit change requested: (move|cancel) the visit on (.+)$/.exec(task.title);
+  if (!change) return task.title;
+  return change[1] === "move"
+    ? t("Visit change requested: move the visit on {when}", { when: change[2] })
+    : t("Visit change requested: cancel the visit on {when}", { when: change[2] });
+};
 
 export function CareWorkspacePage({
   initialTab = "trends",
@@ -98,12 +108,16 @@ export function CareWorkspacePage({
   const { t } = useLanguage();
   const w = useWorkspace();
   const { user } = useAuth();
-  const [tab, setTab] = useState(initialTab);
+  // A link can open a tab (/doctor/care-workspace?episodeId=...&tab=operations); otherwise the page's own first tab opens.
+  const [params] = useSearchParams();
+  const asked = params.get("tab");
+  const requested = ["trends", "drafts", "reminders", "operations"].includes(asked ?? "") ? asked : null;
+  const [tab, setTab] = useState(requested ?? initialTab);
   const [resources, setResources] = useState<Resource[]>([]);
   const [error, setError] = useState("");
   useEffect(() => {
-    setTab(initialTab);
-  }, [initialTab]);
+    setTab(requested ?? initialTab);
+  }, [initialTab, requested]);
   useEffect(() => {
     let active = true;
     getLibrary()
@@ -444,7 +458,7 @@ function Reminders({
           .filter((a) => a.status === "scheduled")
           .map((a) => ({
             id: a.id,
-            title: `${a.appointmentType} · ${formatTime(a.scheduledAt)}`,
+            title: `${sentence(a.appointmentType)} · ${formatTime(a.scheduledAt)}`,
           }))
       : kind === "follow_up"
         ? tasks.map((task) => ({ id: task.id, title: task.title }))
@@ -1003,6 +1017,7 @@ function Operations({
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState("open");
   const [ownerFilter, setOwnerFilter] = useState("");
+  const [visitNotice, setVisitNotice] = useState(""); // what was done about a patient's request to cancel or move a visit
   const [outcome, setOutcome] = useState("scan");
   const [value, setValue] = useState("on_time");
   const [date, setDate] = useState(localDateTime().slice(0, 10));
@@ -1024,7 +1039,7 @@ function Operations({
   );
   return (
     <>
-      <Feedback error={action.error} message={action.message} />
+      <Feedback error={action.error} message={action.message || visitNotice} />
       <Panel title={t("Task ownership & history")}>
         <div className="continuity-fields">
           <Field label={t("Queue filter")}>
@@ -1055,6 +1070,12 @@ function Operations({
             task={task}
             members={episode.members}
             saved={loadTasks}
+            appointments={data.appointments}
+            visitAnswered={async (message) => {
+              await loadTasks();
+              await reload();
+              setVisitNotice(message);
+            }}
           />
         ))}
       </Panel>
@@ -1062,11 +1083,16 @@ function Operations({
         {data.appointments.map((a) => (
           <article key={a.id} className="continuity-item">
             <h3>
-              {a.appointmentType} <Badge>{word(t, a.status)}</Badge>
+              {sentence(a.appointmentType)} <Badge>{word(t, a.status)}</Badge>
             </h3>
             <p>
               {formatTime(a.scheduledAt)} · {a.notes}
             </p>
+            {a.changeKind && (
+              <p className="continuity-muted">
+                {a.changeKind === "cancel" ? t("She has asked to cancel this visit.") : t("She has asked to move this visit.")} {t("The answer is on the task above.")}
+              </p>
+            )}
             <div className="continuity-actions">
               {(a.status === "requested"
                 ? ["scheduled", "cancelled"]
@@ -1189,10 +1215,14 @@ function TaskRow({
   task,
   members,
   saved,
+  appointments,
+  visitAnswered,
 }: {
   task: Task;
   members: EpisodeChoice["members"];
   saved: () => Promise<void>;
+  appointments: Workspace["appointments"];
+  visitAnswered: (message: string) => Promise<void>;
 }) {
   const { t } = useLanguage();
   const action = useAction();
@@ -1201,9 +1231,15 @@ function TaskRow({
   return (
     <article className="continuity-item">
       <h3>
-        {task.title} <Badge>{taskStatus(t, task.status)}</Badge>
+        {taskTitle(t, task)} <Badge>{taskStatus(t, task.status)}</Badge>
       </h3>
       <Feedback error={action.error} message={action.message} />
+      {task.sourceType === "appointment_change" &&
+        task.sourceId &&
+        ["OPEN", "IN_PROGRESS", "WAITING"].includes(task.status) &&
+        appointments.some((a) => a.id === task.sourceId && a.changeKind) && (
+          <VisitChangeActions appointmentId={task.sourceId} onDone={visitAnswered} />
+        )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -1224,6 +1260,9 @@ function TaskRow({
               onChange={(e) => setOwner(e.target.value)}
             >
               <option value="">{t("Unassigned")}</option>
+              {owner && !members.some((m) => m.id === owner) && (
+                <option value={owner}>{task.ownerLoginOff ? t("{name} (care-team account, login off)", { name: task.ownerName }) : task.ownerName}</option>
+              )}
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -1249,8 +1288,9 @@ function TaskRow({
         </summary>
         {task.history.map((h, i) => (
           <p className="continuity-muted" key={i}>
-            {formatTime(h.at)} · {h.name} ·{" "}
-            {t("assigned by {name}", { name: h.by })}
+            {formatTime(h.at)} · {h.nameLoginOff ? t("{name} (care-team account, login off)", { name: h.name }) : h.name} ·{" "}
+            {t("assigned by {name}", { name: h.byLoginOff ? t("{name} (care-team account, login off)", { name: h.by }) : h.by })}
+            {h.note ? ` · ${t(h.note)}` : ""}
           </p>
         ))}
       </details>

@@ -14,7 +14,8 @@ export function AssistantCounts({ refresh }: { refresh: number }) {
   }, [refresh]);
 
   if (!data) return null;
-  const hours = (value: number | null) => (value === null ? t('Not enough yet') : String(value));
+  // No answers yet is "Not enough yet". An answer under an hour (the server rounds to a tenth of an hour, so 0) is a real answer, said as such.
+  const hours = (value: number | null) => (value === null ? t('Not enough yet') : value < 1 ? t('Under 1 hour') : String(value));
   const rows: [string, string | number][] = [
     [t('Questions received'), data.questions.received],
     [t('Questions answered'), data.questions.answered],
@@ -24,8 +25,8 @@ export function AssistantCounts({ refresh }: { refresh: number }) {
     [t('Typical hours to verify'), hours(data.documents.hoursToVerify)],
     [t('Check-ins recorded'), data.checkIns.recorded],
     [t('Patients whose agreed check-in is overdue'), data.checkIns.patientsOverdue],
-    [t('Open tasks'), data.tasks.open],
-    [t('Overdue tasks'), data.tasks.overdue],
+    [t('Open tasks for your patients (any owner)'), data.tasks.open],
+    [t('Overdue tasks for your patients (any owner)'), data.tasks.overdue],
     [t('Visit requests waiting for an answer'), data.visits.waitingForAnswer],
     [t('Visits completed'), data.visits.completed],
     [t('Visits recorded as missed'), data.visits.missed],

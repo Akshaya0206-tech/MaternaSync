@@ -18,6 +18,12 @@ class PatientQuestion(Base):
     assigned_to_user_id = Column(String, ForeignKey("users.id"), nullable=True)
     # Set when she asks again about an answer she has already had ("I still have a question"): the earlier question it follows.
     follow_up_of_id = Column(String, ForeignKey("patient_questions.id"), nullable=True)
+    # Set when a doctor closes a question without a written reply because it was dealt with by phone or at the clinic. The note is the doctor's
+    # own, private to doctors: it is never sent to, or shown to, the patient or a trusted person.
+    closed_how = Column(String, nullable=True)  # phone_or_clinic
+    closed_note = Column(Text, nullable=True)
+    closed_by_user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    closed_at = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime, default=now)
 

@@ -1,0 +1,5 @@
+/* The three cards added to the doctor's Profile page: how her name appears to patients, clinic contact for patients, and security. */
+.doctor-profile-card > .continuity-muted { margin: 0 0 14px; }
+.doctor-profile-card form > .continuity-muted { margin: 10px 0 12px; }
+.doctor-profile-card .continuity-actions { margin-top: 12px; }
+.doctor-profile-card h3 { margin-top: 22px; }

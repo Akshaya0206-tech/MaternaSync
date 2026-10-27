@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchDocumentation, fetchDraft, fetchApprovedVersion } from '../../api/doctorPortal';
 import type { DocumentationItem, ConsultationDraft, ApprovedConsultation, ConsultationDraftContent } from '../../api/doctorPortal';
@@ -17,6 +17,10 @@ export function DocumentationHistoryView() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [content, setContent] = useState<ConsultationDraftContent | null>(null);
+  const filterId = useId();
+  const [patientFilter, setPatientFilter] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
   useEffect(() => {
     fetchDocumentation()
@@ -46,6 +50,16 @@ export function DocumentationHistoryView() {
     }
   };
 
+  // The day an item was written, on the doctor's own calendar, as YYYY-MM-DD so it can be compared with the From and To boxes.
+  const dayOf = (value: string) => {
+    const d = new Date(value);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const patients = [...new Map(items.map((item) => [item.episodeId, item.patientName] as const)).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const shown = items.filter((item) => (!patientFilter || item.episodeId === patientFilter) && (!from || dayOf(item.date) >= from) && (!to || dayOf(item.date) <= to));
+  const filtered = Boolean(patientFilter || from || to);
+  const clearFilters = () => { setPatientFilter(''); setFrom(''); setTo(''); };
+
   return (
     <div>
 
@@ -56,11 +70,40 @@ export function DocumentationHistoryView() {
       )}
 
       {!isLoading && !error && items.length > 0 && (
+        <div className="doc-filters" role="group" aria-label={t('Filter the documentation')}>
+          {patients.length > 1 && (
+            <div className="doc-filter">
+              <label htmlFor={`${filterId}-patient`}>{t('Patient')}</label>
+              <select id={`${filterId}-patient`} value={patientFilter} onChange={(e) => setPatientFilter(e.target.value)}>
+                <option value="">{t('All patients')}</option>
+                {patients.map(([episodeId, patientName]) => <option key={episodeId} value={episodeId}>{patientName}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="doc-filter">
+            <label htmlFor={`${filterId}-from`}>{t('From')}</label>
+            <input id={`${filterId}-from`} type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div className="doc-filter">
+            <label htmlFor={`${filterId}-to`}>{t('To')}</label>
+            <input id={`${filterId}-to`} type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+          </div>
+          <button type="button" className="btn-secondary" disabled={!filtered} onClick={clearFilters}>{t('Clear filters')}</button>
+          {filtered && <span className="continuity-muted" role="status">{t('Showing {shown} of {total}', { shown: shown.length, total: items.length })}</span>}
+        </div>
+      )}
+      {!isLoading && !error && items.length > 0 && shown.length === 0 && (
+        <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          {t('No documentation matches these filters.')}
+        </div>
+      )}
+
+      {!isLoading && !error && shown.length > 0 && (
         <div className="glass-panel" style={{ padding: '4px 0' }}>
-          {items.map((item, i) => {
+          {shown.map((item, i) => {
             const isOpen = expandedId === item.consultationId;
             return (
-              <div key={item.consultationId} style={{ borderBottom: i === items.length - 1 ? 'none' : '1px solid var(--border-color)' }}>
+              <div key={item.consultationId} style={{ borderBottom: i === shown.length - 1 ? 'none' : '1px solid var(--border-color)' }}>
                 <button
                   onClick={() => toggle(item)}
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
@@ -81,6 +124,7 @@ export function DocumentationHistoryView() {
                         <Field label={t('Documented Discussion')} value={content.documentedDiscussion} />
                         <Field label={t('Relevant Information')} value={content.relevantInformation} />
                         <Field label={t('Follow-up / Next Steps')} value={content.followUpNextSteps} />
+                        {Object.entries(content.layoutSections ?? {}).filter(([, text]) => text.trim()).map(([heading, text]) => <Field key={heading} label={heading} value={text} />)}
                       </div>
                     ) : (
                       <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{t('No draft content available.')}</div>

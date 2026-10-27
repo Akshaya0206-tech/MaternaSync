@@ -45,6 +45,7 @@ class ClinicContact(Base):
     key = Column(String, primary_key=True)
     clinic_name = Column(String, nullable=True)
     clinic_phone = Column(String, nullable=True)
+    clinic_hours = Column(String, nullable=True)  # free text, for example "Mon-Sat 9:00-17:00"
     updated_by_user_id = Column(String, ForeignKey("users.id"), nullable=True)
     updated_at = Column(DateTime, default=now)
 

@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from .. import automation, extraction, models, schemas_v2, server_text, visit_changes
+from .. import automation, doctor_names, doctor_notices, extraction, models, schemas_v2, server_text, visit_changes
 from ..config import UPLOAD_DIR
 from ..continuity_service import now, utc
 from ..database import get_db
@@ -81,7 +81,7 @@ def _primary_doctor_name(db: Session, episode_id: str) -> str | None:
     if not assignment:
         return None
     doctor = db.query(models.User).filter(models.User.id == assignment.doctor_user_id).first()
-    return doctor.full_name if doctor else None
+    return doctor_names.shown_name(db, doctor)  # patients see the title and name the doctor chose to show them
 
 
 # ---------- Dashboard ----------
@@ -351,6 +351,9 @@ def create_my_question(
         db, automation.events.PATIENT_QUESTION_CREATED, episode_id=episode.id, actor_user_id=current_user.id,
         source_type="PatientQuestion", source_id=question.id, payload={"questionText": text},
     )
+    if earlier is not None:
+        # The note says she asked a follow-up, not what she wrote.
+        doctor_notices.tell_doctors(db, episode, "question_followup", related_type="PatientQuestion", related_id=question.id)
 
     db.commit()
     db.refresh(question)

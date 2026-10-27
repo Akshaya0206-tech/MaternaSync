@@ -87,13 +87,18 @@ export interface AssistantSummary {
 }
 
 const BASE = '/api/v2/assistant';
-export const getSchedulingRules = () => api.get<SchedulingRules>(`${BASE}/scheduling-rules`);
+// The server writes three of these in snake_case (notice_hours, offset_minutes, grace_hours), so without this the three boxes came up empty.
+const rulesFromServer = (rules: SchedulingRules & { notice_hours?: number; offset_minutes?: number; grace_hours?: number }): SchedulingRules => ({
+  days: rules.days, start: rules.start, end: rules.end, minutes: rules.minutes, weekdays: rules.weekdays,
+  noticeHours: rules.noticeHours ?? rules.notice_hours ?? 0, offsetMinutes: rules.offsetMinutes ?? rules.offset_minutes ?? 0, graceHours: rules.graceHours ?? rules.grace_hours ?? 0,
+});
+export const getSchedulingRules = () => api.get<SchedulingRules>(`${BASE}/scheduling-rules`).then(rulesFromServer);
 /** The usual reply time patients see on My Questions (free text such as "within 1 working day"; empty shows nothing). */
 export const getReplyTime = () => api.get<{ text: string; mostChars: number }>(`${BASE}/reply-time`);
 export const saveReplyTime = (text: string) => api.put<{ text: string; mostChars: number }>(`${BASE}/reply-time`, { text });
 export const saveSchedulingRules = (rules: SchedulingRules) => {
   const { weekdays: _weekdays, ...body } = rules;
-  return api.put<SchedulingRules>(`${BASE}/scheduling-rules`, body);
+  return api.put<SchedulingRules>(`${BASE}/scheduling-rules`, body).then(rulesFromServer);
 };
 export const assistantSummary = (days = 7) => api.get<AssistantSummary>(`${BASE}/summary?days=${days}`);
 export const assistantStatus = () => api.get<AssistantStatus>(`${BASE}/status`);

@@ -16,7 +16,7 @@ DAILY = "/patient/daily-log"
 
 # message key -> page
 BY_KEY = {
-    "question_answered": QUESTIONS, "question_answered_doctor": QUESTIONS, "caregiver_acted_question": QUESTIONS, "caregiver_acted_talk": QUESTIONS,
+    "question_answered": QUESTIONS, "question_answered_doctor": QUESTIONS, "question_handled_offline": QUESTIONS, "caregiver_acted_question": QUESTIONS, "caregiver_acted_talk": QUESTIONS,
     "reminders_added": CARE_PLAN, "reminder_due": CARE_PLAN, "approved_document": CARE_PLAN,
     "appointment_scheduled": APPOINTMENTS, "appointment_cancelled": APPOINTMENTS, "appointment_completed": APPOINTMENTS, "appointment_no_show": APPOINTMENTS,
     "appointment_requested": APPOINTMENTS, "visit_reminder": APPOINTMENTS, "visit_confirmed": APPOINTMENTS, "new_times_offered": APPOINTMENTS,
@@ -37,7 +37,7 @@ BY_TYPE = {
 TAB_OF_PAGE = {QUESTIONS: "questions", CARE_PLAN: "care_plan"}
 # Only these keys light a tab: an answer to her question, and reminders or a document her doctor released. A helper telling her they asked a
 # question for her still shows in Updates but does not say "there is something to read" on My Questions.
-TAB_KEYS = {"question_answered", "question_answered_doctor", "reminders_added", "reminder_due", "approved_document"}
+TAB_KEYS = {"question_answered", "question_answered_doctor", "question_handled_offline", "reminders_added", "reminder_due", "approved_document"}
 TAB_TYPES = {"question_answered", "reminder_due"}
 
 

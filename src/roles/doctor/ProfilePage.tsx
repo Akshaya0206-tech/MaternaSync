@@ -6,6 +6,9 @@ import { ApiError } from '../../api/client';
 import { Field, inputStyle } from '../../components/auth/AuthField';
 import { tx, useLanguage } from '../../i18n';
 import { useTour } from '../../tour/tourContext';
+import { DoctorNameCard } from './DoctorNameCard';
+import { ClinicContactCard } from './ClinicContactCard';
+import { DoctorSecurityCard } from './DoctorSecurityCard';
 
 const readOnlyInputStyle = { ...inputStyle, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', cursor: 'not-allowed' };
 
@@ -46,7 +49,7 @@ export function ProfilePage() {
   };
 
   return (
-    <main style={{ padding: '24px', flex: 1, maxWidth: '520px', margin: '0 auto', width: '100%' }}>
+    <main className="continuity-page" style={{ flex: 1, maxWidth: '640px', margin: '0 auto', width: '100%' }}>
       <h1 className="page-title" style={{ fontSize: '1.4rem', margin: '0 0 20px 0' }}>{t('Profile')}</h1>
 
       {isLoading && <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('Loading…')}</div>}
@@ -67,6 +70,10 @@ export function ProfilePage() {
           </div>
         </form>
       )}
+
+      {!isLoading && profile && <DoctorNameCard profile={profile} onSaved={setProfile} />}
+      {!isLoading && profile && <ClinicContactCard />}
+      {!isLoading && profile && <DoctorSecurityCard />}
 
       {/* Always offered, so a demonstration account (which never gets the new-account welcome) can show the tour. */}
       {!isLoading && profile && (

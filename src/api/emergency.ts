@@ -50,6 +50,8 @@ export interface ClinicHospital {
 export interface ClinicInfo {
   name: string | null;
   phone: string | null;
+  /** Opening hours, as the clinic wrote them; shown on the card only when set. */
+  hours?: string | null;
   doctorName: string | null;
   hospitals: ClinicHospital[];
 }

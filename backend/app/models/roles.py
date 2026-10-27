@@ -25,6 +25,9 @@ class DoctorProfile(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True)
     specialty = Column(String, default="Obstetrics")
     facility = Column(String, nullable=True)
+    # How patients see this doctor's name (see doctor_names.py). Empty means her account name, as before.
+    display_title = Column(String, nullable=True)
+    display_name = Column(String, nullable=True)
 
 
 class CareTeamProfile(Base):

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { tx, useLanguage } from '../../i18n';
 import { doctorTourSteps } from './tour';
@@ -24,6 +25,10 @@ const SECTIONS: Section[] = [
     items: [
       tx('Take the tour: open Profile and choose Start a tour. It opens each page in turn and explains it in about two minutes.'),
       tx('Choose your language and text size at the bottom of the menu.'),
+      tx('Open the Dashboard. The Set up your clinic card lists what is still empty (clinic phone, booking rules, usual reply time, follow-up rules, recommended hospitals, patient education) and each line takes you to where it is set.'),
+      tx('Needs you on the Dashboard lists what is waiting for you, longest wait first. The order is only how long each item has waited.'),
+      tx('Use the search box at the top of every page, or press the / key, to find a patient, a question or a document. It only ever shows your own patients.'),
+      tx('Updates shows a dot in the menu when something is new, and Mark all read clears it. In Profile you can change your password, sign out other devices, set the clinic phone and opening hours that patients see, and choose how your name and title appear to them.'),
       tx('Open My Patients, choose a patient and read the brief: the last 30 days of what she reported, shown as entered, with any review flags for you to look at.'),
       tx('Open Clinical Settings and approve the note layouts, follow-up rules, ICD-10 code sets and patient education you want to use. Starter items arrive as drafts, and nothing is used until a doctor approves it.'),
       tx('Open Care Assistant to see what the assistant does for your clinic, and choose how much it should wait for you.'),
@@ -34,10 +39,14 @@ const SECTIONS: Section[] = [
     items: [
       tx('Before the visit: open My Patients and the patient to read her brief. Nothing is sent or assigned until you decide.'),
       tx('During the visit: open Consultations, choose the patient, then type or dictate in English, Hindi, Tamil or Telugu. The original transcript stays editable.'),
+      tx('Before a note, choose a Note layout if your clinic has approved one: its headings appear as empty boxes for you to fill in. The patient card also shows the last note you approved.'),
       tx('After the visit: read the drafted note, edit it and approve it. Only then does it reach her record. Documentation history lists every note you have approved.'),
       tx('For the patient: in Connected Care, open the Document studio tab to prepare a plain-language visit summary, a patient explanation, a lab report explanation, a prescription, a certificate or a letter. Each stays a draft until you sign it.'),
       tx('Follow-up: in Connected Care, approve reminders under Reminders & outreach, and confirm visits and track tasks under Tasks, visits & outcomes.'),
       tx('Questions: open Patient Questions. A reply is a draft until you approve it, and only then does she see it.'),
+      tx('In Patient Questions you can filter by Needs reply, search, and see how long each question has waited. Save your own replies to reuse, or close a question you handled by phone or in clinic with a private note: the patient is told, and never sees your note.'),
+      tx('A patient’s workspace has an Audit trail tab: a read-only list of who viewed or changed what for her, which you can filter, print or save as a CSV. Printing or saving it is itself recorded. Previous and Next at the top move you through your patients in the same order as My Patients.'),
+      tx('Clinic Overview has a Dates card and Print summary and Download CSV for your weekly meeting. Follow-ups lists the tasks assigned to you that are due or overdue, with a link to each patient’s tasks.'),
     ] },
   { id: 'approve', title: tx('What needs your approval'),
     intro: tx('MaternaSync prepares and proposes; you decide. These need a doctor’s approval before they take effect:'),
@@ -57,6 +66,7 @@ const SECTIONS: Section[] = [
       tx('It never diagnoses, advises on treatment, answers a clinical question, interprets a document or releases anything to a patient by itself. Everything a patient reads from it is fixed wording.'),
       tx('You can undo any step that can be reversed, pause it for everyone or for one patient, or ask it to wait for your approval on every step.'),
       tx('If a message contains a warning sign, the patient always gets the fixed emergency message and you are told, even when the assistant is paused.'),
+      tx('On the Care Assistant page, Needs you comes first. Your controls, Booking rules and Usual reply time are folded below it; Booking rules and Usual reply time are also under Clinical Settings, Clinic setup.'),
     ] },
   { id: 'trusted', title: tx('Working with a patient’s trusted people'),
     items: [
@@ -72,7 +82,8 @@ const SECTIONS: Section[] = [
       tx('Search in plain words. A result shows the document’s own passage and its page. When the optional language model is installed, a question typed in Hindi, Tamil or Telugu also finds the English passage.'),
       tx('Guideline sources: upload a guideline PDF and approve it. No guideline comes with the app.'),
       tx('Guideline search: finds passages, with their page, in the guideline documents you approved.'),
-      tx('Nothing in References is written by the app, and nothing in it is used anywhere else in the app.'),
+      tx('Patient information: the topics patients read on their References page. Mark a topic as reviewed once your clinic has read it, and patients see who reviewed it and when. A review remembers the English text you read: if the text changes later, the topic shows “Changed since reviewed” until you mark it again, and patients are told it was updated.'),
+      tx('Nothing in the Reference Library or Guideline sources is written by the app, and nothing in them is used anywhere else in the app.'),
     ] },
   { id: 'languages', title: tx('Languages and accessibility'),
     items: [
@@ -98,6 +109,41 @@ const SECTIONS: Section[] = [
   { id: 'find', title: tx('Where to find things'), kind: 'find' },
 ];
 
+// Tab names that are real places: wherever a sentence names one, the name is a link to it. Only the first time it appears in a sentence, and only when
+// the sentence in the reader's language contains the tab's name as the menu shows it (a translation that words it differently simply has no link).
+const TAB_LINKS: [string, string][] = [
+  [tx('Reference Library'), '/doctor/references'],
+  [tx('Guideline search'), '/doctor/references?tab=guidelines'],
+  [tx('Guideline sources'), '/doctor/references?tab=sources'],
+  [tx('Patient information'), '/doctor/references?tab=patient'],
+  [tx('Documentation history'), '/doctor/consultations?tab=history'],
+  [tx('Document studio'), '/doctor/draft-studio'],
+  [tx('Follow-up rules'), '/doctor/clinical-settings?tab=followup-rules'],
+  [tx('ICD-10 code sets'), '/doctor/clinical-settings?tab=icd'],
+  [tx('Patient education'), '/doctor/clinical-settings?tab=education'],
+  [tx('Care pathways'), '/doctor/clinical-settings?tab=pathways'],
+  [tx('Note templates'), '/doctor/clinical-settings?tab=templates'],
+  [tx('Clinic setup'), '/doctor/clinical-settings#clinic-setup'],
+  [tx('Clinical Settings'), '/doctor/clinical-settings'],
+];
+
+function LinkedText({ text }: { text: string }) {
+  const { t } = useLanguage();
+  const left = TAB_LINKS.map(([label, to]) => ({ name: t(label), to })).filter((link) => link.name).sort((a, b) => b.name.length - a.name.length);
+  const parts: ReactNode[] = [];
+  let rest = text;
+  while (left.length) {
+    const match = new RegExp(left.map((link) => link.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')).exec(rest);
+    if (!match) break;
+    const at = left.findIndex((link) => link.name === match[0]);
+    parts.push(rest.slice(0, match.index), <Link key={parts.length} to={left[at].to}>{match[0]}</Link>);
+    rest = rest.slice(match.index + match[0].length);
+    left.splice(at, 1);
+  }
+  parts.push(rest);
+  return <>{parts}</>;
+}
+
 // A task and where to do it.
 const FIND: [string, string][] = [
   [tx('Read a patient’s brief'), tx('My Patients, then the patient. Or Dashboard, Today’s Patients, Open Brief.')],
@@ -109,6 +155,15 @@ const FIND: [string, string][] = [
   [tx('Find an ICD-10 code'), tx('Connected Care, Document studio, Look up an ICD-10 code. Approve a code set in Clinical Settings first.')],
   [tx('Add a guideline'), tx('References, Guideline sources.')],
   [tx('See what the assistant did, or pause it'), tx('Care Assistant.')],
+  [tx('See what is waiting for you'), tx('Dashboard, Needs you.')],
+  [tx('Set the clinic phone, booking rules or usual reply time'), tx('Clinical Settings, Clinic setup.')],
+  [tx('Export a patient’s entries'), tx('Connected Care, Trends & pathways: Print entries or Download CSV.')],
+  [tx('Answer a request to move or cancel a visit'), tx('Connected Care, Tasks, visits & outcomes: the task offers Confirm new time, Offer other times or Cancel the visit.')],
+  [tx('Search for a patient, question or document'), tx('The search box at the top of every page, or press /.')],
+  [tx('See who viewed or changed a patient’s record'), tx('My Patients, open the patient, Audit trail tab.')],
+  [tx('Prepare a weekly clinic summary'), tx('Clinic Overview: choose the dates, then Print summary or Download CSV.')],
+  [tx('Change how my name appears to patients'), tx('Profile, How my name appears to patients.')],
+  [tx('See my overdue tasks'), tx('Follow-ups.')],
   [tx('Start the tour again'), tx('Profile, Start a tour.')],
 ];
 
@@ -134,10 +189,10 @@ export function AboutWebsiteView() {
             <div className="continuity-panel-heading">
               <h2 id={`about-${section.id}-title`}>{index + 1}. {t(section.title)}</h2>
             </div>
-            {section.intro && <p>{t(section.intro)}</p>}
+            {section.intro && <p><LinkedText text={t(section.intro)} /></p>}
             {section.items && (
               <List className="about-list">
-                {section.items.map((item) => <li key={item}>{t(item)}</li>)}
+                {section.items.map((item) => <li key={item}><LinkedText text={t(item)} /></li>)}
               </List>
             )}
             {section.kind === 'menu' && (
@@ -155,7 +210,7 @@ export function AboutWebsiteView() {
                 {FIND.map(([task, where]) => (
                   <div key={task}>
                     <dt>{t(task)}</dt>
-                    <dd>{t(where)}</dd>
+                    <dd><LinkedText text={t(where)} /></dd>
                   </div>
                 ))}
               </dl>

@@ -9,6 +9,9 @@ export interface TodayPatientRow {
   appointmentTime: string | null;
   briefStatus: 'Ready' | 'Not Ready';
   pendingItemsSummary: string;
+  visitType?: string | null;
+  /** When she last recorded a check-in (a plain date; nothing about what it held). */
+  lastCheckIn?: string | null;
 }
 
 export interface DoctorDashboard {
@@ -31,6 +34,11 @@ export interface DoctorPatientRow {
   lastConsultation: string | null;
   openItems: number;
   questionCount: number;
+  gestationalAgeWeeks?: number | null;
+  gestationalAgeDays?: number | null;
+  overdueTasks?: number;
+  /** A scheduled visit from the start of today through the next six days (on the clinic's clock). */
+  visitThisWeek?: boolean;
 }
 
 export interface DocumentSummary {
@@ -39,6 +47,9 @@ export interface DocumentSummary {
   status: string;
   statusLabel: string;
   documentDate: string | null;
+  /** What she wrote about it and the kind she chose, so a screen can show a readable title instead of the file reference. */
+  description?: string | null;
+  documentType?: string | null;
 }
 
 export interface TodaysBrief {
@@ -75,6 +86,9 @@ export interface ConsultationDraftContent {
   documentedDiscussion: string;
   relevantInformation: string;
   followUpNextSteps: string;
+  /** The clinic's approved note layout this note was started with, and what the doctor wrote under each of its headings. */
+  layout?: { templateId: string; title: string; version: number };
+  layoutSections?: Record<string, string>;
 }
 
 export interface ConsultationDraft {
@@ -114,6 +128,10 @@ export interface DoctorProfile {
   role: string;
   specialty: string | null;
   facility: string | null;
+  /** How patients see her name: a title, the name chosen for them (both may be empty) and the result. */
+  displayTitle: string | null;
+  displayName: string | null;
+  shownName: string | null;
 }
 
 // ---------- Dashboard ----------
@@ -178,8 +196,8 @@ export function fetchConsultations(episodeId?: string): Promise<Consultation[]> 
   return api.get<Consultation[]>(`/api/v2/doctor/consultations${qs}`);
 }
 
-export function startConsultation(episodeId: string, inputMode: 'voice' | 'text'): Promise<Consultation> {
-  return api.post<Consultation>('/api/v2/doctor/consultations', { episodeId, inputMode });
+export function startConsultation(episodeId: string, inputMode: 'voice' | 'text', templateId?: string | null): Promise<Consultation> {
+  return api.post<Consultation>('/api/v2/doctor/consultations', { episodeId, inputMode, ...(templateId ? { templateId } : {}) });
 }
 
 export function fetchConsultation(consultationId: string): Promise<Consultation> {
@@ -314,6 +332,6 @@ export function fetchProfile(): Promise<DoctorProfile> {
   return api.get<DoctorProfile>('/api/v2/doctor/profile');
 }
 
-export function updateProfile(payload: { fullName?: string; specialty?: string; facility?: string }): Promise<DoctorProfile> {
+export function updateProfile(payload: { fullName?: string; specialty?: string; facility?: string; displayTitle?: string; displayName?: string }): Promise<DoctorProfile> {
   return api.patch<DoctorProfile>('/api/v2/doctor/profile', payload);
 }

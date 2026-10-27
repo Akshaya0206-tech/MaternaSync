@@ -6,24 +6,25 @@ import { ROOT, formatTime, getContext } from "../../api/continuity";
 import type { DailyLog, Flag, Trends } from "../../api/continuity";
 import { currentLanguage, currentLocale, tx, useLanguage } from "../../i18n";
 import { Badge, Empty, Feedback, Panel, useAction } from "./shared";
+import { EntriesExport } from "./EntriesExport";
+import { sentence } from "./careLabels";
 
 // Codes the server sends, shown as words. The English wording is exactly what this panel always showed.
 const WORDS: Record<string, string> = {
-  not_recorded: tx("not recorded"),
-  good: tx("good"),
-  okay: tx("okay"),
-  low: tx("low"),
-  anxious: tx("anxious"),
-  done: tx("done"),
-  skipped: tx("skipped"),
-  needs_help: tx("needs help"),
-  not_applicable: tx("not applicable"),
-  missing_days: tx("missing days"),
-  overdue_task_days: tx("overdue task days"),
+  not_recorded: tx("Not recorded"),
+  good: tx("Good"),
+  okay: tx("Okay"),
+  low: tx("Low"),
+  anxious: tx("Anxious"),
+  done: tx("Done"),
+  skipped: tx("Skipped"),
+  needs_help: tx("Needs help"),
+  not_applicable: tx("Not applicable"),
+  missing_days: tx("Missing days"),
+  overdue_task_days: tx("Overdue task days"),
 };
 type Translate = ReturnType<typeof useLanguage>["t"];
-const word = (t: Translate, value: string) =>
-  t(Object.hasOwn(WORDS, value) ? WORDS[value] : value.replaceAll("_", " "));
+const word = (t: Translate, value: string) => t(Object.hasOwn(WORDS, value) ? WORDS[value] : sentence(value));
 
 // Dates keep the browser's own format in English; the other languages use their locale.
 const shortDate = (value: string) =>
@@ -78,7 +79,7 @@ function Chart({
   return (
     <figure style={{ margin: "10px 0" }}>
       <figcaption className="continuity-muted">
-        {t("{label} · patient-reported · observed range {min}–{max}", {
+        {t("{label} · patient-reported · lowest–highest entered {min}–{max}", {
           label,
           min,
           max,
@@ -277,12 +278,15 @@ export function TrendsPanel({
   const [data, setData] = useState<Trends | null>(initial ?? null);
   const [error, setError] = useState("");
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [patientName, setPatientName] = useState("");
   useEffect(() => {
     let active = true;
     getContext()
       .then((c) => {
-        if (active)
+        if (active) {
           setMembers(c.episodes.find((e) => e.id === episodeId)?.members ?? []);
+          setPatientName(c.episodes.find((e) => e.id === episodeId)?.patientName ?? "");
+        }
       })
       .catch(() => {
         /* the owner list is only needed to assign a follow-up */
@@ -343,7 +347,7 @@ export function TrendsPanel({
               label={t("Weight (kg)")}
             />
           </div>
-          <div className="continuity-table-wrap">
+          <div className="continuity-table-wrap" tabIndex={0} role="region" aria-label={t("Last 30 days · patient-reported trends")}>
             <table className="continuity-table">
               <thead>
                 <tr>
@@ -367,7 +371,7 @@ export function TrendsPanel({
                         {t("Patient log · v{revision}", {
                           revision: log.revision,
                         })}
-                        {log.skipped ? ` · ${t("skipped")}` : ""}
+                        {log.skipped ? ` · ${t("Skipped")}` : ""}
                         {log.enteredWithHelp
                           ? ` · ${t("with help from {name}", { name: log.enteredWithHelp })}`
                           : ""}
@@ -400,6 +404,7 @@ export function TrendsPanel({
           {!data.logs.length && (
             <Empty>{t("No entries during this period.")}</Empty>
           )}
+          <EntriesExport episodeId={episodeId} logs={data.logs} patientName={patientName} />
           <h3 style={{ marginTop: 20 }} id="follow-up-flags">
             {t("Follow-up flags · check-ins and tasks that need attention")}
           </h3>

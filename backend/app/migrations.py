@@ -36,6 +36,9 @@ ADDITIVE_COLUMNS = {
     "referral_events": [
         ("actor_source", "VARCHAR"),
     ],
+    "task_assignments": [
+        ("note", "VARCHAR"),
+    ],
     "tasks": [
         ("waiting_for", "VARCHAR"),
         ("waiting_since", "DATETIME"),
@@ -69,6 +72,13 @@ ADDITIVE_COLUMNS = {
     ],
     "patient_questions": [
         ("follow_up_of_id", "VARCHAR"),
+        ("closed_how", "VARCHAR"),
+        ("closed_note", "TEXT"),
+        ("closed_by_user_id", "VARCHAR"),
+        ("closed_at", "DATETIME"),
+    ],
+    "consultations": [
+        ("template_id", "VARCHAR"),
     ],
     "appointments": [
         ("change_kind", "VARCHAR"),
@@ -77,6 +87,9 @@ ADDITIVE_COLUMNS = {
         ("change_requested_at", "DATETIME"),
         ("change_new_appointment_id", "VARCHAR"),
         ("change_task_id", "VARCHAR"),
+    ],
+    "patient_topic_reviews": [
+        ("content_hash", "VARCHAR"),
     ],
     "daily_logs": [
         ("entered_with_help", "VARCHAR"),
@@ -91,6 +104,13 @@ ADDITIVE_COLUMNS = {
     ],
     "caregiver_links": [
         ("access_until", "DATETIME"),
+    ],
+    "doctor_profiles": [
+        ("display_title", "VARCHAR"),
+        ("display_name", "VARCHAR"),
+    ],
+    "clinic_contact": [
+        ("clinic_hours", "VARCHAR"),
     ],
     "notifications": [
         ("message_key", "VARCHAR"),

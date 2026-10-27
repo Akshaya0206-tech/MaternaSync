@@ -376,9 +376,9 @@ function OutputEditor({
         </ul>
       )}
       {parsed.length > 0 && (
-        <div className="continuity-table-wrap">
+        <div className="continuity-table-wrap" tabIndex={0} role="region" aria-labelledby="draft-values-caption">
           <table className="continuity-table">
-            <caption className="continuity-muted">
+            <caption id="draft-values-caption" className="continuity-muted">
               {t(
                 "Values read automatically from the verified report, beside the range printed on it. They are not labelled normal or abnormal. Compare each row with the original line before approving.",
               )}

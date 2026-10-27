@@ -3,17 +3,17 @@ from datetime import date, timedelta
 from typing import Literal
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from .. import caregiver_service, config, models, server_text, visit_changes
+from .. import caregiver_service, clinic_range, config, models, server_text, visit_changes
 from ..models.caregiver import PERMISSIONS
 from ..database import get_db
 from ..deps import require_role
 from .. import continuity_schemas as S
 from ..continuity_service import (ADMIN_REPLIES, allowed_ids, audit, create_output_draft, current_resource, known_codes, search_codes,
-    episode, get_object, member_ids, name, notify, now, output_out, plain_language_draft, require_member,
-    resource_out, row, source_snapshot, suggested_appointment, trend_data, utc, due_reminders)
+    assignable_ids, episode, get_object, member_ids, name, notify, now, output_out, plain_language_draft, require_member,
+    resource_out, row, source_snapshot, suggested_appointment, trend_data, utc, due_reminders, patient_facing_name, login_is_off)
 from ..plain_language import LAB_NOTE_PREFIX, SECTIONED_KINDS, unresolved_placeholders
 from .. import whatsapp
 from ..ai_coordinator import orchestrator
@@ -33,7 +33,7 @@ def context(user=Depends(authenticated), db: Session = Depends(get_db)):
     preference = db.get(models.PatientPreference, user.id)
     return {"language": preference.language if preference else "en", "episodes": [
         {"id": e.id, "patientName": e.patient_name, "weeks": e.gestational_age_weeks,
-         "members": [{"id": uid, "name": name(db, uid)} for uid in member_ids(db, e.id)] if user.role != "patient" else []}
+         "members": [{"id": uid, "name": name(db, uid)} for uid in assignable_ids(db, e.id)] if user.role != "patient" else []}
         for e in episodes]}
 
 
@@ -72,7 +72,7 @@ def workspace(episode_id: str, user=Depends(authenticated), db: Session = Depend
     result = {
         "episodeId": ep.id, "patientName": ep.patient_name, "language": pref.language if pref else "en",
         "logs": [row(r) for r in db.query(models.DailyLog).filter_by(episode_id=ep.id).order_by(models.DailyLog.recorded_at.desc()).limit(100).all()],
-        "reminders": [{**row(r), "approvedByName": name(db, r.approved_by_user_id)} for r in reminders],
+        "reminders": [{**row(r), "approvedByName": (patient_facing_name if is_patient else name)(db, r.approved_by_user_id)} for r in reminders],
         "consents": [{**row(c), "active": not c.revoked_at and utc(c.expires_at) > now()} for c in consents],
         "outputs": [output_out(db, o, is_patient) for o in outputs],
         "appointments": [row(a) for a in db.query(models.Appointment).filter_by(episode_id=ep.id).order_by(models.Appointment.scheduled_at.desc()).all()],
@@ -631,8 +631,9 @@ def appointment_status(appointment_id: str, payload: S.AppointmentStatusIn, user
 @router.get("/episodes/{episode_id}/tasks")
 def tasks(episode_id: str, user=Depends(staff), db: Session = Depends(get_db)):
     episode(db, user, episode_id)
-    return [{**row(t), "ownerName": name(db, t.owner_user_id), "history": [
-        {"name": name(db, a.assigned_to_user_id), "by": name(db, a.assigned_by_user_id), "at": utc(a.assigned_at).isoformat()} for a in t.assignments]}
+    return [{**row(t), "ownerName": name(db, t.owner_user_id), "ownerLoginOff": login_is_off(db, t.owner_user_id), "history": [
+        {"name": name(db, a.assigned_to_user_id), "by": name(db, a.assigned_by_user_id), "at": utc(a.assigned_at).isoformat(), "note": a.note,
+         "nameLoginOff": login_is_off(db, a.assigned_to_user_id), "byLoginOff": login_is_off(db, a.assigned_by_user_id)} for a in t.assignments]}
         for t in db.query(models.Task).filter_by(episode_id=episode_id).order_by(models.Task.created_at.desc()).all()]
 
 
@@ -650,10 +651,19 @@ def assign(task_id: str, payload: S.TaskAssignIn, user=Depends(staff), db: Sessi
 
 
 @router.get("/clinic")
-def clinic(user=Depends(staff), db: Session = Depends(get_db)):
+def clinic(date_from: str | None = Query(None, alias="from"), date_to: str | None = Query(None, alias="to"),
+           user=Depends(staff), db: Session = Depends(get_db)):
+    """The clinic overview. Open tasks, overdue tasks, check-ins needing follow-up and visits in the next 7 days are how things stand RIGHT NOW and ignore the range;
+    visits, check-ins, tasks created and completed, and the recorded outcomes are counted inside the range (or over all recorded dates when none is chosen)."""
+    window = clinic_range.parse_range(date_from, date_to)
     ids = allowed_ids(db, user)
     episodes = db.query(models.PregnancyEpisode).filter(models.PregnancyEpisode.id.in_(ids)).all()
     today = now().date()
+    counted_visits = ("scheduled", "completed", "no_show")
+
+    def inside(moment):
+        return window is None or window.has(moment)
+
     patients = []
     for ep in episodes:
         open_tasks = db.query(models.Task).filter(models.Task.episode_id == ep.id, models.Task.status.in_(["OPEN", "IN_PROGRESS", "WAITING"])).all()
@@ -662,6 +672,8 @@ def clinic(user=Depends(staff), db: Session = Depends(get_db)):
         baseline = max(utc(latest.recorded_at), utc(plan.agreed_at)) if latest and plan else utc(plan.agreed_at) if plan else None
         checkin_due = baseline + timedelta(days=plan.interval_days) if plan and plan.active else None
         appts = db.query(models.Appointment).filter_by(episode_id=ep.id).all()
+        every_task = db.query(models.Task).filter(models.Task.episode_id == ep.id).all()
+        entries = db.query(models.DailyLog.recorded_at).filter_by(episode_id=ep.id, skipped=False).all()
         patients.append({"episodeId": ep.id, "patientName": ep.patient_name,
             "doctors": [name(db, a.doctor_user_id) for a in ep.doctor_assignments],
             "openTasks": len(open_tasks), "unassigned": sum(t.owner_user_id is None for t in open_tasks),
@@ -672,17 +684,30 @@ def clinic(user=Depends(staff), db: Session = Depends(get_db)):
             "checkInDue": checkin_due.isoformat() if checkin_due else None,
             "missingCheckIn": bool(checkin_due and checkin_due < now()),
             "openFlagCount": trend_data(db, ep)["openFlagCount"],
-            "monitoringOwner": name(db, plan.owner_user_id) if plan else None})
-    outcomes = db.query(models.RecordedOutcome).filter(models.RecordedOutcome.episode_id.in_(ids)).all()
-    appts = db.query(models.Appointment).filter(models.Appointment.episode_id.in_(ids), models.Appointment.status.in_(["completed", "no_show"])).all()
+            "monitoringOwner": name(db, plan.owner_user_id) if plan else None,
+            "inRange": {
+                "visits": sum(a.status in counted_visits and inside(a.scheduled_at) for a in appts),
+                "checkIns": sum(inside(moment) for (moment,) in entries),
+                "tasksCreated": sum(inside(t.created_at) for t in every_task),
+                # A task has no "completed on" date: this is a task that is Completed now and whose last change fell in the range.
+                "tasksCompleted": sum(t.status == "COMPLETED" and inside(t.updated_at) for t in every_task),
+            }})
+    outcomes = [o for o in db.query(models.RecordedOutcome).filter(models.RecordedOutcome.episode_id.in_(ids)).all() if window is None or window.has_day(o.event_date)]
+    appts = [a for a in db.query(models.Appointment).filter(models.Appointment.episode_id.in_(ids), models.Appointment.status.in_(["completed", "no_show"])).all() if inside(a.scheduled_at)]
     scans = [o for o in outcomes if o.kind == "scan"]
     delivery_values = {}
     for out in outcomes:
         if out.kind == "delivery":
             delivery_values[out.value] = delivery_values.get(out.value, 0) + 1
-    audit(db, user, "clinic_report_viewed", details=f"{len(ids)} authorized episodes")
+    contact = db.get(models.ClinicContact, "clinic")
+    audit(db, user, "clinic_report_viewed", details=f"{len(ids)} authorized episodes" + (f", {window.first} to {window.last}" if window else ", all recorded dates"))
     db.commit()
     return {"patients": patients, "metrics": {"recordedScans": len(scans), "onTimeScans": sum(o.value == "on_time" for o in scans),
         "recordedDeliveries": sum(o.kind == "delivery" for o in outcomes), "deliveryOutcomes": delivery_values,
         "attendedOrNoShow": len(appts), "noShows": sum(a.status == "no_show" for a in appts)},
-        "definition": "Authorized caseload, all recorded dates. Scan rate uses documented scan outcomes only; no-show rate uses completed and no-show visits only. Missing outcomes are excluded, not counted as success."}
+        "range": window.text() if window else None,
+        "periodTotals": {key: sum(p["inRange"][key] for p in patients) for key in ("visits", "checkIns", "tasksCreated", "tasksCompleted")},
+        "clinic": {"name": contact.clinic_name if contact else None, "phone": contact.clinic_phone if contact else None},
+        "definition": ("Authorized caseload, recorded dates within the chosen range. Scan rate uses documented scan outcomes only; no-show rate uses completed and no-show visits only. Missing outcomes are excluded, not counted as success."
+                       if window else
+                       "Authorized caseload, all recorded dates. Scan rate uses documented scan outcomes only; no-show rate uses completed and no-show visits only. Missing outcomes are excluded, not counted as success.")}
