@@ -10,6 +10,8 @@ All Hindi, Tamil and Telugu wording below was written by an assistant and should
 from datetime import timezone
 
 from . import models
+from .ai_coordinator import messages as _assistant
+from .companion import MSG as _COMPANION
 
 LANGUAGES = ("en", "hi", "ta", "te")
 
@@ -329,6 +331,15 @@ class _Fill(dict):
         return ""
 
 
+# What the care assistant says to a person (its fixed four-language wording in ai_coordinator/messages.py), kept as keys like the rest: the note is worded
+# when it is READ, for the person reading it, so a change of language changes it and a trusted person never gets the patient's language.
+CATALOG.update({
+    "assistant_checkin_patient": (_assistant.CHECKIN_TITLE, _assistant.CHECKIN_PATIENT),
+    "assistant_checkin_caregiver": (_assistant.CHECKIN_TITLE, _assistant.CHECKIN_CAREGIVER),  # {name}
+    "assistant_urgent": (_assistant.URGENT_TITLE, _COMPANION["urgent"]),  # the same fixed emergency message the companion shows
+})
+
+
 def pick(table: dict, language: str) -> str:
     return table.get(language) or table["en"]
 
@@ -375,9 +386,16 @@ def _fixed(table: dict | None) -> str | None:
     return None if table is None or "{" in table["en"] else table["en"]
 
 
-# Notifications written before messages had keys (and the seeded demonstration ones) carry only English text. When that text is exactly
-# one of the fixed messages above, it is recognised and worded in the reader's language too. Anything with blanks or written by a person stays as stored.
-_LEGACY = {(_fixed(title), _fixed(body)): key for key, (title, body) in CATALOG.items() if _fixed(title) and body is not None and _fixed(body)}
+# Notifications written before messages had keys (and the seeded demonstration ones) carry only text, in English or, for the assistant's own notes, in
+# whatever language the person had that day. When that text is exactly one of the fixed messages above in ANY of the four languages, it is recognised and
+# worded in the reader's language too. Anything with blanks or written by a person stays as stored.
+_LEGACY = {}
+for _key, (_title, _body) in CATALOG.items():
+    if _body is None:
+        continue
+    for _language in LANGUAGES:
+        if _language in _title and _language in _body and "{" not in _title[_language] and "{" not in _body[_language]:
+            _LEGACY[(_title[_language], _body[_language])] = _key
 
 
 def texts(db, reader_id: str, note: models.Notification) -> tuple[str, str]:

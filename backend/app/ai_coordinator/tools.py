@@ -103,12 +103,9 @@ def _notify_user(db, args, actor, episode_id) -> Outcome:
 
 
 def _send_urgent_message(db, args, actor, episode_id) -> Outcome:
-    language = args.get("language", "en")
-    note = models.Notification(recipient_user_id=args["user_id"], episode_id=episode_id, type="assistant_urgent",
-                               title=messages.pick(messages.URGENT_TITLE, language), body=messages.urgent_body(language),
-                               related_entity_type="PatientQuestion", related_entity_id=args.get("question_id"))
-    db.add(note)
-    db.flush()
+    # Worded when it is read, for the person who asked (a trusted person or the woman), in the language they have then.
+    note = server_text.notify_key(db, args["user_id"], "assistant_urgent", episode_id=episode_id, type_="assistant_urgent",
+                                  related_entity_type="PatientQuestion", related_entity_id=args.get("question_id"), flush=True)
     return Outcome("The fixed emergency message was sent.", {"kind": "notifications", "notification_ids": [note.id]})
 
 

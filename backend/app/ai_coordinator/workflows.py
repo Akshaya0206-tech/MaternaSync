@@ -184,7 +184,7 @@ def run_question_routing(db, run: models.AIRun, provider) -> str:
         if question.status in ("ANSWERED", "CLOSED"):
             return {"skip": "A person already answered this question."}
         episode = db.get(models.PregnancyEpisode, question.episode_id)
-        language = _language(db, episode.patient_user_id)
+        language = _language(db, question.asked_by_user_id or episode.patient_user_id)  # the reply goes to whoever asked, so it is worded for them
         doctors = tools.doctor_ids(db, question.episode_id)
         run.inputs_digest = hashlib.sha256(f"{question.id}:{_norm(question.question_text)}".encode()).hexdigest()
         return {"ctx": {"question_id": question.id, "text": question.question_text, "asker_id": question.asked_by_user_id, "patient_id": episode.patient_user_id,
@@ -253,7 +253,7 @@ def run_held_question(db, run: models.AIRun) -> bool:
         run.summary = "Nothing to do."
         return True
     episode = db.get(models.PregnancyEpisode, question.episode_id)
-    language = _language(db, episode.patient_user_id)
+    language = _language(db, question.asked_by_user_id or episode.patient_user_id)  # the urgent note goes to whoever asked
     analysis = rules_question(question.question_text, language)
     if analysis.category != "urgent":
         tools.route_question_to_doctor(db, question)
@@ -288,9 +288,8 @@ def sweep_missed_checkins(db, make_run, skip=frozenset()) -> int:
         run = make_run("missed_checkin", plan.episode_id, "MonitoringPlan", plan.episode_id, f"missed_checkin:{plan.episode_id}:{_now().date().isoformat()}")
         if run is None:
             continue
-        language = _language(db, episode.patient_user_id)
-        tools.act(db, run, "notify_user", {"user_id": episode.patient_user_id, "title": messages.pick(messages.CHECKIN_TITLE, language), "body": messages.pick(messages.CHECKIN_PATIENT, language),
-                  "kind": "assistant_reminder"}, key=f"checkin:{plan.episode_id}:{_now().date().isoformat()}:patient")
+        # Keyed notes: each is worded when it is read, for the person reading it (a trusted person gets theirs in their own language, not the patient's).
+        tools.act(db, run, "notify_user", {"user_id": episode.patient_user_id, "key": "assistant_checkin_patient", "kind": "assistant_reminder"}, key=f"checkin:{plan.episode_id}:{_now().date().isoformat()}:patient")
         first_name = (episode.patient_name or "").split(" ")[0]
         sent = db.query(models.AIRun).filter(models.AIRun.workflow == "missed_checkin", models.AIRun.episode_id == plan.episode_id, models.AIRun.created_at >= baseline.replace(tzinfo=None)).count()
         links = caregiver_service.active_links_for_episode(db, plan.episode_id, "check_in")
@@ -299,8 +298,7 @@ def sweep_missed_checkins(db, make_run, skip=frozenset()) -> int:
             # A doctor asked one trusted person to help with check-ins, so their reminder comes first; the others join from the third reminder on.
             links = [l for l in links if l.id == helper[1].id or sent >= 3]
         for link in links:
-            tools.act(db, run, "notify_user", {"user_id": link.caregiver_user_id, "title": messages.pick(messages.CHECKIN_TITLE, language),
-                      "body": messages.pick(messages.CHECKIN_CAREGIVER, language).format(name=first_name), "kind": "assistant_reminder"},
+            tools.act(db, run, "notify_user", {"user_id": link.caregiver_user_id, "key": "assistant_checkin_caregiver", "params": {"name": first_name}, "kind": "assistant_reminder"},
                       key=f"checkin:{plan.episode_id}:{_now().date().isoformat()}:{link.id}")
             if sent <= 3 and whatsapp.automatic() and caregiver_whatsapp.usable(db, link, "checkin"):  # at most three nudges per lapse, so it never becomes a flood
                 stamp = f"{plan.episode_id}:{_now().date().isoformat()}"
