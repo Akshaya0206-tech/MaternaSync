@@ -1,5 +1,7 @@
 # MaternaSync
 
+Optional SMS phone sign-in is available through Twilio Verify. See [phone sign-in setup](docs/PHONE_SIGN_IN.md) for server credentials, verified-number enrollment, trial limits and tests. Password sign-in remains available.
+
 React/TypeScript patient, doctor and caregiver (a relative or friend the woman invites) portals backed by FastAPI and SQLite, with a care assistant that does routine administrative work for the doctor. The care-team portal is switched off at sign-in but kept in the code (see Care-team login below). The roadmap implementation reuses the existing episodes, assignments, consultations, documents, questions, tasks, notifications, journeys and audit logs.
 
 ## Run locally (PowerShell)

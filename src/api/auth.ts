@@ -9,7 +9,7 @@ export interface CurrentUser {
   role: UserRole;
 }
 
-interface TokenResponse {
+export interface TokenResponse {
   accessToken: string;
   tokenType: string;
   user: CurrentUser;
@@ -50,7 +50,7 @@ export function register(payload: {
 }
 
 /** What the sign-up page offers. The care-team roles are missing while that login is switched off. */
-export interface AuthOptions { careTeamEnabled: boolean; signUpRoles: { value: UserRole; label: string }[] }
+export interface AuthOptions { careTeamEnabled: boolean; phoneOtpEnabled?: boolean; signUpRoles: { value: UserRole; label: string }[] }
 export const fetchAuthOptions = () => api.get<AuthOptions>('/api/auth/options');
 
 export function fetchCurrentUser(): Promise<CurrentUser> {
@@ -59,3 +59,13 @@ export function fetchCurrentUser(): Promise<CurrentUser> {
 
 export interface DemoAccount { label: string; role: UserRole; name: string; email: string; password: string }
 export const fetchDemoAccounts = () => api.get<DemoAccount[]>('/api/auth/demo-accounts');
+
+export interface PhoneChallenge { challengeId: string; maskedPhone: string; expiresAt: string; resendAfter: number }
+export interface LoginPhone { enabled: boolean; maskedPhone: string | null }
+export const fetchLoginPhone = () => api.get<LoginPhone>('/api/auth/phone');
+export const startPhoneSignIn = (phone: string) => api.post<PhoneChallenge>('/api/auth/otp/start', { phone });
+export const verifyPhoneSignIn = (challengeId: string, code: string) => api.post<TokenResponse>('/api/auth/otp/verify', { challengeId, code });
+export const startPhoneEnrollment = (phone: string, password: string) => api.post<PhoneChallenge>('/api/auth/phone/enroll/start', { phone, password });
+export const verifyPhoneEnrollment = (challengeId: string, code: string) => api.post<{ linked: boolean }>('/api/auth/phone/enroll/verify', { challengeId, code });
+export const resendPhoneCode = (challengeId: string, enrolling: boolean) => api.post<PhoneChallenge>(enrolling ? '/api/auth/phone/enroll/resend' : '/api/auth/otp/resend', { challengeId });
+export const removeLoginPhone = (password: string) => api.post('/api/auth/phone/remove', { password });

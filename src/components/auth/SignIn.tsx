@@ -7,6 +7,7 @@ import { ApiError } from '../../api/client';
 import type { CurrentUser } from '../../api/auth';
 import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { tx, useLanguage } from '../../i18n';
+import { PhoneSignIn } from './PhoneOtp';
 
 interface SignInProps {
   onAuthenticated: (token: string, user: CurrentUser) => void;
@@ -50,7 +51,9 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
   const [demoRole, setDemoRole] = useState('');
   // Until the server says the care-team login is on, its demo accounts are hidden (they would only be refused).
   const [careTeamOn, setCareTeamOn] = useState(false);
-  useEffect(() => { let active = true; fetchAuthOptions().then(o => { if (active) setCareTeamOn(o.careTeamEnabled); }).catch(() => undefined); return () => { active = false; }; }, []);
+  const [phoneEnabled, setPhoneEnabled] = useState(false);
+  const [usePhone, setUsePhone] = useState(false);
+  useEffect(() => { let active = true; fetchAuthOptions().then(o => { if (active) { setCareTeamOn(o.careTeamEnabled); setPhoneEnabled(!!o.phoneOtpEnabled); } }).catch(() => undefined); return () => { active = false; }; }, []);
   useEffect(() => { let active = true; fetchDemoAccounts().then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError(tx('Demo logins are unavailable right now. Please try again in a moment.')); }); return () => { active = false; }; }, []);
   const signInDemo = async (account: PortalDemoAccount) => {
     if (isSubmitting) return;
@@ -104,7 +107,11 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {phoneEnabled && <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+        <button type="button" className={!usePhone ? 'btn-primary' : 'btn-secondary'} aria-pressed={!usePhone} disabled={isSubmitting} onClick={() => { setUsePhone(false); setError(null); }}>{t('Password sign-in')}</button>
+        <button type="button" className={usePhone ? 'btn-primary' : 'btn-secondary'} aria-pressed={usePhone} disabled={isSubmitting} onClick={() => { setUsePhone(true); setError(null); }}>{t('Phone sign-in')}</button>
+      </div>}
+      {usePhone ? <PhoneSignIn onAuthenticated={onAuthenticated} /> : <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <Field label={t('Email')}>
           <input
             type="email"
@@ -135,7 +142,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
         <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ width: '100%', padding: '11px', fontSize: '0.9rem', marginTop: '4px' }}>
           {isSubmitting ? t('Signing in…') : t('Sign In')}
         </button>
-      </form>
+      </form>}
 
       {demoAccounts.length > 0 && <section aria-label="Demo logins" style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--border-color)' }}>
         <h2 style={{ fontSize: '.95rem', margin: '0 0 6px' }}>{t('Explore a demo workspace')}</h2>

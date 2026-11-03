@@ -15,6 +15,7 @@ from .reminders import check_reminders
 from .routers import auth, care_team_portal, clinical_guidelines, doctor_portal, episodes, external_simulator, patient_portal, patient_updates, patients, records, workflow
 from .seed_data import run_seed
 from .routers import account
+from .routers import phone_auth
 from .routers import caregiver_visits
 from .routers import doctor_consult_questions
 from .routers import clinic_setup
@@ -50,6 +51,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(phone_auth.router)
 app.include_router(account.router)
 app.include_router(patients.router)
 app.include_router(records.router)

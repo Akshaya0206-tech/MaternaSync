@@ -33,7 +33,8 @@ class RegisterOut(schemas.TokenResponse):
 def options():
     """What the sign-up page offers. Staff roles disappear while the care-team login is switched off."""
     roles = [{"value": value, "label": label} for value, label in SIGN_UP_ROLES if config.CARE_TEAM_ENABLED or value not in STAFF_ROLES]
-    return {"careTeamEnabled": config.CARE_TEAM_ENABLED, "signUpRoles": roles}
+    from ..phone_provider import configured
+    return {"careTeamEnabled": config.CARE_TEAM_ENABLED, "signUpRoles": roles, "phoneOtpEnabled": configured()}
 
 
 @router.get("/demo-accounts")

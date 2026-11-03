@@ -8,3 +8,6 @@ tests
 .pytest_cache
 .test-output
 search_model
+.env
+.env.*
+*.local

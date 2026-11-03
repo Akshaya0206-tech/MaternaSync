@@ -7,6 +7,7 @@ import { tx, useLanguage } from '../../i18n';
 import { Field } from '../../components/continuity/shared';
 import { CardHeading } from './ProfileArt';
 import { cardProps } from './profileCard';
+import { PhoneLoginSettings } from '../../components/auth/PhoneOtp';
 
 // The cards for her account on Profile: Security, My data and Close my account. The server's own sentences (the keys below are exactly what it sends)
 // are translated when shown, so a refusal reads in her language.
@@ -120,6 +121,7 @@ export function SecurityCard({ index }: { index: number }) {
         {othersError && <div role="alert" className="pf-error">{t(othersError)}</div>}
         {othersDone && <div role="status" className="continuity-success">{t(othersDone)}</div>}
       </div>
+      <PhoneLoginSettings />
     </section>
   );
 }

@@ -7,6 +7,12 @@ const e = (hi: string, ta: string, te: string): Entry => ({ hi, ta, te });
  * their exact English wording, so keep them in step with the backend.
  */
 export const serverStrings: string[] = [
+  "The code is incorrect or expired. Please request a new code if needed.",
+  "Phone sign-in is unavailable right now. Please use your password.",
+  "Too many requests. Please wait before trying again.",
+  "Enter a valid Indian mobile number with +91.",
+  "This number cannot be linked. Use another number or contact support.",
+  "Could not complete phone verification. Please try again.",
   "Your document has been uploaded and is being reviewed.",
   "Upload your medical records to help your care team prepare for your visit.",
   "No upcoming appointment has been recorded. Contact your care team to schedule one.",
@@ -29,6 +35,33 @@ export const serverStrings: string[] = [
  * These wordings should be checked by a native speaker from the clinic before real use.
  */
 export const translations: Record<string, Entry> = {
+  "Phone sign-in": e("फ़ोन से साइन इन", "தொலைபேசி மூலம் உள்நுழைவு", "ఫోన్‌తో సైన్ ఇన్"),
+  "Password sign-in": e("पासवर्ड से साइन इन", "கடவுச்சொல் மூலம் உள்நுழைவு", "పాస్‌వర్డ్‌తో సైన్ ఇన్"),
+  "Enter the SMS code sent to {phone}.": e("{phone} पर SMS से भेजा गया कोड दर्ज करें।", "{phone} எண்ணுக்கு SMS மூலம் அனுப்பப்பட்ட குறியீட்டை உள்ளிடுங்கள்.", "{phone}కు SMS ద్వారా పంపిన కోడ్‌ను నమోదు చేయండి."),
+  "If this number is linked to an account, a code will arrive at {phone}.": e("यदि यह नंबर किसी खाते से जुड़ा है, तो {phone} पर एक कोड आएगा।", "இந்த எண் ஒரு கணக்குடன் இணைக்கப்பட்டிருந்தால், {phone} எண்ணுக்கு ஒரு குறியீடு வரும்.", "ఈ నంబర్ ఖాతాకు అనుసంధానమై ఉంటే, {phone}కు కోడ్ వస్తుంది."),
+  "Codes expire after 5 minutes. Resending does not extend the time.": e("कोड 5 मिनट बाद समाप्त हो जाता है। दोबारा भेजने से समय नहीं बढ़ता।", "குறியீடு 5 நிமிடங்களில் காலாவதியாகும். மீண்டும் அனுப்புவது நேரத்தை நீட்டிக்காது.", "కోడ్ 5 నిమిషాల తర్వాత గడువు ముగుస్తుంది. మళ్లీ పంపడం సమయాన్ని పొడిగించదు."),
+  "Six-digit code": e("छह अंकों का कोड", "ஆறு இலக்கக் குறியீடு", "ఆరు అంకెల కోడ్"),
+  "This code has expired. Go back to request a new one.": e("इस कोड का समय समाप्त हो गया है। नया कोड माँगने के लिए वापस जाएँ।", "இந்தக் குறியீடு காலாவதியாகிவிட்டது. புதியதைப் பெறத் திரும்பிச் செல்லுங்கள்.", "ఈ కోడ్ గడువు ముగిసింది. కొత్త కోడ్ కోసం వెనక్కి వెళ్లండి."),
+  "Another code was requested. Please check your SMS inbox.": e("कोड दोबारा भेजने का अनुरोध किया गया है। कृपया अपना SMS इनबॉक्स देखें।", "மீண்டும் குறியீடு கோரப்பட்டது. உங்கள் SMS பெட்டியைப் பாருங்கள்.", "కోడ్‌ను మళ్లీ అభ్యర్థించారు. మీ SMS ఇన్‌బాక్స్‌ను చూడండి."),
+  "Please wait…": e("कृपया प्रतीक्षा करें…", "காத்திருக்கவும்…", "దయచేసి వేచి ఉండండి…"),
+  "Verify code": e("कोड सत्यापित करें", "குறியீட்டைச் சரிபார்க்கவும்", "కోడ్‌ను ధృవీకరించండి"),
+  "Resend in {seconds}s": e("{seconds} सेकंड बाद दोबारा भेजें", "{seconds} வினாடிகளில் மீண்டும் அனுப்பலாம்", "{seconds} సెకన్ల తర్వాత మళ్లీ పంపండి"),
+  "Resend code": e("कोड दोबारा भेजें", "குறியீட்டை மீண்டும் அனுப்பவும்", "కోడ్‌ను మళ్లీ పంపండి"),
+  "First link your number in Profile while signed in with your password.": e("पहले पासवर्ड से साइन इन करके प्रोफ़ाइल में अपना नंबर जोड़ें।", "முதலில் கடவுச்சொல்லுடன் உள்நுழைந்து சுயவிவரத்தில் உங்கள் எண்ணை இணைக்கவும்.", "ముందుగా పాస్‌వర్డ్‌తో సైన్ ఇన్ చేసి ప్రొఫైల్‌లో మీ నంబర్‌ను అనుసంధానించండి."),
+  "Mobile number (+91)": e("मोबाइल नंबर (+91)", "மொபைல் எண் (+91)", "మొబైల్ నంబర్ (+91)"),
+  "Requesting a code sends an SMS to this number.": e("कोड माँगने पर इस नंबर पर SMS भेजा जाएगा।", "குறியீட்டைக் கோரும்போது இந்த எண்ணுக்கு SMS அனுப்பப்படும்.", "కోడ్‌ను అభ్యర్థిస్తే ఈ నంబర్‌కు SMS పంపబడుతుంది."),
+  "Send sign-in code": e("साइन इन कोड भेजें", "உள்நுழைவுக் குறியீட்டை அனுப்பவும்", "సైన్ ఇన్ కోడ్ పంపండి"),
+  "Your sign-in number was updated.": e("आपका साइन इन नंबर अपडेट कर दिया गया है।", "உங்கள் உள்நுழைவு எண் புதுப்பிக்கப்பட்டது.", "మీ సైన్ ఇన్ నంబర్ నవీకరించబడింది."),
+  "Linked sign-in number: {phone}": e("जुड़ा हुआ साइन इन नंबर: {phone}", "இணைக்கப்பட்ட உள்நுழைவு எண்: {phone}", "అనుసంధానించిన సైన్ ఇన్ నంబర్: {phone}"),
+  "Link a number you control to sign in with SMS. Your password still works.": e("SMS से साइन इन करने के लिए अपने नियंत्रण वाला नंबर जोड़ें। आपका पासवर्ड भी काम करता रहेगा।", "SMS மூலம் உள்நுழைய உங்கள் கட்டுப்பாட்டில் உள்ள எண்ணை இணைக்கவும். உங்கள் கடவுச்சொல்லும் தொடர்ந்து செயல்படும்.", "SMSతో సైన్ ఇన్ చేయడానికి మీ నియంత్రణలో ఉన్న నంబర్‌ను అనుసంధానించండి. మీ పాస్‌వర్డ్ కూడా పని చేస్తుంది."),
+  "Remove sign-in number": e("साइन इन नंबर हटाएँ", "உள்நுழைவு எண்ணை அகற்றவும்", "సైన్ ఇన్ నంబర్‌ను తొలగించండి"),
+  "Send verification code": e("सत्यापन कोड भेजें", "சரிபார்ப்புக் குறியீட்டை அனுப்பவும்", "ధృవీకరణ కోడ్ పంపండి"),
+  "The code is incorrect or expired. Please request a new code if needed.": e("कोड गलत है या उसका समय समाप्त हो गया है। ज़रूरत हो तो नया कोड माँगें।", "குறியீடு தவறானது அல்லது காலாவதியானது. தேவைப்பட்டால் புதிய குறியீட்டைக் கோரவும்.", "కోడ్ తప్పుగా ఉంది లేదా గడువు ముగిసింది. అవసరమైతే కొత్త కోడ్‌ను అభ్యర్థించండి."),
+  "Phone sign-in is unavailable right now. Please use your password.": e("अभी फ़ोन से साइन इन उपलब्ध नहीं है। कृपया अपना पासवर्ड उपयोग करें।", "இப்போது தொலைபேசி உள்நுழைவு கிடைக்கவில்லை. உங்கள் கடவுச்சொல்லைப் பயன்படுத்தவும்.", "ప్రస్తుతం ఫోన్ సైన్ ఇన్ అందుబాటులో లేదు. మీ పాస్‌వర్డ్‌ను ఉపయోగించండి."),
+  "Too many requests. Please wait before trying again.": e("बहुत अधिक अनुरोध हैं। दोबारा प्रयास करने से पहले प्रतीक्षा करें।", "அதிகமான கோரிக்கைகள். மீண்டும் முயல்வதற்கு முன் காத்திருக்கவும்.", "చాలా అభ్యర్థనలు వచ్చాయి. మళ్లీ ప్రయత్నించే ముందు వేచి ఉండండి."),
+  "Enter a valid Indian mobile number with +91.": e("+91 के साथ सही भारतीय मोबाइल नंबर दर्ज करें।", "+91 உடன் செல்லுபடியாகும் இந்திய மொபைல் எண்ணை உள்ளிடுங்கள்.", "+91తో చెల్లుబాటు అయ్యే భారతీయ మొబైల్ నంబర్‌ను నమోదు చేయండి."),
+  "This number cannot be linked. Use another number or contact support.": e("यह नंबर नहीं जोड़ा जा सकता। दूसरा नंबर उपयोग करें या सहायता से संपर्क करें।", "இந்த எண்ணை இணைக்க முடியாது. வேறு எண்ணைப் பயன்படுத்தவும் அல்லது உதவியைத் தொடர்புகொள்ளவும்.", "ఈ నంబర్‌ను అనుసంధానించలేము. మరో నంబర్ వాడండి లేదా సహాయాన్ని సంప్రదించండి."),
+  "Could not complete phone verification. Please try again.": e("फ़ोन सत्यापन पूरा नहीं हो सका। कृपया दोबारा प्रयास करें।", "தொலைபேசி சரிபார்ப்பை முடிக்க முடியவில்லை. மீண்டும் முயலுங்கள்.", "ఫోన్ ధృవీకరణను పూర్తి చేయలేకపోయాం. మళ్లీ ప్రయత్నించండి."),
   // Navigation and shell
   "My Care": e("मेरी देखभाल", "எனது பராமரிப்பு", "నా సంరక్షణ"),
   "Daily Check-in": e("दैनिक जानकारी", "தினசரிப் பதிவு", "రోజువారీ నమోదు"),

@@ -34,6 +34,7 @@ from .caregiver import CaregiverLink, CaregiverVisitHelp, CaregiverWhatsApp, Vis
 from .ai import AIRun, AIAction, ExceptionItem, AssistantSetting
 from .topic_review import PatientTopicReview
 from .reply_snippet import ReplySnippet
+from .phone_auth import LoginPhone, PhoneChallenge, PhoneAuthLimit
 
 __all__ = [
     # legacy

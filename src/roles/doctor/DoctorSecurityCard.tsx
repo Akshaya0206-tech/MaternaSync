@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { Field } from '../../components/continuity/shared';
 import { tx, useLanguage } from '../../i18n';
 import './doctor-profile.css';
+import { PhoneLoginSettings } from '../../components/auth/PhoneOtp';
 
 // The same two actions, on the same server routes and with the same wording, as the patient's Security card (src/roles/patient/AccountCards.tsx).
 // Changing the password, or "Sign out other devices", ends every other session and hands back a fresh sign-in for THIS device.
@@ -108,6 +109,7 @@ export function DoctorSecurityCard() {
         </button>
       </div>
       {othersError && <div role="alert" className="continuity-alert">{t(othersError)}</div>}
+      <PhoneLoginSettings />
       {othersDone && <div role="status" className="continuity-success">{t(othersDone)}</div>}
     </section>
   );

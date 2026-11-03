@@ -62,3 +62,14 @@ JWT_SECRET = os.environ.get("MATERNASYNC_JWT_SECRET", "dev-only-insecure-secret-
 JWT_SECRET_IS_DEFAULT = "MATERNASYNC_JWT_SECRET" not in os.environ
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRES_MINUTES = 60 * 24 * 7  # 7 days
+
+# Optional phone sign-in. Secrets stay on the API host; no VITE_ settings.
+PHONE_OTP_ENABLED = _flag("MATERNASYNC_PHONE_OTP_ENABLED", "false")
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
+TWILIO_VERIFY_SERVICE_SID = os.environ.get("TWILIO_VERIFY_SERVICE_SID", "").strip()
+PHONE_OTP_TTL_SECONDS = 300
+PHONE_OTP_COOLDOWN_SECONDS = 60
+PHONE_OTP_MAX_ATTEMPTS = 5
+# A small default budget suits the trial. Configure a deliberate cap for a deployment.
+PHONE_OTP_DAILY_SEND_LIMIT = int(os.environ.get("MATERNASYNC_OTP_DAILY_SEND_LIMIT", "20"))
