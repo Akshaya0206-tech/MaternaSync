@@ -29,6 +29,7 @@ from .routers import assistant, caregiver, caregiver_emergency, continuity, clin
 from .seed_continuity import ensure_demo_locations, remove_withdrawn_features, run_seed_continuity
 from .seed_assistant import ensure_assistant_user, ensure_demo_caregiver
 from .seed_documents import ensure_document_labels
+from .seed_clinical_corrections import ensure_demo_clinical_corrections
 from .ai_coordinator import orchestrator
 from . import config
 from .config import DEMO_ENABLED
@@ -115,6 +116,7 @@ def on_startup():
             run_seed_continuity(db)
             ensure_demo_locations(db)
             ensure_demo_caregiver(db)
+            ensure_demo_clinical_corrections(db)
             ensure_document_labels(db)  # plain titles and a type for the demo records
         # Real reference documents belong to every deployment, not only the demo.
         sync_reference_library(db)

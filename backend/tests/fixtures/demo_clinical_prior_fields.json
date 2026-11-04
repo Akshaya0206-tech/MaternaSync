@@ -1,0 +1,48 @@
+{
+  "riskNotes": "Documented History of Gestational Diabetes (GDMA1) & Mild Chronic Hypertension monitoring",
+  "records": {
+    "REC-001": {
+      "summaryText": "8-week transvaginal ultrasound confirmed intrauterine pregnancy with active fetal cardiac activity (162 bpm). EDD calculated as Nov 20, 2026 based on CRL 18.4mm.",
+      "fullContent": "CLINICAL NOTE - INITIAL OB VISIT\nDate: April 10, 2026\nPatient: Sarah Jenkins (31yo G2 P1001)\n\nCHIEF COMPLAINT: Confirmation of pregnancy, positive home pregnancy test.\nPAST OBSTETRIC HISTORY: G1 ended in full term spontaneous vaginal delivery in 2021 (3.4kg, no maternal complications).\n\nULTRASOUND FINDINGS:\nTransvaginal scan performed. Single live intrauterine pregnancy demonstrated. Fetal heart rate measured at 162 bpm. Crown-rump length (CRL) measures 18.4 mm, corresponding to 8 weeks 2 days gestation. No subchorionic hematoma identified.\n\nASSESSMENT & PLAN:\n1. Intrauterine pregnancy at 8w2d, concordant with last menstrual period.\n2. Routine prenatal vitamins prescribed.\n3. Lab panel ordered: CBC, Type & Screen, Rubella, Hepatitis B, HIV, Syphilis, Pap smear.\n4. Scheduled for 12-week Nuchal Translucency screening."
+    },
+    "REC-002": {
+      "summaryText": "NIPT screening report received: Low risk for Trisomy 21, 18, and 13. Fetal fraction 8.4%. Female fetal sex identified.",
+      "fullContent": "LABORATORY REPORT - CELL-FREE DNA SCREENING (NIPT)\nOrder Date: May 8, 2026\nReport Date: May 12, 2026\n\nRESULTS:\n- Trisomy 21 (Down Syndrome): LOW RISK (1 in 10,000)\n- Trisomy 18 (Edwards Syndrome): LOW RISK (< 1 in 10,000)\n- Trisomy 13 (Patau Syndrome): LOW RISK (< 1 in 10,000)\n- Fetal Fraction: 8.4%\n- Predicted Sex: Female\n\nMaternal Blood Type: O Positive, Antibody Screen Negative."
+    },
+    "REC-004": {
+      "title": "28-Week Oral Glucose Tolerance Test (OGTT) & CBC",
+      "rawPayloadSnippet": "OBX|1|NM|GLU_FAST^Glucose Fasting||92|mg/dL|<95|N|||F\nOBX|2|NM|GLU_1HR^Glucose 1-Hour||188|mg/dL|<180|H|||F\nOBX|3|NM|GLU_2HR^Glucose 2-Hour||162|mg/dL|<155|H|||F\nOBX|4|NM|GLU_3HR^Glucose 3-Hour||138|mg/dL|<140|N|||F",
+      "summaryText": "3-Hour 100g OGTT Results: Fasting 92 mg/dL, 1-hr 188 mg/dL (Elevated), 2-hr 162 mg/dL (Elevated), 3-hr 138 mg/dL. Hemoglobin 11.2 g/dL, Hematocrit 33.8%.",
+      "fullContent": "LABORATORY REPORT - 3-HOUR ORAL GLUCOSE TOLERANCE TEST\nDate: August 26, 2026\n\nRESULTS:\n- Fasting Glucose: 92 mg/dL (Normal < 95)\n- 1-Hour Glucose: 188 mg/dL (Elevated > 180)\n- 2-Hour Glucose: 162 mg/dL (Elevated > 155)\n- 3-Hour Glucose: 138 mg/dL (Normal < 140)\n\nINTERPRETATION NOTE (LAB): Two elevated values meet diagnostic criteria for Gestational Diabetes Mellitus (GDMA1).\n\nCOMPLETE BLOOD COUNT:\n- Hemoglobin: 11.2 g/dL\n- Hematocrit: 33.8%\n- Platelets: 215,000 /uL",
+      "tags": [
+        "OGTT",
+        "Gestational Diabetes",
+        "Lab Result",
+        "Trimester 3"
+      ]
+    },
+    "REC-006": {
+      "summaryText": "Routine 30w visit. Blood pressure recorded at 132/84 mmHg. Fundal height 30 cm. Fetal heart rate 144 bpm. Urinalysis negative for protein.",
+      "fullContent": "OBSTETRIC PROGRESS NOTE\nDate: September 12, 2026\nGestational Age: 30 weeks 3 days\n\nVITAL SIGNS:\nBP: 132/84 mmHg | HR: 78 | Weight: 161 lbs (Total gain: 13 lbs) | Fundal Height: 30 cm | FHR: 144 bpm, regular rhythm.\n\nPHYSICAL EXAM:\nTrace bilateral lower extremity edema. No facial edema. Deep tendon reflexes 2+ bilaterally, no clonus.\n\nASSESSMENT:\n1. 30w3d gestation, GDMA1 well-controlled on diet.\n2. Borderline BP elevation (132/84). Patient instructed on preeclampsia warning signs (headache, visual changes, RUQ pain).\n3. Tdap vaccine administered today.\n4. Ordered 32-week growth ultrasound and MFM consult."
+    },
+    "REC-008": {
+      "rawPayloadSnippet": "{\n  \"resourceType\": \"ServiceRequest\",\n  \"id\": \"ORD-44910\",\n  \"status\": \"active\",\n  \"intent\": \"order\",\n  \"code\": { \"text\": \"MFM Growth Ultrasound & Doppler\" },\n  \"requester\": { \"display\": \"Dr. Eleanor Vance, MD\" }\n}",
+      "summaryText": "Outpatient MFM consult ordered for 32-week fetal biometry, amniotic fluid index, and umbilical artery Doppler assessment due to GDMA1 status.",
+      "fullContent": "OUTPATIENT SPECIALTY REFERRAL\nDate: September 15, 2026\nReferred To: Maternal-Fetal Medicine (MFM) Specialist Group\nReason for Referral: Gestational Diabetes Mellitus (GDMA1) with borderline blood pressure elevations. Requesting 32-week fetal growth scan, umbilical artery Doppler velocity, and fluid index evaluation.\nStatus: Pending Scheduling Confirmation."
+    }
+  },
+  "workflowItems": {
+    "WF-102": {
+      "description": "Referral ordered on 2026-09-15 for serial growth assessment and uterine artery Doppler. Awaiting scheduling confirmation from MFM clinic."
+    }
+  },
+  "activityLogs": {
+    "LOG-003": {
+      "title": "3-Hour OGTT Lab Panel imported"
+    },
+    "LOG-004": {
+      "title": "3-Hour OGTT Lab Results verified",
+      "details": "Verified diagnostic thresholds and flagged for gestational diabetes care plan."
+    }
+  }
+}

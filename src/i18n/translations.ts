@@ -7,6 +7,7 @@ const e = (hi: string, ta: string, te: string): Entry => ({ hi, ta, te });
  * their exact English wording, so keep them in step with the backend.
  */
 export const serverStrings: string[] = [
+  "28-Week DIPSI Glucose Test (75 g, 2 Hours) & CBC",
   "The code is incorrect or expired. Please request a new code if needed.",
   "Phone sign-in is unavailable right now. Please use your password.",
   "Too many requests. Please wait before trying again.",
@@ -35,6 +36,9 @@ export const serverStrings: string[] = [
  * These wordings should be checked by a native speaker from the clinic before real use.
  */
 export const translations: Record<string, Entry> = {
+  "28-Week DIPSI Glucose Test (75 g, 2 Hours) & CBC": e("28 सप्ताह की DIPSI ग्लूकोज़ जाँच (75 ग्राम, 2 घंटे) और CBC", "28 வார DIPSI குளுக்கோஸ் பரிசோதனை (75 கிராம், 2 மணி நேரம்) மற்றும் CBC", "28 వారాల DIPSI గ్లూకోజ్ పరీక్ష (75 గ్రాములు, 2 గంటలు) మరియు CBC"),
+  "Your haemoglobin (Hb) result and blood group / Rh report, if you already have them.": e("आपकी हीमोग्लोबिन (Hb) जाँच और रक्त समूह / Rh की रिपोर्ट, अगर आपके पास पहले से हैं।", "உங்களிடம் ஏற்கனவே இருந்தால், ஹீமோகுளோபின் (Hb) முடிவும் இரத்த வகை / Rh அறிக்கையும்.", "మీ దగ్గర ఇప్పటికే ఉంటే, హీమోగ్లోబిన్ (Hb) పరీక్ష ఫలితం మరియు రక్త గ్రూపు / Rh రిపోర్టు."),
+  "Your weight before pregnancy, if you know it, and any earlier weight or blood pressure records.": e("गर्भावस्था से पहले आपका वजन, अगर आपको पता हो, और पहले के वजन या रक्तचाप के रिकॉर्ड।", "தெரிந்திருந்தால் கர்ப்பத்திற்கு முந்தைய உங்கள் எடை, மற்றும் முந்தைய எடை அல்லது இரத்த அழுத்தப் பதிவுகள்.", "మీకు తెలిస్తే గర్భధారణకు ముందు మీ బరువు, అలాగే మునుపటి బరువు లేదా రక్తపోటు రికార్డులు."),
   "Phone sign-in": e("फ़ोन से साइन इन", "தொலைபேசி மூலம் உள்நுழைவு", "ఫోన్‌తో సైన్ ఇన్"),
   "Password sign-in": e("पासवर्ड से साइन इन", "கடவுச்சொல் மூலம் உள்நுழைவு", "పాస్‌వర్డ్‌తో సైన్ ఇన్"),
   "Enter the SMS code sent to {phone}.": e("{phone} पर SMS से भेजा गया कोड दर्ज करें।", "{phone} எண்ணுக்கு SMS மூலம் அனுப்பப்பட்ட குறியீட்டை உள்ளிடுங்கள்.", "{phone}కు SMS ద్వారా పంపిన కోడ్‌ను నమోదు చేయండి."),

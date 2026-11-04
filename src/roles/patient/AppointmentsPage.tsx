@@ -31,6 +31,9 @@ const BEFORE_FIRST_VISIT = [
   tx('Your vaccination card, especially your tetanus vaccine record.'),
   tx('Your Mother and Child Protection (MCP) card, if you have one, and any earlier reports or blood tests.'),
   tx('Any questions you want to ask your doctor.'),
+  // Append only: saved ticks refer to the existing item indices.
+  tx('Your haemoglobin (Hb) result and blood group / Rh report, if you already have them.'),
+  tx('Your weight before pregnancy, if you know it, and any earlier weight or blood pressure records.'),
 ];
 
 const CLOSED_VISITS_SHOWN_FOR_DAYS = 30;

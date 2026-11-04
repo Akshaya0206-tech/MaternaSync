@@ -19,6 +19,12 @@ from .security import hash_password
 
 SEED_JSON = Path(__file__).resolve().parent.parent / "seed_mock_patients.json"
 
+ANANYA_GLUCOSE_REPORT = (
+    "DIPSI 75 g oral glucose test: 2-hour plasma glucose 168 mg/dL. "
+    "Glucose given irrespective of the last meal; sample collected 2 hours later. The result meets the DIPSI "
+    "threshold of 140 mg/dL or above; clinician review is pending."
+)
+
 PASSWORDS = {
     "demo@maternasync.app": "MaternaDemo123!",          # reused: Dr. Eleanor Vance (doctor)
     "sarah.jenkins@maternasync.app": "SarahDemo123!",     # patient
@@ -435,7 +441,7 @@ def ensure_additional_demo_accounts(db: Session) -> None:
     db.flush()
     db.add(models.DocumentExtraction(
         document_id=ananya_doc.id,
-        raw_text="3-hour GTT: fasting 98, 1hr 192, 2hr 168, 3hr 142 — consistent with gestational diabetes.",
+        raw_text=ANANYA_GLUCOSE_REPORT,
         record_type="Lab Result", event_date=(today - timedelta(days=1)).strftime("%Y-%m-%d"),
         facility="Westfield Women's Hospital", provider=dr_menon.full_name,
         gestational_age="30 weeks 0 days", field_status={"recordType": {"value": "Lab Result", "status": "extracted"}},

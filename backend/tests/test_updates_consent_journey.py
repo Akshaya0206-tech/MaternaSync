@@ -207,7 +207,7 @@ class JourneyWordsTests(UpdatesBase):
             text = entry["title"] + "\n" + entry["summary"]
             for word in entry["words"]:
                 self.assertIn(word["term"], text, "a word is only explained when it is in the entry")
-        for term in ("NST", "FHR", "OGTT", "GDMA1", "EFW", "NIPT", "MFM", "CBC", "CRL", "EDD"):
+        for term in ("NST", "FHR", "DIPSI", "GDMA1", "EFW", "NIPT", "MFM", "CBC", "CRL", "EDD"):
             self.assertIn(term, by_term, f"{term} is in the demonstration journey but was not explained")
         # Definitions only: nothing that says what a result means for her.
         for meanings in by_term.values():
@@ -236,7 +236,7 @@ class JourneyWordsTests(UpdatesBase):
         samples = {"NST": "non-stress test", "GDMA1": "managed with changes to food", "GDMA2": "treated with medicine", "EFW": "estimated fetal weight",
                    "NIPT": "blood test of the mother", "MFM": "maternal-fetal medicine", "CRL": "crown-rump length", "AFI": "amniotic fluid index",
                    "Doppler": "how blood is flowing", "Trisomy": "extra copy of one chromosome", "Fetal fraction": "share of the DNA",
-                   "Fundal height": "pubic bone to the top of the womb"}
+                   "Fundal height": "pubic bone to the top of the womb", "DIPSI": "75 g of glucose", "HTN": "high blood pressure"}
         for term, fragment in samples.items():
             text, used = pl.explain_terms(f"The note says {term} today and {term} again.", "en")
             self.assertIn(fragment, text, term)

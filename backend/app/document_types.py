@@ -7,7 +7,7 @@ DOCUMENT_TYPES = ["lab_report", "scan", "prescription", "discharge_summary", "va
 # Words in a demo record's title or file reference that say what kind of record it is. First match wins.
 _HINTS = [
     ("scan", r"\bultrasound\b|\bscan\b|\bnuchal\b|^RAD-|\bsonogra"),
-    ("lab_report", r"\blab\b|^LAB-|\bculture\b|\bglucose tolerance\b|\bOGTT\b|\bNIPT\b|\bblood (test|count)\b|\bCBC\b"),
+    ("lab_report", r"\blab\b|^LAB-|\bculture\b|\bglucose tolerance\b|\bOGTT\b|\bOGCT\b|\bDIPSI\b|\bNIPT\b|\bblood (test|count)\b|\bCBC\b"),
     ("discharge_summary", r"\bdischarge\b"),
     ("vaccination_card", r"\bvaccin|\bimmuni[sz]ation\b|\btetanus\b"),
     ("prescription", r"\bprescription\b|\bmedicine list\b"),

@@ -1,5 +1,5 @@
 """Friendly titles and a type for the demo records that came with the app (the ones with no file behind them and no description), so My Records shows
-"28-Week Oral Glucose Tolerance Test (OGTT) & CBC" and a "Lab report" label instead of a bare reference like LAB-OGTT-8812. Runs at every start and
+"28-Week DIPSI Glucose Test (75 g, 2 Hours) & CBC" and a "Lab report" label instead of a bare reference like LAB-OGTT-8812. Runs at every start and
 only fills in what is empty, so it also tidies a database that was seeded before types existed. It never touches a document someone uploaded."""
 from sqlalchemy.orm import Session
 

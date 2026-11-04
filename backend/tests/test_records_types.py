@@ -26,6 +26,8 @@ class InferenceTests(unittest.TestCase):
     def test_the_demo_titles_get_sensible_types(self):
         cases = {
             ("28-Week Oral Glucose Tolerance Test (OGTT) & CBC", "LAB-OGTT-8812"): "lab_report",
+            ("28-Week DIPSI Glucose Test (75 g, 2 Hours)", "report.pdf"): "lab_report",
+            ("OGCT", "report.pdf"): "lab_report",
             ("First Trimester Screening & NIPT Lab Results", "LAB-NIPT-9941"): "lab_report",
             ("20-Week Detailed Fetal Anatomy Ultrasound Survey", "RAD-US-2026-0702"): "scan",
             ("12-Week Nuchal Translucency & First Trimester Screen", "RAD-NT-2026-0720"): "scan",
@@ -98,7 +100,7 @@ class RecordsTypeTests(Base):
         titles = {d["filename"]: d for d in self.mine().values() if d["filename"].startswith(("LAB-", "RAD-", "MSG-", "EHR-CN-"))}
         self.assertTrue(titles, "the demo records are there")
         ogtt = titles["LAB-OGTT-8812"]
-        self.assertIn("Oral Glucose Tolerance", ogtt["description"])
+        self.assertIn("DIPSI Glucose Test (75 g, 2 Hours)", ogtt["description"])
         self.assertEqual(ogtt["documentType"], "lab_report")
         self.assertEqual(titles["RAD-US-2026-0702"]["documentType"], "scan")
         self.assertEqual(titles["MSG-9921"]["documentType"], "other")

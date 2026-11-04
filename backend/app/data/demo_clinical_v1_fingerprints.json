@@ -1,0 +1,81 @@
+{
+  "episodeId": "EP-2026-8891",
+  "patientEmail": "sarah.jenkins@maternasync.app",
+  "mrn": "MRN-894-201",
+  "riskNotes": "3b4e21a2717e91d38a362a50e9b40f918e51144da790ec9c5b4b5a5bd1f1bb53",
+  "records": {
+    "REC-001": {
+      "fields": {
+        "summaryText": "97d06322d72071ca5b2a585404bcb6f0249c02cb045f1a13f7ced6748cc24018",
+        "fullContent": "2daf8e199a08cc1ff08dca86f926c260f601d7165905d61a2e013ff348a8c937"
+      },
+      "sourceId": "EHR-CN-2026-0410",
+      "timestamp": "2026-04-10T10:30:00Z"
+    },
+    "REC-002": {
+      "fields": {
+        "summaryText": "ef549d1462c891d35d326f17ed7dfc5e4eef8f7b2d41f72b193fa51d026b276e",
+        "fullContent": "4412d3213b125955c8e1e2d6b514e21d005c0e01efa10e62ac7b377c6892c0d1"
+      },
+      "sourceId": "LAB-NIPT-9941",
+      "timestamp": "2026-05-12T14:15:00Z"
+    },
+    "REC-004": {
+      "fields": {
+        "title": "6177c89cf7f5d6ed4697b358d3aec996f050703fc846c046f7914fe75d86862d",
+        "rawPayloadSnippet": "9411b625832c7145ae1447bb77b43cf062081603ba454f8e89e26441d2bba63e",
+        "summaryText": "d3fede6fe57bcd66a15a756bac323e015416a2fa90a8136fcf5046ff39278e2e",
+        "fullContent": "e5e958bdfe455a70f311edb95d1795a994b2071bae62f9704b9d7f9b25fa75b2",
+        "tags": "9042048e324ae7180cf38eb6dc8e278dcb1fa5928ac1f6302e346048bc4a9913"
+      },
+      "sourceId": "LAB-OGTT-8812",
+      "timestamp": "2026-08-26T09:30:00Z"
+    },
+    "REC-006": {
+      "fields": {
+        "summaryText": "9adf4c6c5b005b3cd0977696a32c59421b0d5288b6b9ec7aad1ad8ddb51df597",
+        "fullContent": "3927f22bf0d4813db3ed08ccd3c12bd9106acec39d1e9ea74e02c0e6f97a5dd4"
+      },
+      "sourceId": "EHR-CN-2026-0912",
+      "timestamp": "2026-09-12T11:15:00Z"
+    },
+    "REC-008": {
+      "fields": {
+        "rawPayloadSnippet": "02f6ec664c49712a604a26c9b195c350d2e437ec40093869f85113db776b6114",
+        "summaryText": "9fc00ffdc07db2b97cf1cd53961ac5de1796cebdaecfff6f2703112b73861858",
+        "fullContent": "b8d6dad82d3c0fefa708b9eb4ef74c9ca87c4320c0b4a897933b2da66db20360"
+      },
+      "sourceId": "ORD-44910",
+      "timestamp": "2026-09-15T14:30:00Z"
+    }
+  },
+  "workflowItems": {
+    "WF-102": {
+      "fields": {
+        "description": "de4dda2b655206ba39a73f9609c1e983d7f398ee6cc7e34f3eec738cd5185fcb"
+      },
+      "dateCreated": "2026-09-15T14:30:00Z",
+      "recordId": "REC-008",
+      "type": "pending_referral"
+    }
+  },
+  "activityLogs": {
+    "LOG-003": {
+      "fields": {
+        "title": "6aa335b98f063972e0c96ecd1630b71d4160e8f65087b147cb307b5dc000277b"
+      },
+      "timestamp": "2026-08-26T10:00:00Z",
+      "recordId": "REC-004",
+      "action": "record_added"
+    },
+    "LOG-004": {
+      "fields": {
+        "title": "ba51b05b059ed744429253f5385bf3e5278645ac57dcab7efa97ad8e27d6415b",
+        "details": "3e861147ef7c7c2485d4c3735257b9d0b26f9ce756b91cd9c65c06d5a3cff2f0"
+      },
+      "timestamp": "2026-08-26T14:20:00Z",
+      "recordId": "REC-004",
+      "action": "record_verified"
+    }
+  }
+}
