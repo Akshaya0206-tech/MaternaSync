@@ -1,6 +1,7 @@
 """Phone sign-in and password-confirmed enrollment for existing accounts."""
 import hashlib
 import hmac
+import math
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -67,25 +68,35 @@ def masked(phone: str) -> str:
     return "+91 ******" + phone[-4:]
 
 
-def rate(db: Session, scope: str, value: str, limit: int, seconds: int):
-    """Atomic, rolling window counters shared by all API processes using this DB."""
-    if limit < 1:
-        raise HTTPException(429, LIMITED)
+def reserve_rates(db: Session, limits: list[tuple[str, str, int, int]]):
+    """Reserve all applicable counters together; a refusal consumes none of them."""
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    key = hmac.new(config.JWT_SECRET.encode(), f"{scope}:{value}".encode(), hashlib.sha256).hexdigest()
     table = models.PhoneAuthLimit
-    expired = table.expires_at <= now
-    statement = insert(table).values(key=key, count=1, expires_at=now + timedelta(seconds=seconds))
-    statement = statement.on_conflict_do_update(
-        index_elements=["key"],
-        set_={"count": case((expired, 1), else_=table.count + 1),
-              "expires_at": case((expired, now + timedelta(seconds=seconds)), else_=table.expires_at)},
-        where=or_(expired, table.count < limit),
-    ).returning(table.key)
-    accepted = db.execute(statement).first() is not None
+    waits = []
+    for scope, value, limit, seconds in limits:
+        if limit < 1:
+            waits.append(seconds)
+            continue
+        key = hmac.new(config.JWT_SECRET.encode(), f"{scope}:{value}".encode(), hashlib.sha256).hexdigest()
+        expired = table.expires_at <= now
+        statement = insert(table).values(key=key, count=1, expires_at=now + timedelta(seconds=seconds))
+        statement = statement.on_conflict_do_update(
+            index_elements=["key"],
+            set_={"count": case((expired, 1), else_=table.count + 1),
+                  "expires_at": case((expired, now + timedelta(seconds=seconds)), else_=table.expires_at)},
+            where=or_(expired, table.count < limit),
+        ).returning(table.key)
+        if db.execute(statement).first() is None:
+            expires_at = db.query(table.expires_at).filter_by(key=key).scalar()
+            waits.append(max(1, math.ceil((expires_at - now).total_seconds())))
+    if waits:
+        db.rollback()
+        raise HTTPException(429, LIMITED, headers={"Retry-After": str(max(waits))})
     db.commit()
-    if not accepted:
-        raise HTTPException(429, LIMITED, headers={"Retry-After": str(seconds)})
+
+
+def rate(db: Session, scope: str, value: str, limit: int, seconds: int):
+    reserve_rates(db, [(scope, value, limit, seconds)])
 
 
 def ip(request: Request) -> str:
@@ -98,12 +109,15 @@ def send_limits(db: Session, request: Request, phone: str, user_id: str | None =
     db.query(models.PhoneAuthLimit).filter(models.PhoneAuthLimit.expires_at < now - timedelta(days=1)).delete()
     db.query(models.PhoneChallenge).filter(models.PhoneChallenge.expires_at < now - timedelta(days=1)).delete()
     db.commit()
-    rate(db, "send-ip", ip(request), 20, 3600)
+    limits = [("send-ip", ip(request), 20, 3600)]
     if user_id:
-        rate(db, "enroll-user", user_id, 5, 3600)
-    rate(db, "send-phone-hour", phone, 5, 3600)
-    rate(db, "send-phone-cooldown", phone, 1, config.PHONE_OTP_COOLDOWN_SECONDS)
-    rate(db, "send-budget", "global", max(0, config.PHONE_OTP_DAILY_SEND_LIMIT), 86400)
+        limits.append(("enroll-user", user_id, 5, 3600))
+    limits.extend([
+        ("send-phone-hour", phone, 5, 3600),
+        ("send-phone-cooldown", phone, 1, config.PHONE_OTP_COOLDOWN_SECONDS),
+        ("send-budget", "global", max(0, config.PHONE_OTP_DAILY_SEND_LIMIT), 86400),
+    ])
+    reserve_rates(db, limits)
 
 
 def allowed(user) -> bool:

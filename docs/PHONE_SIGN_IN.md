@@ -25,6 +25,8 @@ Twilio's current trial has 40 successful verification checks, a shared allowance
 
 The application starts with a global cap of 20 send requests per rolling day, five per number per hour, and 20 per source IP per hour. This is deliberately small for a trial; configure `MATERNASYNC_OTP_DAILY_SEND_LIMIT` deliberately if needed. Invalid/unknown-number requests count toward the application budget too. This cap is separate from Twilio's billing, credit and fraud controls.
 
+Requests refused by a cooldown or another application limit do not consume any additional send allowance. A refusal returns the remaining wait in `Retry-After`, which the website uses for a disabled button with a countdown. Repeated clicks do not extend the wait. The introductory text on phone sign-in is general guidance and does not check whether a particular number is linked.
+
 Codes are checked only on the backend. The application challenge expires after five minutes even if the provider has a longer validity period. Resends retain that expiry and the attempt count. Five verification attempts are allowed. Request IDs, account/purpose bindings, attempt counts and one-time consumption live in SQLite; no OTP or Auth Token is stored in those tables. Expired challenges and rate records are cleaned up during subsequent sends after the retention window.
 
 Twilio errors never issue a session. A provider acceptance response is not proof of SMS delivery. Use your phone and Twilio logs to confirm delivery. No live SMS was sent from MaternaSync during automated implementation tests; those tests inject a provider stand-in. The user's successful console test is a separate result.

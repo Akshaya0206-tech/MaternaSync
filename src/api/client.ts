@@ -19,9 +19,11 @@ export function setToken(token: string | null): void {
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  retryAfterSeconds?: number;
+  constructor(message: string, status: number, retryAfterSeconds?: number) {
     super(message);
     this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -49,7 +51,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch {
       // ignore — use default message
     }
-    throw new ApiError(message, res.status);
+    const retryHeader = res.headers.get('Retry-After');
+    const retrySeconds = retryHeader && /^\d+$/.test(retryHeader) ? Number(retryHeader) : undefined;
+    throw new ApiError(message, res.status, retrySeconds);
   }
 
   if (res.status === 204) return undefined as T;

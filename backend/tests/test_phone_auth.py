@@ -1,5 +1,7 @@
 """Real auth endpoints against an isolated DB; Twilio is replaced, never contacted."""
 import concurrent.futures
+import hashlib
+import hmac
 import time
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -143,6 +145,64 @@ class PhoneAuthTests(Base):
         self.assertEqual(resent.json()["expiresAt"], data["expiresAt"])
         with SessionLocal() as db:
             self.assertEqual(db.get(models.PhoneChallenge, data["challengeId"]).attempts, 1)
+
+    def limit_key(self, scope, value):
+        return hmac.new(config.JWT_SECRET.encode(), f"{scope}:{value}".encode(), hashlib.sha256).hexdigest()
+
+    def limits_snapshot(self):
+        with SessionLocal() as db:
+            return {row.key: (row.count, row.expires_at) for row in db.query(models.PhoneAuthLimit).all()}
+
+    def test_repeated_clicks_after_linking_do_not_exhaust_hourly_allowance(self):
+        phone = "+919800000001"
+        data = self.call("POST", "/api/auth/phone/enroll/start", "patient", {"phone": phone, "password": "SarahDemo123!"})
+        self.call("POST", "/api/auth/phone/enroll/verify", "patient", {"challengeId": data["challengeId"], "code": "246810"})
+        before = self.limits_snapshot()
+        # Link the number, sign out, and click repeatedly before the minute has elapsed.
+        for _ in range(7):
+            response = self.client.post("/api/auth/otp/start", json={"phone": phone}, headers={"Origin": "https://maternasync-test.vercel.app"})
+            self.assertEqual(response.status_code, 429)
+            self.assertGreater(int(response.headers["Retry-After"]), 0)
+            self.assertLessEqual(int(response.headers["Retry-After"]), 60)
+            self.assertIn("retry-after", response.headers["access-control-expose-headers"].lower())
+        self.assertEqual(self.limits_snapshot(), before)
+        self.assertEqual(len(self.provider.sent), 1)
+        # Expire only the minute cooldown: hourly and daily usage must remain unchanged.
+        with SessionLocal() as db:
+            db.get(models.PhoneAuthLimit, self.limit_key("send-phone-cooldown", phone)).expires_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=1)
+            db.commit()
+        self.assertEqual(self.check(self.start(phone)).status_code, 200)
+        self.assertEqual(len(self.provider.sent), 2)
+
+    def test_rejected_send_rolls_back_every_limit_and_reports_longest_remaining_wait(self):
+        phone = "+919800000001"
+        self.start(phone)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        with SessionLocal() as db:
+            hourly = db.get(models.PhoneAuthLimit, self.limit_key("send-phone-hour", phone))
+            hourly.count = 5
+            hourly.expires_at = now + timedelta(seconds=17)
+            budget = db.get(models.PhoneAuthLimit, self.limit_key("send-budget", "global"))
+            budget.count = config.PHONE_OTP_DAILY_SEND_LIMIT
+            budget.expires_at = now + timedelta(seconds=125)
+            db.commit()
+        before = self.limits_snapshot()
+        for number in (phone, "+919800000002"):
+            response = self.client.post("/api/auth/otp/start", json={"phone": number})
+            self.assertEqual(response.status_code, 429)
+            self.assertGreater(int(response.headers["Retry-After"]), 115)
+            self.assertLessEqual(int(response.headers["Retry-After"]), 125)
+            self.assertEqual(self.limits_snapshot(), before)
+
+    def test_concurrent_send_requests_reserve_only_one_allowance(self):
+        self.enroll()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+            responses = list(pool.map(lambda _: self.client.post("/api/auth/otp/start", json={"phone": "+919800000001"}), range(4)))
+        self.assertEqual([r.status_code for r in responses].count(200), 1)
+        self.assertEqual([r.status_code for r in responses].count(429), 3)
+        self.assertEqual(len(self.provider.sent), 2)  # enrollment plus one sign-in SMS
+        for count, _ in self.limits_snapshot().values():
+            self.assertEqual(count, 1)
 
     def test_replacement_challenge_and_removed_phone_invalidate_old_challenges(self):
         self.enroll()
