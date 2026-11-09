@@ -53,6 +53,12 @@ class CrossOriginTests(unittest.TestCase):
         self.assertEqual((answer.status_code, answer.headers["access-control-allow-origin"]), (200, VERCEL_PAGE))
         self.assertNotIn("access-control-allow-origin", self.client.get("/api/health", headers={"Origin": "https://evil.example"}).headers)
 
+    def test_an_uptime_monitor_checking_with_head_sees_the_api_up(self):
+        answer = self.client.head("/api/health")
+        self.assertEqual(answer.status_code, 200)
+        self.assertEqual(answer.content, b"")
+        self.assertEqual(self.client.get("/api/health").json(), {"status": "ok"})
+
     def test_the_list_is_read_from_the_environment_and_a_bare_star_is_never_accepted(self):
         self.assertEqual(config.parse_origins(" https://a.example/ , ,https://b.example,*"), ["https://a.example", "https://b.example"])
         self.assertEqual(config.parse_origins("*"), [])

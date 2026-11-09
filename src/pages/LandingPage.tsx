@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { HeartPulse, Users, Stethoscope, ArrowRight, Building2, UserRoundCheck } from 'lucide-react';
 import { fetchAuthOptions } from '../api/auth';
+import { whenServerReady } from '../api/serverWake';
 import { LanguageSwitcher } from '../components/shared/LanguageSwitcher';
 import { LanguageProvider, tx, useLanguage } from '../i18n';
 import { loadAuthDictionary } from '../i18n/dictionaries';
@@ -38,7 +39,8 @@ function Landing() {
   const [careTeamOn, setCareTeamOn] = useState(false);
   useEffect(() => {
     let active = true;
-    fetchAuthOptions().then((options) => { if (active) setCareTeamOn(options.careTeamEnabled); }).catch(() => undefined);
+    // This also wakes the free demo server as soon as someone opens the site, so it is closer to ready by the time they sign in.
+    whenServerReady(fetchAuthOptions).then((options) => { if (active) setCareTeamOn(options.careTeamEnabled); }).catch(() => undefined);
     return () => { active = false; };
   }, []);
   const workspaces = [PATIENT, CAREGIVER, ...(careTeamOn ? [CARE_TEAM] : []), DOCTOR];

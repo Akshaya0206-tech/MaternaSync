@@ -144,7 +144,9 @@ def on_shutdown():
     scheduler.shutdown(wait=False)
 
 
-@app.get("/api/health")
+# HEAD too: uptime monitors (UptimeRobot's free plan among them) check with HEAD, and a 405 there reads as "down". A monitor on this
+# address also keeps a free host from going to sleep.
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
 

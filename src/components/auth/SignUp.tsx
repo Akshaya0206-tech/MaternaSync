@@ -7,6 +7,8 @@ import type { CurrentUser, UserRole } from '../../api/auth';
 import { offerTourToNewAccount } from '../../tour/tourContext';
 import { AlertCircle, MapPin } from 'lucide-react';
 import { tx, useLanguage } from '../../i18n';
+import { waitForServer, whenServerReady } from '../../api/serverWake';
+import { ServerWakeNotice, useServerWake } from './ServerWakeNotice';
 
 interface SignUpProps {
   /** `landOn` names the page to open first when it is not the usual home page (a patient whose area was not found). */
@@ -32,9 +34,10 @@ export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignI
   const [roles, setRoles] = useState(DEFAULT_ROLES);
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const wake = useServerWake(); // the free demo server may be asleep (see api/serverWake)
   useEffect(() => {
     let active = true;
-    fetchAuthOptions().then((options) => { if (active && options.signUpRoles.length) setRoles(options.signUpRoles); }).catch(() => undefined);
+    whenServerReady(fetchAuthOptions).then((options) => { if (active && options.signUpRoles.length) setRoles(options.signUpRoles); }).catch(() => undefined);
     return () => { active = false; };
   }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,6 +103,8 @@ export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignI
             hospitalName: blank(hospitalName), hospitalPhone: blank(hospitalPhone),
           }
         : undefined;
+      // Held until the server has started. Not sent a second time: unlike a sign-in, a repeated request could meet the account it just made.
+      await waitForServer();
       const result = await register({
         fullName: fullName.trim(), email: email.trim(), password, confirmPassword, role, emergency,
         inviteCode: role === 'caregiver' ? inviteCode.trim() : undefined,
@@ -125,6 +130,8 @@ export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignI
       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', margin: '0 0 24px 0' }}>
         {t("Join your care team's workspace")}
       </p>
+
+      <ServerWakeNotice wake={wake} />
 
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--rose-urgent-bg)', color: 'var(--rose-urgent)', border: '1px solid rgba(156, 58, 34, 0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.825rem', marginBottom: '16px' }}>
@@ -203,7 +210,7 @@ export const SignUp: React.FC<SignUpProps> = ({ onAuthenticated, onSwitchToSignI
         )}
 
         <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ width: '100%', padding: '11px', fontSize: '0.9rem', marginTop: '4px' }}>
-          {isSubmitting ? t('Creating account…') : t('Create Account')}
+          {isSubmitting ? (wake.state === 'ready' ? t('Creating account…') : t('Waiting for the server…')) : t('Create Account')}
         </button>
       </form>
 

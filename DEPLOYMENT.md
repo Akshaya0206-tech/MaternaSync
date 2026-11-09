@@ -44,7 +44,12 @@ render services create --name maternasync-api --type web_service --runtime docke
 **Manual Deploy** in the dashboard (or `render deploys create SERVICE_ID`).
 
 What the free plan means:
-- **It sleeps after 15 minutes without traffic.** The next request wakes it, and the API then starts from scratch (measured: about 90 seconds). Open the site a couple of minutes before a demonstration.
+- **It sleeps after 15 minutes without traffic.** The next request wakes it, and the API then starts from scratch (measured: about 90 seconds; 102 seconds on 9 November 2026, when Render held every request, sign-in included, until the API was up, then answered them all). Open the site a couple of minutes before a demonstration.
+  While it wakes, the landing, sign-in and sign-up pages say "Starting the server…" with a seconds count, and a sign-in or sign-up made meanwhile
+  waits for the API instead of failing (`src/api/serverWake.ts`). The demo buttons appear once it has started.
+- **An uptime monitor keeps it awake.** Point it at the API, `https://maternasync-api.onrender.com/api/health`, not at the Vercel address (the website is static,
+  so checking it never reaches the API). Every 5 minutes is enough. The health check answers HEAD as well as GET, because UptimeRobot's free monitors use
+  HEAD; before that change they got a 405 and reported the API as down. Staying awake all month uses about 730 of the 750 free hours.
 - **There is no disk, so the database and uploads are erased at every sleep, restart and deploy.** The demonstration accounts come back each time (`MATERNASYNC_DEMO_ENABLED=true`); anything entered during a session does not.
 - **The background jobs (assistant queue, reminders) only run while it is awake.**
 - **512 MB of memory.** It started and served requests within that in the first checks; if it is ever killed for memory, a paid instance is the fix.
@@ -130,7 +135,7 @@ Then open the Vercel address and sign in with a demo account.
 | "Can't reach the server right now" on sign-in, and a CORS error in the browser console | The API does not list the website's address | Put the exact address (`https://...`, no trailing slash) in `MATERNASYNC_CORS_ORIGINS`, redeploy the API |
 | Sign-in page loads, but sign-in says "Something went wrong. Please try again." and every request is a 404 from Vercel | `VITE_API_BASE_URL` was not set when the site was built (this is how the site behaves until an API exists) | Set it, redeploy the site |
 | Works, then everyone is signed out | `MATERNASYNC_JWT_SECRET` changed or is not set the same on every restart | Set it once and keep it |
-| First request is slow, or fails once | The API host was starting or waking up | Wait a minute; use an always-on plan for a demo |
+| "Starting the server…" on sign-in, demo buttons missing for a minute or two | The free API host was asleep and is starting | Nothing: sign-in goes through once it is up. To avoid the wait, keep it awake or use an always-on plan |
 | Data disappears after a restart | No persistent disk on `/data` | Attach one (Render: a paid plan) |
 | Preview deployments cannot sign in | The preview address is not allowed | Add `MATERNASYNC_CORS_ORIGIN_REGEX` |
 | Visitors are asked to log in to Vercel | Deployment Protection on the preview/production address | Vercel → Settings → Deployment Protection |

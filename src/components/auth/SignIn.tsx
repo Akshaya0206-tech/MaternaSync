@@ -8,6 +8,8 @@ import type { CurrentUser } from '../../api/auth';
 import { AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { tx, useLanguage } from '../../i18n';
 import { PhoneSignIn } from './PhoneOtp';
+import { whenServerReady } from '../../api/serverWake';
+import { ServerWakeNotice, useServerWake } from './ServerWakeNotice';
 
 interface SignInProps {
   onAuthenticated: (token: string, user: CurrentUser) => void;
@@ -53,12 +55,14 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
   const [careTeamOn, setCareTeamOn] = useState(false);
   const [phoneEnabled, setPhoneEnabled] = useState(false);
   const [usePhone, setUsePhone] = useState(false);
-  useEffect(() => { let active = true; fetchAuthOptions().then(o => { if (active) { setCareTeamOn(o.careTeamEnabled); setPhoneEnabled(!!o.phoneOtpEnabled); } }).catch(() => undefined); return () => { active = false; }; }, []);
-  useEffect(() => { let active = true; fetchDemoAccounts().then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError(tx('Demo logins are unavailable right now. Please try again in a moment.')); }); return () => { active = false; }; }, []);
+  // The free demo server may be asleep: these wait for it to start (see api/serverWake) instead of giving up on the first try.
+  const wake = useServerWake();
+  useEffect(() => { let active = true; whenServerReady(fetchAuthOptions).then(o => { if (active) { setCareTeamOn(o.careTeamEnabled); setPhoneEnabled(!!o.phoneOtpEnabled); } }).catch(() => undefined); return () => { active = false; }; }, []);
+  useEffect(() => { let active = true; whenServerReady(fetchDemoAccounts).then(accounts => { if (active) setDemoAccounts(accounts); }).catch(() => { if (active) setDemoError(tx('Demo logins are unavailable right now. Please try again in a moment.')); }); return () => { active = false; }; }, []);
   const signInDemo = async (account: PortalDemoAccount) => {
     if (isSubmitting) return;
     setEmail(account.email); setPassword(account.password); setDemoRole(account.role); setIsSubmitting(true); setError(null);
-    try { const result = await login(account.email, account.password); onAuthenticated(result.accessToken, result.user); }
+    try { const result = await whenServerReady(() => login(account.email, account.password)); onAuthenticated(result.accessToken, result.user); }
     catch (err) { setError(err instanceof ApiError ? err.message : tx("Can't reach the server right now. Please try again in a moment.")); }
     finally { setIsSubmitting(false); setDemoRole(''); }
   };
@@ -69,7 +73,8 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
     setError(null);
     setIsSubmitting(true);
     try {
-      const result = await login(email.trim(), password);
+      // Held until the server has started, so a sign-in made while it wakes up goes through instead of failing.
+      const result = await whenServerReady(() => login(email.trim(), password));
       onAuthenticated(result.accessToken, result.user);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -99,6 +104,8 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', margin: '0 0 24px 0' }}>
         {t('Sign in to your MaternaSync workspace')}
       </p>
+
+      <ServerWakeNotice wake={wake} hint={t('The demo sign-in buttons appear below when it is ready.')} />
 
       {error && (
         <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--rose-urgent-bg)', color: 'var(--rose-urgent)', border: '1px solid rgba(156, 58, 34, 0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.825rem', marginBottom: '16px' }}>
@@ -140,7 +147,7 @@ export const SignIn: React.FC<SignInProps> = ({ onAuthenticated, onSwitchToSignU
         </div>
 
         <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ width: '100%', padding: '11px', fontSize: '0.9rem', marginTop: '4px' }}>
-          {isSubmitting ? t('Signing in…') : t('Sign In')}
+          {isSubmitting ? (wake.state === 'ready' ? t('Signing in…') : t('Waiting for the server…')) : t('Sign In')}
         </button>
       </form>}
 
